@@ -1,1 +1,0 @@
-# techchallenge-1
