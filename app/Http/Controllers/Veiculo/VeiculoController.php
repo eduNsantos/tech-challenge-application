@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use CriarVeicularUseCase;
 
-abstract class VeiculoController
+class VeiculoController extends Controller
 {
     public function criar()
     {
-        $useCase = CriarVeicularUseCase();
+        $useCase = new CriarVeicularUseCase();
         $useCase->execute();
 
         return response()->json(['message' => 'Veículo criado com sucesso']);
     }
 }
+

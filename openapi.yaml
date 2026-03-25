@@ -42,15 +42,15 @@ paths:
       operationId: auth-register
       requestBody:
         required: true
-      content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RegistroRequest'
-            example:
-              name: João Silva
-              email: joao@example.com
-              password: senha12345
-              password_confirmation: senha12345
+        content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistroRequest'
+              example:
+                name: João Silva
+                email: joao@example.com
+                password: senha12345
+                password_confirmation: senha12345
       responses:
         '201':
           description: Usuário criado com sucesso
