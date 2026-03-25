@@ -20,7 +20,7 @@ info:
   contact: {}
 
 servers:
-  - url: http://localhost:8989
+  - url: http://localhost:8080/api
     description: Servidor local de desenvolvimento
 
 tags:
@@ -42,7 +42,7 @@ paths:
       operationId: auth-register
       requestBody:
         required: true
-        content:
+      content:
           application/json:
             schema:
               $ref: '#/components/schemas/RegistroRequest'
