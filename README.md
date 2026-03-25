@@ -55,9 +55,17 @@ DB_PORT=3306
 DB_DATABASE=techchallenge
 DB_USERNAME=techchallenge
 DB_PASSWORD=
+
+JWT_SECRET=
 ```
 
 Se quiser evitar inconsistência no MySQL, mantenha `DB_PASSWORD` preenchido com o mesmo valor usado no container.
+
+Para gerar o JWT_SEFCRET precisa ter ao menos 256 bytes. Para facilitar utilize este comando e copie o output:
+
+```
+docker compose run --rm app-php php artisan jwt:secret
+```
 
 ### 3. Suba os containers
 
