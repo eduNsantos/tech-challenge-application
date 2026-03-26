@@ -13,10 +13,10 @@ class RepositoryServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // $this->app->bind(
-        //     VehicleRepositoryInterface::class,
-        //     VehicleRepositoryEloquent::class
-        // );
+        $this->app->bind(
+            VehicleRepositoryInterface::class,
+            VehicleRepositoryEloquent::class
+        );
     }
 
     /**
