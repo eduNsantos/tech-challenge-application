@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class VehicleModel extends Model
 {
     protected $table = 'vehicles';
+    protected $keyType = 'string';
+    public $incrementing = false;
 
     protected $fillable = [
+        'id',
         'brand',
         'model',
         'year',

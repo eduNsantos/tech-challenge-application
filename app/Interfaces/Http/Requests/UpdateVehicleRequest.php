@@ -23,10 +23,17 @@ class UpdateVehicleRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'id' => 'required|uuid',
             'brand' => 'string|max:255',
             'model' => 'string|max:255',
             'year' => 'integer|min:1900|max:' . date('Y'),
             'plate' => 'string|max:10'
         ];
+    }
+    protected function prepareForValidation()
+    {
+        $this->merge([
+            'id' => $this->route('id'),
+        ]);
     }
 }

@@ -66,4 +66,14 @@ class VehicleRepositoryEloquent implements VehicleRepositoryInterface
             new Plate($model->plate)
         );
     }
+
+    public function update(Vehicle $vehicle): void
+    {
+        VehicleModel::where('id', $vehicle->id)->update([
+            'brand' => $vehicle->brand,
+            'model' => $vehicle->model,
+            'year' => $vehicle->year,
+            'plate' => $vehicle->plate->getValue(),
+        ]);
+    }
 }
