@@ -18,6 +18,8 @@ return new class extends Migration
             $table->string('model');
             $table->integer('year');
             $table->string('plate')->unique();
+            $table->foreignId('created_user_id')->constrained('users');
+            $table->foreignId('updated_user_id')->constrained('users');
             $table->timestamps();
         });
     }

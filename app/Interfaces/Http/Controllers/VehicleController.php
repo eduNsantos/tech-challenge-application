@@ -61,19 +61,23 @@ class VehicleController
 
     public function update(UpdateVehicleRequest $request, UpdateVehicleUseCase $useCase)
     {
-
-        $plate = new Plate($request->input('plate'));
-
         $dto = new UpdateVehicleDto(
             id: $request->route('id'),
             brand: $request->input('brand'),
             model: $request->input('model'),
             year: $request->input('year'),
-            plate: $plate
+            plate: $request->filled('plate') ? new Plate($request->input('plate')) : null
         );
 
         $vehicle = $useCase->execute($dto);
 
-        return response()->json($vehicle, 200);
+        return response()->json([
+            'id' => $vehicle->id,
+            'model' => $vehicle->model,
+            'brand' => $vehicle->brand,
+            'year' => $vehicle->year,
+            'plate' => $vehicle->plate->getValue(),
+            'message' => 'Veículo atualizado com sucesso'
+        ], 200);
     }
 }

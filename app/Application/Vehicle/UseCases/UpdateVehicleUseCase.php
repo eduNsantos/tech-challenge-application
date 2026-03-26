@@ -20,7 +20,7 @@ class UpdateVehicleUseCase
             throw new \Exception('Veículo não encontrado');
         }
 
-        if ($dto->plate->getValue() !== null) {
+        if ($dto->plate !== null && $dto->plate->getValue() !== null) {
             $exists = $this->repository->findByPlate($dto->plate->getValue());
 
             if ($exists && $exists->id !== $vehicle->id) {

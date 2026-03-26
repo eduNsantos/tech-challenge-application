@@ -15,6 +15,8 @@ class VehicleModel extends Model
         'brand',
         'model',
         'year',
-        'plate'
+        'plate',
+        'created_user_id',
+        'updated_user_id'
     ];
 }

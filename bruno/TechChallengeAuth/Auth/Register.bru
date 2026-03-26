@@ -1,19 +1,21 @@
 meta {
-  name: Login
+  name: Register
   type: http
-  seq: 2
+  seq: 3
 }
 
 post {
-  url: {{baseUrl}}/auth/login
+  url: {{baseUrl}}/auth/register
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "email": "edu.nascimento22@outlook.com",
-    "password": "senha12345"
+    "email": "teste@admin.com",
+    "name": "Admin Teste",
+    "password": "senha12345",
+    "password_confirmation": "senha12345"
   }
 }
 
