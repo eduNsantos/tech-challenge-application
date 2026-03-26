@@ -2,11 +2,12 @@
 
 namespace App\Interfaces\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Application\Vehicle\UseCases\CreateVehicleUseCase;
 use App\Application\Vehicle\DTOs\CreateVehicleDTO;
+use App\Application\Vehicle\DTOs\ListVehicleDTO;
 use App\Application\Vehicle\UseCases\ListVehicleUseCase;
 use App\Interfaces\Http\Requests\CreateVehicleRequest;
+use App\Interfaces\Http\Requests\ListVehicleRequest;
 
 class VehicleController
 {
@@ -27,9 +28,15 @@ class VehicleController
         ]);
     }
 
-    public function list(Request $request, ListVehicleUseCase $useCase)
+    public function list(ListVehicleRequest $request, ListVehicleUseCase $useCase)
     {
-        $vehicles = $useCase->execute();
+
+        $dto = new ListVehicleDTO(
+            page: $request->input('page', 1),
+            perPage: $request->input('perPage', 10)
+        );
+
+        $vehicles = $useCase->execute($dto);
 
         return response()->json($vehicles);
     }

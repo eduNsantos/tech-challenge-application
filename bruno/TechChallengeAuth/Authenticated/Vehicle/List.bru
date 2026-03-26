@@ -5,18 +5,14 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/vehicle
+  url: {{baseUrl}}/vehicle?page=1&perPage=2
   body: json
   auth: inherit
 }
 
-body:json {
-  {
-    "brand": "GM",
-    "model": "Corsa",
-    "year": "2009",
-    "plate": "EFB1B30"
-  }
+params:query {
+  page: 1
+  perPage: 2
 }
 
 settings {
