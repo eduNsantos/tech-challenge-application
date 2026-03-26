@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Interfaces\Http\Controllers\VehicleController;
 
 Route::group([
     'middleware' => 'api',
@@ -13,3 +14,11 @@ Route::group([
     Route::post('refresh', [AuthController::class, 'refresh'])->middleware('auth:api');
     Route::get('me', [AuthController::class, 'me'])->middleware('auth:api');
 });
+
+Route::group([
+    'middleware' => 'auth:api',
+    'prefix' => 'vehicle'
+], function() {
+    Route::post('/', [VehicleController::class, 'store']);
+});
+

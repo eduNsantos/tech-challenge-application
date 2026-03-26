@@ -1,0 +1,37 @@
+<?php
+
+namespace App\Infrastructure\Persistence\Eloquent\Repositories;
+
+use App\Domain\Vehicle\Repositories\VehicleRepositoryInterface;
+use App\Domain\Vehicle\Entities\Vehicle;
+use App\Domain\Vehicle\ValueObjects\Plate;
+use App\Infrastructure\Persistence\Eloquent\Models\VehicleModel;
+
+class VehicleRepositoryEloquent implements VehicleRepositoryInterface
+{
+    public function save(Vehicle $vehicle): void
+    {
+        VehicleModel::create([
+            'id' => $vehicle->id,
+            'brand' => $vehicle->brand,
+            'model' => $vehicle->model,
+            'year' => $vehicle->year,
+            'plate' => $vehicle->plate->getValue(),
+        ]);
+    }
+
+    public function findByPlate(string $plate): ?Vehicle
+    {
+        $model = VehicleModel::where('plate', $plate)->first();
+
+        if (!$model) return null;
+
+        return new Vehicle(
+            $model->id,
+            $model->brand,
+            $model->model,
+            $model->year,
+            new Plate($model->plate)
+        );
+    }
+}
