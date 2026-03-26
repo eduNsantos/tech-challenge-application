@@ -5,10 +5,11 @@ namespace App\Interfaces\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Application\Vehicle\UseCases\CreateVehicleUseCase;
 use App\Application\Vehicle\DTOs\CreateVehicleDTO;
+use App\Http\Requests\Interfaces\Http\Requests\CreateVehicleRequest;
 
 class VehicleController
 {
-    public function store(Request $request, CreateVehicleUseCase $useCase)
+    public function store(CreateVehicleRequest $request, CreateVehicleUseCase $useCase)
     {
         $dto = new CreateVehicleDTO(
             $request->brand,
