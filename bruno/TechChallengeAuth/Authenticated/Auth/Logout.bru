@@ -1,0 +1,37 @@
+meta {
+  name: Logout
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/logout
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "email": "edu.nascimento22@outlook.com",
+    "password": "senha12345"
+  }
+}
+
+script:post-response {
+  try {
+    let body = res.getBody();
+    
+    bru.setVar('token', body.access_token);
+  } catch (e) {
+    console.log('Erro ao parsear JSON', e);
+  }
+}
+
+tests {
+  res.getBody()
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

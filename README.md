@@ -1,58 +1,208 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# TechChallenge API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+API de autenticação construída com Laravel 13, JWT e MySQL, com ambiente de desenvolvimento via Docker Compose e documentação OpenAPI.
 
-## About Laravel
+## Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.4
+- Laravel 13
+- MySQL 8
+- JWT para autenticação
+- Docker Compose
+- Swagger UI para visualização da documentação
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## O que a API oferece
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Atualmente o projeto expõe endpoints de autenticação em `/api/auth` para:
 
-## Learning Laravel
+- registrar usuário
+- realizar login
+- obter usuário autenticado
+- renovar token
+- encerrar sessão
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Pré-requisitos
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Antes de iniciar, tenha instalado na máquina:
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- Docker
+- Docker Compose
 
-## Agentic Development
+## Serviços disponíveis
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Ao subir o ambiente, os serviços ficam disponíveis em:
+
+- API Laravel: `http://localhost:8080`
+- Swagger UI: `http://localhost:8082`
+- MySQL: `localhost:3308`
+
+## Configuração do ambiente
+
+### 1. Copie o arquivo de ambiente
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+cp .env.example .env
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 2. Revise as variáveis do banco
 
-## Contributing
+O projeto já vem configurado para usar o serviço `db` do Docker Compose. No `.env`, valide ao menos estes campos:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```env
+DB_CONNECTION=mysql
+DB_HOST=db
+DB_PORT=3306
+DB_DATABASE=techchallenge
+DB_USERNAME=techchallenge
+DB_PASSWORD=
 
-## Code of Conduct
+JWT_SECRET=
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Se quiser evitar inconsistência no MySQL, mantenha `DB_PASSWORD` preenchido com o mesmo valor usado no container.
 
-## Security Vulnerabilities
+Para gerar o JWT_SEFCRET precisa ter ao menos 256 bytes. Para facilitar utilize este comando e copie o output:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```
+docker compose run --rm app-php php artisan jwt:secret
+```
 
-## License
+### 3. Suba os containers
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+docker compose up -d --build
+```
+
+### 4. Instale as dependências do PHP
+
+```bash
+docker compose run --rm app-php composer install
+```
+
+### 5. Gere a chave da aplicação
+
+```bash
+docker compose run --rm app-php php artisan key:generate
+```
+
+### 6. Rode as migrations
+
+```bash
+docker compose run --rm app-php php artisan migrate
+```
+
+## Como executar no dia a dia
+
+Para iniciar o ambiente:
+
+```bash
+docker compose up -d
+```
+
+Para acompanhar logs:
+
+```bash
+docker compose logs -f app-php
+```
+
+Para parar os serviços:
+
+```bash
+docker compose down
+```
+
+## Documentação da API
+
+O contrato da API está no arquivo `openapi.yaml`.
+
+Para visualizar a documentação no navegador, suba o serviço e acesse:
+
+```text
+http://localhost:8082
+```
+
+## Endpoints principais
+
+Base URL local:
+
+```text
+http://localhost:8080/api
+```
+
+Rotas disponíveis:
+
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/logout`
+- `POST /auth/refresh`
+- `GET /auth/me`
+
+## Fluxo de autenticação
+
+### Registrar usuário
+
+```bash
+curl -X POST http://localhost:8080/api/auth/register \
+	-H "Content-Type: application/json" \
+	-d '{
+		"name": "João Silva",
+		"email": "joao@example.com",
+		"password": "senha12345",
+		"password_confirmation": "senha12345"
+	}'
+```
+
+### Realizar login
+
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+	-H "Content-Type: application/json" \
+	-d '{
+		"email": "joao@example.com",
+		"password": "senha12345"
+	}'
+```
+
+Exemplo de resposta:
+
+```json
+{
+	"access_token": "seu-token-jwt",
+	"token_type": "bearer"
+}
+```
+
+### Consultar usuário autenticado
+
+```bash
+curl http://localhost:8080/api/auth/me \
+	-H "Authorization: Bearer seu-token-jwt"
+```
+
+### Renovar token
+
+```bash
+curl -X POST http://localhost:8080/api/auth/refresh \
+	-H "Authorization: Bearer seu-token-jwt"
+```
+
+### Logout
+
+```bash
+curl -X POST http://localhost:8080/api/auth/logout \
+	-H "Authorization: Bearer seu-token-jwt"
+```
+
+## Testes
+
+Para executar os testes automatizados:
+
+```bash
+docker compose run --rm app-php php artisan test
+```
+
+## Observações
+
+- O container `app-php` publica a aplicação na porta `8080` usando `php artisan serve`.
+- O Swagger UI lê diretamente o arquivo `openapi.yaml` do projeto.
+- O banco MySQL é exposto localmente na porta `3308`.
