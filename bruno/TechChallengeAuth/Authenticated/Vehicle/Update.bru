@@ -1,0 +1,24 @@
+meta {
+  name: Update
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/vehicle/bacce82c-4f77-4f43-91a7-8f126478cbe7
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brand": "GM",
+    "model": "Celta",
+    "year": "2009"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
