@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
-use App\Interfaces\Http\Controllers\VehicleController;
+use App\Presentation\Http\Controllers\VehicleController;
 
 Route::group([
     'middleware' => 'api',
