@@ -2,6 +2,7 @@
 
 namespace App\Application\Vehicle\UseCases;
 
+use App\Application\Vehicle\DTOs\ListVehicleDTO;
 use App\Domain\Vehicle\Repositories\VehicleRepositoryInterface;
 
 class ListVehicleUseCase
@@ -10,8 +11,18 @@ class ListVehicleUseCase
         private VehicleRepositoryInterface $repository
     ) {}
 
-    public function execute()
+    public function execute(ListVehicleDTO $dto): array
     {
+        if ($dto->page !== null) {
+            $perPage = $dto->perPage ?? 10;
+
+            if ($perPage <= 0) {
+                $perPage = 10;
+            }
+
+            return $this->repository->paginate($dto->page, $perPage);
+        }
+
         return $this->repository->findAll();
     }
 }

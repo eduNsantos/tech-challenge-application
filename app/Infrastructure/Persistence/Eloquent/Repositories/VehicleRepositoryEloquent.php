@@ -35,6 +35,16 @@ class VehicleRepositoryEloquent implements VehicleRepositoryInterface
         );
     }
 
+    public function paginate(int $page, int $perPage): array
+    {
+        return VehicleModel::query()
+            ->skip(($page - 1) * $perPage)
+            ->take($perPage)
+            ->get()
+            ->toArray()
+        ;
+    }
+
     public function findAll(): array
     {
         $models = VehicleModel::all()->toArray();
