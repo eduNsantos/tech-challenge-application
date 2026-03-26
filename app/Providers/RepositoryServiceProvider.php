@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Domain\Vehicle\Repositories\VehicleRepositoryInterface;
+use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use App\Infrastructure\Persistence\Eloquent\Repositories\VehicleRepositoryEloquent;
 use Illuminate\Support\ServiceProvider;
 
