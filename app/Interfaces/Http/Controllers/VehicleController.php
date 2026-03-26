@@ -6,11 +6,15 @@ use App\Application\Vehicle\UseCases\CreateVehicleUseCase;
 use App\Application\Vehicle\DTOs\CreateVehicleDTO;
 use App\Application\Vehicle\DTOs\ListVehicleDTO;
 use App\Application\Vehicle\DTOs\ShowVehicleDTO;
+use App\Application\Vehicle\DTOs\UpdateVehicleDto;
 use App\Application\Vehicle\UseCases\ListVehicleUseCase;
 use App\Application\Vehicle\UseCases\ShowVehicleUseCase;
+use App\Application\Vehicle\UseCases\UpdateVehicleUseCase;
+use App\Domain\Vehicle\ValueObjects\Plate;
 use App\Interfaces\Http\Requests\CreateVehicleRequest;
 use App\Interfaces\Http\Requests\ListVehicleRequest;
 use App\Interfaces\Http\Requests\ShowVehicleRequest;
+use App\Interfaces\Http\Requests\UpdateVehicleRequest;
 
 class VehicleController
 {
@@ -53,5 +57,23 @@ class VehicleController
         $vehicle = $useCase->execute($dto);
 
         return response()->json($vehicle);
+    }
+
+    public function update(UpdateVehicleRequest $request, UpdateVehicleUseCase $useCase)
+    {
+
+        $plate = new Plate($request->input('plate'));
+
+        $dto = new UpdateVehicleDto(
+            id: $request->route('id'),
+            brand: $request->input('brand'),
+            model: $request->input('model'),
+            year: $request->input('year'),
+            plate: $plate
+        );
+
+        $vehicle = $useCase->execute($dto);
+
+        return response()->json($vehicle, 200);
     }
 }

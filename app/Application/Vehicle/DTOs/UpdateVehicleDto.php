@@ -2,6 +2,8 @@
 
 namespace App\Application\Vehicle\DTOs;
 
+use App\Domain\Vehicle\ValueObjects\Plate;
+
 class UpdateVehicleDto
 {
     public function __construct(
@@ -9,6 +11,6 @@ class UpdateVehicleDto
         public ?string $brand,
         public ?string $model,
         public ?int $year,
-        public ?string $plate
+        public ?Plate $plate
     ) {}
 }

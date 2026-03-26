@@ -3,6 +3,7 @@
 namespace App\Domain\Vehicle\Entities;
 
 use App\Domain\Vehicle\ValueObjects\Plate;
+use Illuminate\Support\Str;
 
 class Vehicle
 {
@@ -21,11 +22,34 @@ class Vehicle
         Plate $plate
     ): self {
         return new self(
-            uuid_create(),
+            Str::uuid()->toString(),
             $brand,
             $model,
             $year,
             $plate
         );
+    }
+
+    public function updateData(
+        ?string $brand,
+        ?string $model,
+        ?int $year,
+        ?Plate $plate
+    ): void {
+        if ($brand !== null) {
+            $this->brand = $brand;
+        }
+
+        if ($model !== null) {
+            $this->model = $model;
+        }
+
+        if ($year !== null) {
+            $this->year = $year;
+        }
+
+        if ($plate !== null) {
+            $this->plate = $plate;
+        }
     }
 }

@@ -22,5 +22,6 @@ Route::group([
     Route::get('/', [VehicleController::class, 'list']);
     Route::post('/', [VehicleController::class, 'store']);
     Route::get('/{id}', [VehicleController::class, 'show']);
+    Route::put('/{id}', [VehicleController::class, 'update']);
 });
 
