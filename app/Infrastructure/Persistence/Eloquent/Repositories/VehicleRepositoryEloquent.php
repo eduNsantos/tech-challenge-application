@@ -6,6 +6,7 @@ use App\Domain\Vehicle\Repositories\VehicleRepositoryInterface;
 use App\Domain\Vehicle\Entities\Vehicle;
 use App\Domain\Vehicle\ValueObjects\Plate;
 use App\Infrastructure\Persistence\Eloquent\Models\VehicleModel;
+use Illuminate\Support\Facades\Auth;
 
 class VehicleRepositoryEloquent implements VehicleRepositoryInterface
 {
@@ -17,6 +18,8 @@ class VehicleRepositoryEloquent implements VehicleRepositoryInterface
             'model' => $vehicle->model,
             'year' => $vehicle->year,
             'plate' => $vehicle->plate->getValue(),
+            'created_user_id' => Auth::id(),
+            'updated_user_id' => Auth::id()
         ]);
     }
 
@@ -74,6 +77,7 @@ class VehicleRepositoryEloquent implements VehicleRepositoryInterface
             'model' => $vehicle->model,
             'year' => $vehicle->year,
             'plate' => $vehicle->plate->getValue(),
+            'updated_user_id' => Auth::id()
         ]);
     }
 }
