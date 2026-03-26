@@ -2,7 +2,7 @@
 
 namespace App\Infrastructure\Persistence\Eloquent\Repositories;
 
-use App\Domain\Vehicle\Repositories\VehicleRepositoryInterface;
+use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use App\Domain\Vehicle\Entities\Vehicle;
 use App\Domain\Vehicle\ValueObjects\Plate;
 use App\Infrastructure\Persistence\Eloquent\Models\VehicleModel;

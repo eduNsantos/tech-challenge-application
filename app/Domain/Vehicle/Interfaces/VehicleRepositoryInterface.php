@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domain\Vehicle\Repositories;
+namespace App\Domain\Vehicle\Interfaces;
 
 use App\Domain\Vehicle\Entities\Vehicle;
 use App\Infrastructure\Persistence\Eloquent\Models\VehicleModel;

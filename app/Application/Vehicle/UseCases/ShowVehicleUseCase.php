@@ -3,7 +3,7 @@
 namespace App\Application\Vehicle\UseCases;
 
 use App\Application\Vehicle\DTOs\ShowVehicleDTO;
-use App\Domain\Vehicle\Repositories\VehicleRepositoryInterface;
+use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use App\Domain\Vehicle\Entities\Vehicle;
 
 class ShowVehicleUseCase
