@@ -1,0 +1,39 @@
+meta {
+  name: Me
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/register
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "João Teste"
+    "email": "joao@teste.com",
+    "password": "senha12345"
+    "password_confirmation": "senha12345"
+  }
+}
+
+script:post-response {
+  try {
+    let body = res.getBody();
+    
+    bru.setVar('token', body.access_token);
+  } catch (e) {
+    console.log('Erro ao parsear JSON', e);
+  }
+}
+
+tests {
+  res.getBody()
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
