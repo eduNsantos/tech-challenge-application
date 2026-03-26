@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Interfaces\Http\Controllers;
+namespace App\Presentation\Http\Controllers;
 
 use App\Application\Vehicle\UseCases\CreateVehicleUseCase;
 use App\Application\Vehicle\DTOs\CreateVehicleDTO;
@@ -11,10 +11,9 @@ use App\Application\Vehicle\UseCases\ListVehicleUseCase;
 use App\Application\Vehicle\UseCases\ShowVehicleUseCase;
 use App\Application\Vehicle\UseCases\UpdateVehicleUseCase;
 use App\Domain\Vehicle\ValueObjects\Plate;
-use App\Interfaces\Http\Requests\CreateVehicleRequest;
-use App\Interfaces\Http\Requests\ListVehicleRequest;
-use App\Interfaces\Http\Requests\ShowVehicleRequest;
-use App\Interfaces\Http\Requests\UpdateVehicleRequest;
+use App\Presentation\Http\Requests\CreateVehicleRequest;
+use App\Presentation\Http\Requests\ListVehicleRequest;
+use App\Presentation\Http\Requests\UpdateVehicleRequest;
 
 class VehicleController
 {
