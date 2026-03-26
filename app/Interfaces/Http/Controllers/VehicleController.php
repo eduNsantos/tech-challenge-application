@@ -5,9 +5,12 @@ namespace App\Interfaces\Http\Controllers;
 use App\Application\Vehicle\UseCases\CreateVehicleUseCase;
 use App\Application\Vehicle\DTOs\CreateVehicleDTO;
 use App\Application\Vehicle\DTOs\ListVehicleDTO;
+use App\Application\Vehicle\DTOs\ShowVehicleDTO;
 use App\Application\Vehicle\UseCases\ListVehicleUseCase;
+use App\Application\Vehicle\UseCases\ShowVehicleUseCase;
 use App\Interfaces\Http\Requests\CreateVehicleRequest;
 use App\Interfaces\Http\Requests\ListVehicleRequest;
+use App\Interfaces\Http\Requests\ShowVehicleRequest;
 
 class VehicleController
 {
@@ -39,5 +42,16 @@ class VehicleController
         $vehicles = $useCase->execute($dto);
 
         return response()->json($vehicles);
+    }
+
+    public function show(string $id, ShowVehicleUseCase $useCase)
+    {
+        $dto = new ShowVehicleDTO(
+            id: $id
+        );
+
+        $vehicle = $useCase->execute($dto);
+
+        return response()->json($vehicle);
     }
 }

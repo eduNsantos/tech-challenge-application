@@ -14,4 +14,5 @@ interface VehicleRepositoryInterface
     public function findAll(): array;
     public function findByPlate(string $plate): ?Vehicle;
     public function paginate(int $page, int $perPage): array;
+    public function findById(string $id): ?Vehicle;
 }

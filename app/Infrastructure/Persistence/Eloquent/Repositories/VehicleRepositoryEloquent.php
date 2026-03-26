@@ -51,4 +51,19 @@ class VehicleRepositoryEloquent implements VehicleRepositoryInterface
 
         return $models;
     }
+
+    public function findById(string $id): ?Vehicle
+    {
+        $model = VehicleModel::find($id);
+
+        if (!$model) return null;
+
+        return new Vehicle(
+            $model->id,
+            $model->brand,
+            $model->model,
+            $model->year,
+            new Plate($model->plate)
+        );
+    }
 }
