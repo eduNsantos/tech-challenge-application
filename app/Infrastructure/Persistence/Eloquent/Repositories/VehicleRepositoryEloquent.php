@@ -34,4 +34,11 @@ class VehicleRepositoryEloquent implements VehicleRepositoryInterface
             new Plate($model->plate)
         );
     }
+
+    public function findAll(): array
+    {
+        $models = VehicleModel::all()->toArray();
+
+        return $models;
+    }
 }

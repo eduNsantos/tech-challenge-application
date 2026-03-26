@@ -5,7 +5,8 @@ namespace App\Interfaces\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Application\Vehicle\UseCases\CreateVehicleUseCase;
 use App\Application\Vehicle\DTOs\CreateVehicleDTO;
-use App\Http\Requests\Interfaces\Http\Requests\CreateVehicleRequest;
+use App\Application\Vehicle\UseCases\ListVehicleUseCase;
+use App\Interfaces\Http\Requests\CreateVehicleRequest;
 
 class VehicleController
 {
@@ -24,5 +25,12 @@ class VehicleController
             'id' => $vehicle->id,
             'message' => 'Veículo cadastrado com sucesso'
         ]);
+    }
+
+    public function list(Request $request, ListVehicleUseCase $useCase)
+    {
+        $vehicles = $useCase->execute();
+
+        return response()->json($vehicles);
     }
 }

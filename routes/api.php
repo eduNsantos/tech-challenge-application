@@ -19,6 +19,7 @@ Route::group([
     'middleware' => 'auth:api',
     'prefix' => 'vehicle'
 ], function() {
+    Route::get('/', [VehicleController::class, 'list']);
     Route::post('/', [VehicleController::class, 'store']);
 });
 
