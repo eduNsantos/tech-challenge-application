@@ -72,11 +72,13 @@ class VehicleController
         $vehicle = $useCase->execute($dto);
 
         return response()->json([
-            'id' => $vehicle->id,
-            'model' => $vehicle->model,
-            'brand' => $vehicle->brand,
-            'year' => $vehicle->year,
-            'plate' => $vehicle->plate->getValue(),
+            'vehicle' => [
+                'id' => $vehicle->id,
+                'model' => $vehicle->model,
+                'brand' => $vehicle->brand,
+                'year' => $vehicle->year,
+                'plate' => $vehicle->plate->getValue(),
+            ],
             'message' => 'Veículo atualizado com sucesso'
         ], 200);
     }
