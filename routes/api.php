@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Presentation\Http\Controllers\VehicleController;
 
 Route::group([
     'middleware' => 'api',
@@ -14,3 +14,14 @@ Route::group([
     Route::post('refresh', [AuthController::class, 'refresh'])->middleware('auth:api');
     Route::get('me', [AuthController::class, 'me'])->middleware('auth:api');
 });
+
+Route::group([
+    'middleware' => 'auth:api',
+    'prefix' => 'vehicle'
+], function() {
+    Route::get('/', [VehicleController::class, 'list']);
+    Route::post('/', [VehicleController::class, 'store']);
+    Route::get('/{id}', [VehicleController::class, 'show']);
+    Route::put('/{id}', [VehicleController::class, 'update']);
+});
+
