@@ -33,7 +33,7 @@ Route::group([
     'prefix' => 'service'
 ], function() {
     Route::get('/', [ServiceController::class, 'list']);
-    Route::post('/aa', [ServiceController::class, 'store']);
-    // Route::get('/{id}', [ServiceController::class, 'show']);
+    Route::post('/', [ServiceController::class, 'store']);
+    Route::get('/{id}', [ServiceController::class, 'show']);
     // Route::put('/{id}', [ServiceController::class, 'update']);
 });

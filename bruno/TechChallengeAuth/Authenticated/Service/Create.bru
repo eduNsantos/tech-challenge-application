@@ -5,15 +5,16 @@ meta {
 }
 
 post {
-  url: {{baseUrl}}/service
+  url: {{baseUrl}}/service/
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "name": "Troca de Óleo"
-    }
+    "name": "Troca de Óleo",
+    "price": 89.90
+  }
 }
 
 settings {

@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Application\Vehicle\UseCases;
+namespace App\Application\Service\UseCases;
 
-use App\Application\Vehicle\DTOs\UpdateVehicleDto;
-use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
-use App\Domain\Vehicle\Entities\Vehicle;
+use App\Application\Service\DTOs\UpdateVehicleDto;
+use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
+use App\Domain\Service\Entities\Service;
 
 class UpdateVehicleUseCase
 {

@@ -4,8 +4,10 @@ namespace App\Presentation\Http\Controllers;
 
 use App\Application\Service\DTOs\CreateServiceDTO;
 use App\Application\Service\DTOs\ListServiceDTO;
+use App\Application\Service\DTOs\ShowServiceDTO;
 use App\Application\Service\UseCases\CreateServiceUseCase;
 use App\Application\Service\UseCases\ListServiceUseCase;
+use App\Application\Service\UseCases\ShowServiceUseCase;
 use App\Presentation\Http\Requests\CreateServiceRequest;
 use Exception;
 use Illuminate\Http\Request;
@@ -53,7 +55,7 @@ class ServiceController
         $service = $useCase->execute($dto);
 
         return response()->json($service);
-    // }
+    }
 
     // public function update(UpdateServiceRequest $request, UpdateServiceUseCase $useCase)
     // {
