@@ -20,7 +20,13 @@ class ServiceController
 
     public function list(Request $request, ListServiceUseCase $useCase)
     {
-        $dto = new ListServiceDTO((int) $request->query('page'), (int) $request->query('per_page'));
+        $page = $request->query('page');
+        $perPage = $request->query('per_page');
+
+        $dto = new ListServiceDTO(
+            $page !== null ? (int) $page : null,
+            $perPage !== null ? (int) $perPage : null
+        );
 
         $services = $useCase->execute($dto);
 
