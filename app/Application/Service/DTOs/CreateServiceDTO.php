@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Application\Vehicle\DTOs;
+namespace App\Application\Service\DTOs;
 
 class CreateServiceDTO
 {
     public function __construct(
         public string $name,
-        public int $price
+        public string $price
     ) {}
 }
