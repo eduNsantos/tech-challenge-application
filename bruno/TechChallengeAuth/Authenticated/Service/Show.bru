@@ -1,0 +1,25 @@
+meta {
+  name: Show
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/vehicle/123
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brand": "GM",
+    "model": "Celta",
+    "year": "2012",
+    "plate": "EFB1B31"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
