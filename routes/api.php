@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Presentation\Http\Controllers\ServiceController;
 use App\Presentation\Http\Controllers\VehicleController;
 
 Route::group([
@@ -25,3 +26,14 @@ Route::group([
     Route::put('/{id}', [VehicleController::class, 'update']);
 });
 
+// TODO: falta route de costumer
+
+    Route::group([
+    'middleware' => 'auth:api',
+    'prefix' => 'service'
+], function() {
+    Route::get('/', [ServiceController::class, 'list']);
+    Route::post('/', [ServiceController::class, 'store']);
+    Route::get('/{id}', [ServiceController::class, 'show']);
+    Route::put('/{id}', [ServiceController::class, 'update']);
+});
