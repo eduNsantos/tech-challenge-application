@@ -35,5 +35,5 @@ Route::group([
     Route::get('/', [ServiceController::class, 'list']);
     Route::post('/', [ServiceController::class, 'store']);
     Route::get('/{id}', [ServiceController::class, 'show']);
-    // Route::put('/{id}', [ServiceController::class, 'update']);
+    Route::put('/{id}', [ServiceController::class, 'update']);
 });

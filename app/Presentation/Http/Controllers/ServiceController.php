@@ -5,10 +5,13 @@ namespace App\Presentation\Http\Controllers;
 use App\Application\Service\DTOs\CreateServiceDTO;
 use App\Application\Service\DTOs\ListServiceDTO;
 use App\Application\Service\DTOs\ShowServiceDTO;
+use App\Application\Service\DTOs\UpdateServiceDTO;
 use App\Application\Service\UseCases\CreateServiceUseCase;
 use App\Application\Service\UseCases\ListServiceUseCase;
 use App\Application\Service\UseCases\ShowServiceUseCase;
+use App\Application\Service\UseCases\UpdateServiceUseCase;
 use App\Presentation\Http\Requests\CreateServiceRequest;
+use App\Presentation\Http\Requests\UpdateServiceRequest;
 use Exception;
 use Illuminate\Http\Request;
 
@@ -57,23 +60,23 @@ class ServiceController
         return response()->json($service);
     }
 
-    // public function update(UpdateServiceRequest $request, UpdateServiceUseCase $useCase)
-    // {
-    //     $dto = new UpdateServiceDTO(
-    //         id: $request->route('id'),
-    //         name: $request->input('name'),
-    //         price: $request->input('price')
-    //     );
+    public function update(UpdateServiceRequest $request, UpdateServiceUseCase $useCase)
+    {
+        $dto = new UpdateServiceDTO(
+            id: $request->route('id'),
+            name: $request->input('name'),
+            price: $request->input('price')
+        );
 
-    //     $service = $useCase->execute($dto);
+        $service = $useCase->execute($dto);
 
-    //     return response()->json([
-    //         'service' => [
-    //             'id' => $service->id,
-    //             'name' => $service->name,
-    //             'price' => $service->price,
-    //         ],
-    //         'message' => 'Serviço atualizado com sucesso'
-    //     ], 200);
-    // }
+        return response()->json([
+            'service' => [
+                'id' => $service->id,
+                'name' => $service->name,
+                'price' => $service->price,
+            ],
+            'message' => 'Serviço atualizado com sucesso'
+        ], 200);
+    }
 }
