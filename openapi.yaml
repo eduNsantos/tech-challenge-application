@@ -28,6 +28,8 @@ tags:
     description: Operações de registro, login, logout e gerenciamento de sessão JWT
   - name: Veículos
     description: Operações de gerenciamento de veículos (requer autenticação)
+  - name: Serviços
+    description: Operações de gerenciamento de serviços (requer autenticação)
 
 paths:
 
@@ -439,6 +441,184 @@ paths:
               example:
                 message: Veículo não encontrado
 
+  /service:
+    get:
+      tags:
+        - Serviços
+      summary: Listar serviços
+      description: |-
+        Retorna uma lista de serviços cadastrados.
+
+        Quando os parâmetros `page` e `per_page` são informados, a API aplica limite de resultados, mas a resposta continua sendo um array simples.
+
+        **Requer autenticação.**
+      operationId: service-list
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Página desejada para consulta
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+        - name: per_page
+          in: query
+          description: Quantidade de itens por página quando `page` for informado
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            example: 10
+      responses:
+        '200':
+          description: Lista de serviços retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServicoListaItem'
+              example:
+                - id: "550e8400-e29b-41d4-a716-446655440010"
+                  name: Troca de óleo
+                  price: "199.90"
+                  created_user_id: 1
+                  updated_user_id: 1
+                  created_at: '2026-04-05T12:00:00.000000Z'
+                  updated_at: '2026-04-05T12:00:00.000000Z'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+
+    post:
+      tags:
+        - Serviços
+      summary: Criar novo serviço
+      description: |-
+        Cadastra um novo serviço.
+
+        O nome do serviço deve ser único.
+
+        **Requer autenticação.**
+      operationId: service-create
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarServicoRequest'
+            example:
+              name: Troca de óleo
+              price: 199.9
+      responses:
+        '200':
+          description: Serviço cadastrado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CriarServicoResponse'
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440010"
+                message: Serviço cadastrado com sucesso
+        '400':
+          description: Erro de regra de negócio ao cadastrar serviço
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroNegocio'
+              example:
+                error: Serviço já cadastrado
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroValidacaoLaravel'
+
+  /service/{id}:
+    get:
+      tags:
+        - Serviços
+      summary: Obter detalhes do serviço
+      description: |-
+        Retorna os dados de um serviço específico a partir do seu identificador.
+
+        **Requer autenticação.**
+      operationId: service-show
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID do serviço em formato UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Serviço retornado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Servico'
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440010"
+                name: Troca de óleo
+                price: 199.9
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+
+    put:
+      tags:
+        - Serviços
+      summary: Atualizar serviço
+      description: |-
+        Atualiza os dados de um serviço existente.
+
+        O identificador do serviço é enviado na rota. Os campos `name` e `price` são opcionais, mas pelo menos um deles deve ser informado para efetivar a atualização.
+
+        **Requer autenticação.**
+      operationId: service-update
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID do serviço em formato UUID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtualizarServicoRequest'
+            example:
+              name: Troca de óleo premium
+              price: 249.9
+      responses:
+        '200':
+          description: Serviço atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AtualizarServicoResponse'
+              example:
+                service:
+                  id: "550e8400-e29b-41d4-a716-446655440010"
+                  name: Troca de óleo premium
+                  price: 249.9
+                message: Serviço atualizado com sucesso
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroValidacaoLaravel'
+
 components:
 
   securitySchemes:
@@ -686,6 +866,121 @@ components:
           description: Placa do veículo no formato ABC1D23 (opcional)
           example: ABC1D23
 
+    Servico:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único do serviço
+          example: "550e8400-e29b-41d4-a716-446655440010"
+        name:
+          type: string
+          description: Nome do serviço
+          example: Troca de óleo
+        price:
+          type: number
+          format: float
+          description: Valor do serviço
+          example: 199.9
+
+    ServicoListaItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único do serviço
+          example: "550e8400-e29b-41d4-a716-446655440010"
+        name:
+          type: string
+          description: Nome do serviço
+          example: Troca de óleo
+        price:
+          type: string
+          description: Valor persistido do serviço
+          example: "199.90"
+        created_user_id:
+          type: integer
+          description: Identificador do usuário que criou o registro
+          example: 1
+        updated_user_id:
+          type: integer
+          description: Identificador do usuário que atualizou o registro
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+          description: Data de criação do registro
+          example: '2026-04-05T12:00:00.000000Z'
+        updated_at:
+          type: string
+          format: date-time
+          description: Data da última atualização do registro
+          example: '2026-04-05T12:00:00.000000Z'
+
+    CriarServicoRequest:
+      type: object
+      required:
+        - name
+        - price
+      properties:
+        name:
+          type: string
+          description: Nome do serviço
+          example: Troca de óleo
+        price:
+          type: number
+          format: float
+          description: Valor do serviço
+          example: 199.9
+
+    AtualizarServicoRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: Novo nome do serviço
+          example: Troca de óleo premium
+        price:
+          type: number
+          format: float
+          minimum: 0
+          description: Novo valor do serviço
+          example: 249.9
+
+    CriarServicoResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único do serviço criado
+          example: "550e8400-e29b-41d4-a716-446655440010"
+        message:
+          type: string
+          description: Mensagem de confirmação
+          example: Serviço cadastrado com sucesso
+
+    AtualizarServicoResponse:
+      type: object
+      properties:
+        service:
+          $ref: '#/components/schemas/Servico'
+        message:
+          type: string
+          description: Mensagem de confirmação
+          example: Serviço atualizado com sucesso
+
+    ErroNegocio:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Mensagem de erro de regra de negócio
+          example: Serviço já cadastrado
+
   responses:
     NaoAutenticado:
       description: Token ausente, inválido ou expirado
@@ -695,3 +990,26 @@ components:
             $ref: '#/components/schemas/ErroAutenticacao'
           example:
             message: Token inválido ou expirado
+    ErroValidacaoLaravel:
+      description: Erro de validação da requisição
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: The given data was invalid.
+              errors:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+          example:
+            message: The given data was invalid.
+            errors:
+              name:
+                - O campo name é obrigatório.
+              price:
+                - O campo price deve ser numérico.
