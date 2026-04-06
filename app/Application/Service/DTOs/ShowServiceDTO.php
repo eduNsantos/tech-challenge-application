@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Application\Vehicle\DTOs;
+namespace App\Application\Service\DTOs;
 
 class ShowServiceDTO
 {
