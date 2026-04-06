@@ -2,8 +2,12 @@
 
 namespace App\Presentation\Http\Controllers;
 
+use App\Application\Service\DTOs\CreateServiceDTO;
 use App\Application\Service\DTOs\ListServiceDTO;
+use App\Application\Service\UseCases\CreateServiceUseCase;
 use App\Application\Service\UseCases\ListServiceUseCase;
+use App\Presentation\Http\Requests\CreateServiceRequest;
+use Exception;
 use Illuminate\Http\Request;
 
 class ServiceController
@@ -19,30 +23,36 @@ class ServiceController
     }
 
 
-    // public function store(CreateServiceRequest $request, CreateServiceUseCase $useCase)
-    // {
-    //     $dto = new CreateServiceDTO(
-    //         $request->name,
-    //         $request->price
-    //     );
+    public function store(CreateServiceRequest $request, CreateServiceUseCase $useCase)
+    {
+        try {
+            $dto = new CreateServiceDTO(
+                $request->name,
+                $request->price
+            );
 
-    //     $service = $useCase->execute($dto);
+            $service = $useCase->execute($dto);
 
-    //     return response()->json([
-    //         'id' => $service->id,
-    //         'message' => 'Serviço cadastrado com sucesso'
-    //     ]);
-    // }
+            return response()->json([
+                'id' => $service->id,
+                'message' => 'Serviço cadastrado com sucesso'
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 400);
+        }
+    }
 
-    // public function show(string $id, ShowServiceUseCase $useCase)
-    // {
-    //     $dto = new ShowServiceDTO(
-    //         id: $id
-    //     );
+    public function show(string $id, ShowServiceUseCase $useCase)
+    {
+        $dto = new ShowServiceDTO(
+            id: $id
+        );
 
-    //     $service = $useCase->execute($dto);
+        $service = $useCase->execute($dto);
 
-    //     return response()->json($service);
+        return response()->json($service);
     // }
 
     // public function update(UpdateServiceRequest $request, UpdateServiceUseCase $useCase)

@@ -5,18 +5,15 @@ meta {
 }
 
 post {
-  url: {{baseUrl}}/vehicle
+  url: {{baseUrl}}/service
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "brand": "Hyundai",
-    "model": "I30",
-    "year": "2013",
-    "plate": "EFB1D30"
-  }
+    "name": "Troca de Óleo"
+    }
 }
 
 settings {

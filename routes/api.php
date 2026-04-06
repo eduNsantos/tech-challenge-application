@@ -10,7 +10,7 @@ Route::group([
     'prefix' => 'auth'
 ], function () {
     Route::post('register', [AuthController::class, 'register']);
-    Route::post('login', [AuthController::class, 'login']);
+    Route::post('login', [AuthController::class, 'login'])->name('login');
     Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:api');
     Route::post('refresh', [AuthController::class, 'refresh'])->middleware('auth:api');
     Route::get('me', [AuthController::class, 'me'])->middleware('auth:api');
@@ -28,12 +28,12 @@ Route::group([
 
 // TODO: falta route de costumer
 
-    Route::group([
+Route::group([
     'middleware' => 'auth:api',
     'prefix' => 'service'
 ], function() {
     Route::get('/', [ServiceController::class, 'list']);
-    Route::post('/', [ServiceController::class, 'store']);
-    Route::get('/{id}', [ServiceController::class, 'show']);
-    Route::put('/{id}', [ServiceController::class, 'update']);
+    Route::post('/aa', [ServiceController::class, 'store']);
+    // Route::get('/{id}', [ServiceController::class, 'show']);
+    // Route::put('/{id}', [ServiceController::class, 'update']);
 });
