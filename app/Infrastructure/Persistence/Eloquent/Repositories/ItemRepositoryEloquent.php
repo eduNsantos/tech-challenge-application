@@ -51,7 +51,15 @@ class ItemRepositoryEloquent implements ItemRepositoryInterface
             $query->where('type', $type);
         }
 
-        return $query->skip(($page - 1) * $perPage)->take($perPage)->get()->toArray();
+        $total = $query->count();
+        $data  = $query->skip(($page - 1) * $perPage)->take($perPage)->get()->toArray();
+
+        return [
+            'data'    => $data,
+            'total'   => $total,
+            'page'    => $page,
+            'perPage' => $perPage,
+        ];
     }
 
     public function findAll(?string $type): array

@@ -4,6 +4,7 @@ namespace Tests\Unit\Domain\Item\ValueObjects;
 
 use App\Domain\Item\ValueObjects\ItemType;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class ItemTypeTest extends TestCase
@@ -26,7 +27,7 @@ class ItemTypeTest extends TestCase
         $this->assertFalse($type->isPart());
     }
 
-    /** @dataProvider invalidTypes */
+    #[DataProvider('invalidTypes')]
     public function test_rejects_invalid_type(string $value): void
     {
         $this->expectException(InvalidArgumentException::class);

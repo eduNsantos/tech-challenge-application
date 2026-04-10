@@ -28,6 +28,10 @@ class StockManagementTest extends TestCase
                 'minimum_quantity' => 5,
             ])
             ->json('id');
+
+        // Reset the JWT guard so tests that expect 401 aren't affected
+        // by the authenticated state set via actingAs above.
+        $this->app['auth']->forgetGuards();
     }
 
     // -------------------------------------------------------------------------
@@ -176,6 +180,24 @@ class StockManagementTest extends TestCase
             ->assertJsonValidationErrors(['quantity', 'reason']);
     }
 
+    public function test_withdrawal_returns_422_for_zero_quantity(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->postJson("/api/item/{$this->itemId}/stock/withdrawal", [
+                'quantity' => 0,
+                'reason'   => 'Test',
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_withdrawal_returns_401_without_authentication(): void
+    {
+        $this->postJson("/api/item/{$this->itemId}/stock/withdrawal", [
+            'quantity' => 1,
+            'reason'   => 'Test',
+        ])->assertStatus(401);
+    }
+
     // -------------------------------------------------------------------------
     // GET /api/item/{id}/stock/movements
     // -------------------------------------------------------------------------
@@ -210,6 +232,39 @@ class StockManagementTest extends TestCase
     {
         $this->getJson("/api/item/{$this->itemId}/stock/movements")
             ->assertStatus(401);
+    }
+
+    public function test_movements_returns_422_for_item_not_found(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->getJson('/api/item/00000000-0000-0000-0000-000000000000/stock/movements')
+            ->assertStatus(422)
+            ->assertJsonFragment(['message' => 'Item not found.']);
+    }
+
+    public function test_movements_structure_contains_required_fields(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->postJson("/api/item/{$this->itemId}/stock/entry", [
+                'quantity' => 10,
+                'reason'   => 'Initial stock',
+                'notes'    => 'Supplier A',
+            ]);
+
+        $response = $this->actingAs($this->user, 'api')
+            ->getJson("/api/item/{$this->itemId}/stock/movements");
+
+        $response->assertOk();
+
+        $movement = $response->json('data.0');
+        $this->assertArrayHasKey('id', $movement);
+        $this->assertArrayHasKey('type', $movement);
+        $this->assertArrayHasKey('quantity', $movement);
+        $this->assertArrayHasKey('previous_quantity', $movement);
+        $this->assertArrayHasKey('current_quantity', $movement);
+        $this->assertArrayHasKey('reason', $movement);
+        $this->assertSame('entry', $movement['type']);
+        $this->assertSame(10, $movement['quantity']);
     }
 
     // -------------------------------------------------------------------------

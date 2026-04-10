@@ -4,11 +4,12 @@ namespace Tests\Unit\Domain\Item\ValueObjects;
 
 use App\Domain\Item\ValueObjects\ItemCode;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class ItemCodeTest extends TestCase
 {
-    /** @dataProvider validCodes */
+    #[DataProvider('validCodes')]
     public function test_accepts_valid_codes(string $input, string $expected): void
     {
         $code = new ItemCode($input);
@@ -29,7 +30,7 @@ class ItemCodeTest extends TestCase
         ];
     }
 
-    /** @dataProvider invalidCodes */
+    #[DataProvider('invalidCodes')]
     public function test_rejects_invalid_codes(string $input): void
     {
         $this->expectException(InvalidArgumentException::class);
