@@ -4,6 +4,7 @@ namespace Tests\Unit\Domain\Item\ValueObjects;
 
 use App\Domain\Item\ValueObjects\MovementType;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class MovementTypeTest extends TestCase
@@ -26,7 +27,7 @@ class MovementTypeTest extends TestCase
         $this->assertFalse($type->isEntry());
     }
 
-    /** @dataProvider invalidTypes */
+    #[DataProvider('invalidTypes')]
     public function test_rejects_invalid_type(string $value): void
     {
         $this->expectException(InvalidArgumentException::class);

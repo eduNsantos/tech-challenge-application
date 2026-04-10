@@ -27,11 +27,24 @@ class StockMovementRepositoryEloquent implements StockMovementRepositoryInterfac
 
     public function findByItemId(string $itemId, int $page, int $perPage): array
     {
-        return StockMovementModel::where('item_id', $itemId)
-            ->orderBy('created_at', 'desc')
-            ->skip(($page - 1) * $perPage)
-            ->take($perPage)
-            ->get()
-            ->toArray();
+        $query = StockMovementModel::where('item_id', $itemId)->orderBy('created_at', 'desc');
+        $total = $query->count();
+        $data  = $query->skip(($page - 1) * $perPage)->take($perPage)->get()->map(fn ($m) => [
+            'id'                => $m->id,
+            'type'              => $m->movement_type,
+            'quantity'          => (float) $m->quantity,
+            'previous_quantity' => (float) $m->previous_quantity,
+            'current_quantity'  => (float) $m->current_quantity,
+            'reason'            => $m->reason,
+            'notes'             => $m->notes,
+            'created_at'        => $m->created_at,
+        ])->values()->toArray();
+
+        return [
+            'data'    => $data,
+            'total'   => $total,
+            'page'    => $page,
+            'perPage' => $perPage,
+        ];
     }
 }

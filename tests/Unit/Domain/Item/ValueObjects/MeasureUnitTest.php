@@ -4,11 +4,12 @@ namespace Tests\Unit\Domain\Item\ValueObjects;
 
 use App\Domain\Item\ValueObjects\MeasureUnit;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class MeasureUnitTest extends TestCase
 {
-    /** @dataProvider validUnits */
+    #[DataProvider('validUnits')]
     public function test_accepts_valid_unit(string $input, string $expected): void
     {
         $unit = new MeasureUnit($input);
@@ -34,7 +35,7 @@ class MeasureUnitTest extends TestCase
         ];
     }
 
-    /** @dataProvider invalidUnits */
+    #[DataProvider('invalidUnits')]
     public function test_rejects_invalid_unit(string $value): void
     {
         $this->expectException(InvalidArgumentException::class);

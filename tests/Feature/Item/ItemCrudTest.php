@@ -126,6 +126,47 @@ class ItemCrudTest extends TestCase
         $this->getJson('/api/item')->assertStatus(401);
     }
 
+    public function test_list_filters_by_type(): void
+    {
+        $this->actingAs($this->user, 'api')->postJson('/api/item', $this->validPayload([
+            'code' => 'PART-001',
+            'type' => 'part',
+        ]));
+        $this->actingAs($this->user, 'api')->postJson('/api/item', $this->validPayload([
+            'code' => 'SUPP-001',
+            'type' => 'supply',
+        ]));
+
+        $response = $this->actingAs($this->user, 'api')
+            ->getJson('/api/item?type=supply');
+
+        $response->assertOk();
+
+        $items = $response->json('data');
+        $this->assertCount(1, $items);
+        $this->assertSame('supply', $items[0]['type']);
+    }
+
+    public function test_list_returns_paginated_response(): void
+    {
+        for ($i = 1; $i <= 3; $i++) {
+            $this->actingAs($this->user, 'api')->postJson('/api/item', $this->validPayload([
+                'code' => "ITEM-00{$i}",
+                'name' => "Item {$i}",
+            ]));
+        }
+
+        $response = $this->actingAs($this->user, 'api')
+            ->getJson('/api/item?page=1&perPage=2');
+
+        $response->assertOk()
+            ->assertJsonStructure(['data', 'total', 'page', 'perPage']);
+
+        $this->assertSame(1, $response->json('page'));
+        $this->assertCount(2, $response->json('data'));
+        $this->assertSame(3, $response->json('total'));
+    }
+
     // -------------------------------------------------------------------------
     // GET /api/item/{id}
     // -------------------------------------------------------------------------
@@ -200,6 +241,12 @@ class ItemCrudTest extends TestCase
             ->assertJsonFragment(['message' => 'Item not found.']);
     }
 
+    public function test_update_returns_401_without_authentication(): void
+    {
+        $this->putJson('/api/item/00000000-0000-0000-0000-000000000000', ['name' => 'X'])
+            ->assertStatus(401);
+    }
+
     // -------------------------------------------------------------------------
     // DELETE /api/item/{id}
     // -------------------------------------------------------------------------
@@ -242,5 +289,11 @@ class ItemCrudTest extends TestCase
             ->deleteJson('/api/item/00000000-0000-0000-0000-000000000000')
             ->assertStatus(422)
             ->assertJsonFragment(['message' => 'Item not found.']);
+    }
+
+    public function test_destroy_returns_401_without_authentication(): void
+    {
+        $this->deleteJson('/api/item/00000000-0000-0000-0000-000000000000')
+            ->assertStatus(401);
     }
 }
