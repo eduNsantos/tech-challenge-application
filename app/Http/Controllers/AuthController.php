@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Customer\ValueObjects\Document;
 use Illuminate\Support\Facades\Validator;
 use App\Models\User;
 use App\Http\Controllers\Controller;
@@ -14,6 +15,7 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
+            'document' => 'required|string|max:14|unique:users,document',
             'password' => 'required|confirmed|min:8',
         ]);
 
@@ -21,9 +23,12 @@ class AuthController extends Controller
             return response()->json($validator->errors(), 400);
         }
 
+        $document = new Document((string) request('document'));
+
         $user = new User();
         $user->name = request('name');
         $user->email = request('email');
+        $user->document = $document->getValue();
         $user->password = bcrypt(request('password'));
         $user->save();
 
