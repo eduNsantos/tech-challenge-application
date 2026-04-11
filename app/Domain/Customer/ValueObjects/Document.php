@@ -12,6 +12,7 @@ class Document
     {
         $cpfCnpj = preg_replace('/[^0-9]/', '', $document);
         $length = strlen($cpfCnpj);
+
         if ($length === 11) {
             $this->validateCPF($cpfCnpj);
         } elseif ($length === 14) {
@@ -19,11 +20,12 @@ class Document
         } else {
             throw new InvalidArgumentException('Documento inválido');
         }
-        if (!preg_match('/^[0-9]{11}$/', $document)) {
+
+        if (!preg_match('/^[0-9]{11}$|^[0-9]{14}$/', $cpfCnpj)) {
             throw new InvalidArgumentException('Documento inválido');
         }
 
-        $this->value = $document;
+        $this->value = $cpfCnpj;
     }
 
     public function getValue(): string

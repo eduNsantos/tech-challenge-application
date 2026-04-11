@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Presentation\Http\Controllers\ServiceOrderController;
 use App\Presentation\Http\Controllers\ItemController;
 use App\Presentation\Http\Controllers\StockController;
 use App\Presentation\Http\Controllers\ServiceController;
@@ -30,6 +31,16 @@ Route::group([
 
 Route::group([
     'middleware' => 'auth:api',
+    'prefix' => 'service-order'
+], function () {
+    Route::get('/', [ServiceOrderController::class, 'list']);
+    Route::post('/', [ServiceOrderController::class, 'store']);
+    Route::get('/{id}', [ServiceOrderController::class, 'show']);
+    Route::put('/{id}', [ServiceOrderController::class, 'update']);
+    Route::patch('/{id}/status', [ServiceOrderController::class, 'updateStatus']);
+    Route::delete('/{id}', [ServiceOrderController::class, 'destroy']);
+});
+
     'prefix' => 'item'
 ], function () {
     Route::get('/', [ItemController::class, 'list']);
