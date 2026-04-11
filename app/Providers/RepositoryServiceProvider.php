@@ -3,6 +3,12 @@
 namespace App\Providers;
 
 use App\Domain\Customer\interfaces\CustomerRepositoryInterface;
+use App\Domain\Item\Interfaces\ItemRepositoryInterface;
+use App\Domain\Item\Interfaces\StockMovementRepositoryInterface;
+use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
+use App\Infrastructure\Persistence\Eloquent\Repositories\CustomerRepositoryEloquent;
+use App\Infrastructure\Persistence\Eloquent\Repositories\ItemRepositoryEloquent;
+use App\Infrastructure\Persistence\Eloquent\Repositories\StockMovementRepositoryEloquent;
 use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use App\Infrastructure\Persistence\Eloquent\Repositories\CustomerRepositoryEloquent;
@@ -12,9 +18,6 @@ use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
-    /**
-     * Register services.
-     */
     public function register(): void
     {
         $this->app->bind(
@@ -33,11 +36,16 @@ class RepositoryServiceProvider extends ServiceProvider
         );
     }
 
-    /**
-     * Bootstrap services.
-     */
-    public function boot(): void
-    {
-        //
+        $this->app->bind(
+            ItemRepositoryInterface::class,
+            ItemRepositoryEloquent::class
+        );
+
+        $this->app->bind(
+            StockMovementRepositoryInterface::class,
+            StockMovementRepositoryEloquent::class
+        );
     }
+
+    public function boot(): void {}
 }
