@@ -2,10 +2,10 @@
 
 namespace App\Domain\Notification\Interfaces;
 
-use App\Domain\Notification\Entity\Notification;
+use App\Domain\Notification\Entities\Notification as NotificationEntity;
 
 interface NotificationRepositoryInterface
 {
-    public function save(Notification $notification): void;
-    public function findById(string $id): ?Notification;
+    public function save(NotificationEntity $notification): void;
+    public function findById(string $id): ?NotificationEntity;
 }

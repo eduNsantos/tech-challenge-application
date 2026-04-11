@@ -12,11 +12,6 @@ class EventServiceProvider extends ServiceProvider
     /**
      * Register services.
      */
-    protected $listen = [
-        CustomerCreated::class => [
-            SendWelcomeNotification::class,
-        ],
-    ];
     public function register(): void
     {
         //
@@ -27,6 +22,6 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Event::listen($this->listen);
+        Event::listen(CustomerCreated::class, SendWelcomeNotification::class);
     }
 }
