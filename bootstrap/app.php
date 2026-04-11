@@ -21,15 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        $exceptions->render(function (\DomainException $e, Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json(['message' => $e->getMessage()], 422);
-            }
-        });
-
         $exceptions->render(function (\InvalidArgumentException $e, Request $request) {
             if ($request->is('api/*')) {
-                return response()->json(['message' => $e->getMessage()], 422);
+                return response()->json(['message' => $e->getMessage()], 400);
             }
         });
     })->create();

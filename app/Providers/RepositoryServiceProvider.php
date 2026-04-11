@@ -3,6 +3,10 @@
 namespace App\Providers;
 
 use App\Domain\Customer\interfaces\CustomerRepositoryInterface;
+use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
+use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
+use App\Infrastructure\Persistence\Eloquent\Repositories\CustomerRepositoryEloquent;
+use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceOrderRepositoryEloquent;
 use App\Domain\Item\Interfaces\ItemRepositoryInterface;
 use App\Domain\Item\Interfaces\StockMovementRepositoryInterface;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
@@ -29,6 +33,9 @@ class RepositoryServiceProvider extends ServiceProvider
             CustomerRepositoryInterface::class,
             CustomerRepositoryEloquent::class
         );
+        $this->app->bind(
+            ServiceOrderRepositoryInterface::class,
+            ServiceOrderRepositoryEloquent::class
 
         $this->app->bind(
             ServiceRepositoryInterface::class,

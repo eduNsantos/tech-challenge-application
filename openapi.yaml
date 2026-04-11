@@ -28,6 +28,8 @@ tags:
     description: Operações de registro, login, logout e gerenciamento de sessão JWT
   - name: Veículos
     description: Operações de gerenciamento de veículos (requer autenticação)
+  - name: Ordens de Serviço
+    description: Operações de criação, acompanhamento de status e gestão de ordens de serviço (requer autenticação)
   - name: Peças e Insumos
     description: Cadastro e gestão de peças e insumos do almoxarifado (requer autenticação)
   - name: Estoque
@@ -56,6 +58,7 @@ paths:
               example:
                 name: João Silva
                 email: joao@example.com
+                document: 52998224725
                 password: senha12345
                 password_confirmation: senha12345
       responses:
@@ -849,6 +852,327 @@ paths:
         '422':
           $ref: '#/components/responses/ErroValidacaoLaravel'
 
+  /service-order:
+    get:
+      tags:
+        - Ordens de Serviço
+      summary: Listar ordens de serviço
+      description: |-
+        Retorna uma lista paginada de ordens de serviço.
+
+        **Requer autenticação.**
+      operationId: service-order-list
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Número da página (padrão 1)
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: perPage
+          in: query
+          description: Quantidade de registros por página (padrão 10)
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+      responses:
+        '200':
+          description: Lista de ordens de serviço retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrdemServico'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+
+    post:
+      tags:
+        - Ordens de Serviço
+      summary: Criar ordem de serviço
+      description: |-
+        Cria uma nova OS usando o CPF/CNPJ vinculado ao usuário autenticado,
+        cadastrando ou reutilizando veículo por placa,
+        registrando serviços e peças/insumos, e calculando o orçamento automaticamente.
+
+        Se `send_quote = true`, o orçamento é enviado para aprovação e a OS passa para `aguardando_aprovacao`.
+
+        **Requer autenticação.**
+      operationId: service-order-create
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarOrdemServicoRequest'
+            example:
+              vehicle_brand: Toyota
+              vehicle_model: Corolla
+              vehicle_year: 2023
+              vehicle_plate: ABC1D23
+              services:
+                - name: Troca de óleo
+                  quantity: 1
+                  unit_price: 199.9
+                - name: Alinhamento
+                  quantity: 1
+                  unit_price: 120
+              parts:
+                - name: Filtro de óleo
+                  quantity: 1
+                  unit_price: 45
+              send_quote: true
+      responses:
+        '201':
+          description: Ordem de serviço criada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service_order:
+                    $ref: '#/components/schemas/OrdemServico'
+                  message:
+                    type: string
+              example:
+                service_order:
+                  id: "550e8400-e29b-41d4-a716-446655440001"
+                  customer_id: "550e8400-e29b-41d4-a716-446655440010"
+                  customer_document: "52998224725"
+                  vehicle_id: "550e8400-e29b-41d4-a716-446655440020"
+                  services:
+                    - name: Troca de óleo
+                      quantity: 1
+                      unit_price: 199.9
+                  parts:
+                    - name: Filtro de óleo
+                      quantity: 1
+                      unit_price: 45
+                  status: aguardando_aprovacao
+                  services_total: 199.9
+                  parts_total: 45
+                  total_budget: 244.9
+                  quote_sent_at: '2026-04-10T12:00:00'
+                  quote_approved_at: null
+                message: Ordem de servico criada com sucesso
+        '400':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+
+  /service-order/{id}:
+    get:
+      tags:
+        - Ordens de Serviço
+      summary: Obter detalhes da ordem de serviço
+      description: |-
+        Retorna os detalhes de uma ordem de serviço pelo ID.
+
+        **Requer autenticação.**
+      operationId: service-order-show
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID da ordem de serviço (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da ordem de serviço retornados com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service_order:
+                    $ref: '#/components/schemas/OrdemServico'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '404':
+          description: Ordem de serviço não encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+              example:
+                message: Ordem de servico nao encontrada
+
+    put:
+      tags:
+        - Ordens de Serviço
+      summary: Atualizar ordem de serviço
+      description: |-
+        Atualiza itens da OS (serviços/peças), dados do veículo associado e/ou status.
+        Também permite enviar orçamento para aprovação (`send_quote`) e aprovar orçamento (`approve_quote`).
+
+        **Requer autenticação.**
+      operationId: service-order-update
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID da ordem de serviço (UUID)
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtualizarOrdemServicoRequest'
+            example:
+              services:
+                - name: Troca de óleo
+                  quantity: 1
+                  unit_price: 210
+              parts:
+                - name: Filtro de óleo
+                  quantity: 1
+                  unit_price: 49.9
+              status: em_diagnostico
+      responses:
+        '200':
+          description: Ordem de serviço atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service_order:
+                    $ref: '#/components/schemas/OrdemServico'
+                  message:
+                    type: string
+              example:
+                message: Ordem de servico atualizada com sucesso
+        '400':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '404':
+          description: Ordem de serviço não encontrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+    delete:
+      tags:
+        - Ordens de Serviço
+      summary: Excluir ordem de serviço
+      description: |-
+        Remove uma ordem de serviço pelo ID.
+
+        **Requer autenticação.**
+      operationId: service-order-delete
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID da ordem de serviço (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Ordem de serviço excluída com sucesso
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '404':
+          description: Ordem de serviço não encontrada
+
+  /service-order/{id}/status:
+    patch:
+      tags:
+        - Ordens de Serviço
+      summary: Atualizar status da ordem de serviço
+      description: |-
+        Atualiza apenas o status da OS.
+
+        Status aceitos:
+        - `recebida`
+        - `em_diagnostico`
+        - `aguardando_aprovacao`
+        - `em_execucao`
+        - `finalizada`
+        - `entregue`
+
+        **Requer autenticação.**
+      operationId: service-order-update-status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID da ordem de serviço (UUID)
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtualizarStatusOrdemServicoRequest'
+            example:
+              status: finalizada
+      responses:
+        '200':
+          description: Status da ordem de serviço atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service_order:
+                    $ref: '#/components/schemas/OrdemServico'
+                  message:
+                    type: string
+              example:
+                message: Status da ordem de servico atualizado com sucesso
+        '400':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '404':
+          description: Ordem de serviço não encontrada
+
 components:
 
   securitySchemes:
@@ -875,6 +1199,12 @@ components:
 
     RegistroRequest:
       type: object
+      required:
+        - name
+        - email
+        - document
+        - password
+        - password_confirmation
       required: [name, email, password, password_confirmation]
       properties:
         name:
@@ -885,6 +1215,11 @@ components:
           type: string
           format: email
           example: joao@example.com
+        document:
+          type: string
+          maxLength: 14
+          description: CPF (11) ou CNPJ (14) do usuário
+          example: "52998224725"
         password:
           type: string
           format: password
@@ -944,6 +1279,10 @@ components:
           type: string
           format: email
           example: joao@example.com
+        document:
+          type: string
+          description: CPF/CNPJ do usuário
+          example: "52998224725"
         created_at:
           type: string
           format: date-time
@@ -964,6 +1303,10 @@ components:
           type: string
           format: email
           example: joao@example.com
+        document:
+          type: string
+          description: CPF/CNPJ do usuário
+          example: "52998224725"
 
     ErroValidacao:
       type: object
@@ -1052,6 +1395,198 @@ components:
           pattern: '^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$'
           example: ABC1D23
 
+    ItemOrdemServico:
+      type: object
+      required:
+        - name
+        - quantity
+        - unit_price
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: Nome do serviço, peça ou insumo
+          example: Troca de óleo
+        quantity:
+          type: number
+          format: float
+          minimum: 0.01
+          description: Quantidade solicitada
+          example: 1
+        unit_price:
+          type: number
+          format: float
+          minimum: 0
+          description: Preço unitário
+          example: 199.9
+
+    OrdemServicoStatus:
+      type: string
+      description: Status atual da ordem de serviço
+      enum:
+        - recebida
+        - em_diagnostico
+        - aguardando_aprovacao
+        - em_execucao
+        - finalizada
+        - entregue
+
+    OrdemServico:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único da ordem de serviço
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        customer_id:
+          type: string
+          format: uuid
+          description: Identificador do cliente associado
+          example: "550e8400-e29b-41d4-a716-446655440010"
+        customer_document:
+          type: string
+          description: Documento do cliente (CPF/CNPJ, somente dígitos)
+          example: "52998224725"
+        vehicle_id:
+          type: string
+          format: uuid
+          description: Identificador do veículo associado
+          example: "550e8400-e29b-41d4-a716-446655440020"
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemOrdemServico'
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemOrdemServico'
+        status:
+          $ref: '#/components/schemas/OrdemServicoStatus'
+        services_total:
+          type: number
+          format: float
+          description: Total de serviços
+          example: 319.9
+        parts_total:
+          type: number
+          format: float
+          description: Total de peças e insumos
+          example: 45
+        total_budget:
+          type: number
+          format: float
+          description: Orçamento total calculado automaticamente (services_total + parts_total)
+          example: 364.9
+        quote_sent_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Data/hora do envio do orçamento para aprovação
+          example: '2026-04-10T12:00:00'
+        quote_approved_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Data/hora da aprovação do orçamento
+          example: null
+
+    CriarOrdemServicoRequest:
+      type: object
+      required:
+        - vehicle_brand
+        - vehicle_model
+        - vehicle_year
+        - vehicle_plate
+        - services
+      properties:
+        vehicle_brand:
+          type: string
+          maxLength: 255
+          description: Marca do veículo
+          example: Toyota
+        vehicle_model:
+          type: string
+          maxLength: 255
+          description: Modelo do veículo
+          example: Corolla
+        vehicle_year:
+          type: integer
+          minimum: 1900
+          description: Ano do veículo
+          example: 2023
+        vehicle_plate:
+          type: string
+          maxLength: 10
+          pattern: '^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$'
+          description: Placa do veículo
+          example: ABC1D23
+        services:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ItemOrdemServico'
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemOrdemServico'
+        send_quote:
+          type: boolean
+          description: Define se o orçamento deve ser enviado para aprovação no momento da criação
+          default: true
+          example: true
+
+    AtualizarOrdemServicoRequest:
+      type: object
+      properties:
+        vehicle_brand:
+          type: string
+          maxLength: 255
+          description: Marca do veículo
+          example: Toyota
+        vehicle_model:
+          type: string
+          maxLength: 255
+          description: Modelo do veículo
+          example: Corolla XEi
+        vehicle_year:
+          type: integer
+          minimum: 1900
+          description: Ano do veículo
+          example: 2024
+        vehicle_plate:
+          type: string
+          maxLength: 10
+          pattern: '^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$'
+          description: Placa do veículo
+          example: ABC1D23
+        services:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ItemOrdemServico'
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemOrdemServico'
+        status:
+          $ref: '#/components/schemas/OrdemServicoStatus'
+        send_quote:
+          type: boolean
+          description: Reenvia orçamento para aprovação
+          example: false
+        approve_quote:
+          type: boolean
+          description: Aprova o orçamento e move status para em_execucao
+          example: false
+
+    AtualizarStatusOrdemServicoRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: '#/components/schemas/OrdemServicoStatus'
     # ── Peças e Insumos ───────────────────────────────────────────────────────
 
     Item:
