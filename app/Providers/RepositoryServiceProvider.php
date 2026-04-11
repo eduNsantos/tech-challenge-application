@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Domain\Customer\interfaces\CustomerRepositoryInterface;
+use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use App\Infrastructure\Persistence\Eloquent\Repositories\CustomerRepositoryEloquent;
+use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\VehicleRepositoryEloquent;
 use Illuminate\Support\ServiceProvider;
 
@@ -19,9 +21,15 @@ class RepositoryServiceProvider extends ServiceProvider
             VehicleRepositoryInterface::class,
             VehicleRepositoryEloquent::class
         );
+
         $this->app->bind(
             CustomerRepositoryInterface::class,
             CustomerRepositoryEloquent::class
+        );
+
+        $this->app->bind(
+            ServiceRepositoryInterface::class,
+            ServiceRepositoryEloquent::class
         );
     }
 
