@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Notification\Entity;
+namespace App\Domain\Notification\Entities;
 
 use App\Domain\Notification\ValueObjects\NotificationStatus;
 use App\Domain\Notification\ValueObjects\NotificationType;

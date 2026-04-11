@@ -3,7 +3,7 @@
 namespace App\Infrastructure\Notifications\Services;
 
 use App\Domain\Notification\Interfaces\NotificationServiceInterface;
-use App\Domain\Notification\Entity\Notification as NotificationEntity;
+use App\Domain\Notification\Entities\Notification as NotificationEntity;
 use App\Domain\Notification\ValueObjects\NotificationType;
 use Illuminate\Support\Facades\Notification;
 use App\Infrastructure\Notifications\GenericNotification;

@@ -3,12 +3,12 @@
 namespace App\Infrastructure\Persistence\Eloquent\Repositories;
 
 use App\Domain\Notification\Interfaces\NotificationRepositoryInterface;
-use App\Domain\Notification\Entity\Notification;
+use App\Domain\Notification\Entities\Notification as NotificationEntity;
 use App\Infrastructure\Persistence\Eloquent\Models\NotificationModel;
 
 class NotificationRepositoryEloquent implements NotificationRepositoryInterface
 {
-    public function save(Notification $notification): void
+    public function save(NotificationEntity $notification): void
     {
         NotificationModel::create([
             'id' => $notification->getId(),
@@ -20,11 +20,11 @@ class NotificationRepositoryEloquent implements NotificationRepositoryInterface
             'sent_at' => $notification->getSentAt(),
         ]);
     }
-    public function findById(string $id): ?Notification
+    public function findById(string $id): ?NotificationEntity
     {
         $model = NotificationModel::find($id);
         if (!$model) return null;
-        return new Notification(
+        return new NotificationEntity(
             $model->id,
             $model->recipient_id,
             $model->type,

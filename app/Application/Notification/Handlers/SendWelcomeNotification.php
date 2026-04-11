@@ -3,7 +3,7 @@
 namespace App\Application\Notification\Handlers;
 
 use App\Domain\Customer\Events\CustomerCreated;
-use App\Domain\Notification\Entity\Notification as EntityNotification;
+use App\Domain\Notification\Entities\Notification as EntityNotification;
 use App\Domain\Notification\Interfaces\NotificationRepositoryInterface;
 use App\Domain\Notification\Interfaces\NotificationServiceInterface;
 use App\Domain\Notification\ValueObjects\NotificationStatus;
@@ -30,6 +30,7 @@ class SendWelcomeNotification
             NotificationStatus::PENDING,
             new \DateTimeImmutable()
         );
+        
         $this->notificationRepository->save($notification);
         try {            
             $this->notificationService->send($notification);

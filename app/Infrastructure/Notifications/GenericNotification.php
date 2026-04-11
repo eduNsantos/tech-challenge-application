@@ -2,7 +2,7 @@
 
 namespace App\Infrastructure\Notifications;
 
-use App\Domain\Notification\Entity\Notification as EntityNotification;
+use App\Domain\Notification\Entities\Notification as EntityNotification;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
