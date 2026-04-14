@@ -41,6 +41,8 @@ Route::group([
     Route::delete('/{id}', [ServiceOrderController::class, 'destroy']);
 });
 
+Route::group([
+    'middleware' => 'auth:api',
     'prefix' => 'item'
 ], function () {
     Route::get('/', [ItemController::class, 'list']);
@@ -52,12 +54,12 @@ Route::group([
     Route::post('/{id}/stock/entry', [StockController::class, 'entry']);
     Route::post('/{id}/stock/withdrawal', [StockController::class, 'withdrawal']);
     Route::get('/{id}/stock/movements', [StockController::class, 'movements']);
-// TODO: falta route de costumer
+});
 
 Route::group([
     'middleware' => 'auth:api',
     'prefix' => 'service'
-], function() {
+], function () {
     Route::get('/', [ServiceController::class, 'list']);
     Route::post('/', [ServiceController::class, 'store']);
     Route::get('/{id}', [ServiceController::class, 'show']);
