@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domain\Customer\interfaces;
+namespace App\Domain\Customer\Interfaces;
 
 use App\Domain\Customer\Entities\Customer;
 use App\Infrastructure\Persistence\Eloquent\Models\CustomerModel;
