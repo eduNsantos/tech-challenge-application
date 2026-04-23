@@ -12,6 +12,7 @@ use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\Vehicle\Entities\Vehicle;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
+use App\Domain\ServiceOrder\Events\ServiceOrderCreated;
 use App\Domain\Vehicle\ValueObjects\Plate;
 
 class CreateServiceOrderUseCase
@@ -81,6 +82,8 @@ class CreateServiceOrderUseCase
         }
 
         $this->serviceOrderRepository->save($serviceOrder);
+
+        event(new ServiceOrderCreated($serviceOrder));
 
         return $serviceOrder;
     }

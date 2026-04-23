@@ -11,6 +11,7 @@ use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
+use App\Domain\ServiceOrder\Events\ServiceOrderQuoteSent;
 use App\Domain\Vehicle\ValueObjects\Plate;
 
 class UpdateServiceOrderUseCase
@@ -84,6 +85,10 @@ class UpdateServiceOrderUseCase
         }
 
         $this->serviceOrderRepository->update($serviceOrder);
+
+        if ($dto->sendQuote === true) {
+            event(new ServiceOrderQuoteSent($serviceOrder));
+        }
 
         return $serviceOrder;
     }
