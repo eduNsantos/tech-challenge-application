@@ -10,15 +10,17 @@ class NotificationRepositoryEloquent implements NotificationRepositoryInterface
 {
     public function save(NotificationEntity $notification): void
     {
-        NotificationModel::create([
-            'id' => $notification->getId(),
-            'recipient_id' => $notification->getRecipientId(),
-            'type' => $notification->getType()->value,
-            'subject' => $notification->getSubject(),
-            'content' => $notification->getContent(),
-            'status' => $notification->getStatus(),
-            'sent_at' => $notification->getSentAt(),
-        ]);
+        NotificationModel::updateOrCreate(
+            ['id' => $notification->getId()],
+            [
+                'recipient_id' => $notification->getRecipientId(),
+                'type'         => $notification->getType()->value,
+                'subject'      => $notification->getSubject(),
+                'content'      => $notification->getContent(),
+                'status'       => $notification->getStatus()->value,
+                'sent_at'      => $notification->getSentAt()?->format('Y-m-d H:i:s'),
+            ]
+        );
     }
     public function findById(string $id): ?NotificationEntity
     {
