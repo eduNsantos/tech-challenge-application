@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Application\Notification\Handlers\SendServiceOrderStatusNotification;
 use App\Application\Notification\Handlers\SendWelcomeNotification;
 use App\Domain\Customer\Events\CustomerCreated;
+use App\Domain\ServiceOrder\Events\ServiceOrderStatusChanged;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +24,13 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Event::listen(CustomerCreated::class, SendWelcomeNotification::class);
+        Event::listen(
+            CustomerCreated::class, 
+            SendWelcomeNotification::class
+        );
+        Event::listen(
+            ServiceOrderStatusChanged::class, 
+            SendServiceOrderStatusNotification::class
+        );
     }
 }

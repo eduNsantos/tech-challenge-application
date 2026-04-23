@@ -3,6 +3,17 @@
 namespace App\Providers;
 
 use App\Domain\Customer\interfaces\CustomerRepositoryInterface;
+use App\Domain\Notification\Interfaces\NotificationRepositoryInterface;
+use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
+use App\Infrastructure\Persistence\Eloquent\Repositories\CustomerRepositoryEloquent;
+use App\Infrastructure\Persistence\Eloquent\Repositories\NotificationRepositoryEloquent;
+use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
+use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceOrderRepositoryEloquent;
+use App\Domain\Item\Interfaces\ItemRepositoryInterface;
+use App\Domain\Item\Interfaces\StockMovementRepositoryInterface;
+use App\Infrastructure\Persistence\Eloquent\Repositories\ItemRepositoryEloquent;
+use App\Infrastructure\Persistence\Eloquent\Repositories\StockMovementRepositoryEloquent;
+use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\Item\Interfaces\ItemRepositoryInterface;
 use App\Domain\Item\Interfaces\StockMovementRepositoryInterface;
 use App\Domain\Notification\Interfaces\NotificationRepositoryInterface;
