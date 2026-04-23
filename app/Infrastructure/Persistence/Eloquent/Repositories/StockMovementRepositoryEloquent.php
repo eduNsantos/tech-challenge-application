@@ -12,16 +12,17 @@ class StockMovementRepositoryEloquent implements StockMovementRepositoryInterfac
     public function save(StockMovement $movement): void
     {
         StockMovementModel::create([
-            'id'               => $movement->id,
-            'item_id'          => $movement->itemId,
-            'movement_type'    => $movement->movementType->getValue(),
-            'quantity'         => $movement->quantity,
-            'previous_quantity'=> $movement->previousQuantity,
-            'current_quantity' => $movement->currentQuantity,
-            'reason'           => $movement->reason,
-            'notes'            => $movement->notes,
-            'created_user_id'  => Auth::id(),
-            'created_at'       => now(),
+            'id'                => $movement->id,
+            'item_id'           => $movement->itemId,
+            'service_order_id'  => $movement->serviceOrderId,
+            'movement_type'     => $movement->movementType->getValue(),
+            'quantity'          => $movement->quantity,
+            'previous_quantity' => $movement->previousQuantity,
+            'current_quantity'  => $movement->currentQuantity,
+            'reason'            => $movement->reason,
+            'notes'             => $movement->notes,
+            'created_user_id'   => Auth::id(),
+            'created_at'        => now(),
         ]);
     }
 

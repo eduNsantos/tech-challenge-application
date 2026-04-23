@@ -6,6 +6,8 @@ use App\Application\ServiceOrder\DTOs\CreateServiceOrderDTO;
 use App\Domain\Customer\Entities\Customer;
 use App\Domain\Customer\interfaces\CustomerRepositoryInterface;
 use App\Domain\Customer\ValueObjects\Document;
+use App\Domain\Item\Interfaces\ItemRepositoryInterface;
+use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\Vehicle\Entities\Vehicle;
@@ -17,7 +19,9 @@ class CreateServiceOrderUseCase
     public function __construct(
         private ServiceOrderRepositoryInterface $serviceOrderRepository,
         private CustomerRepositoryInterface $customerRepository,
-        private VehicleRepositoryInterface $vehicleRepository
+        private VehicleRepositoryInterface $vehicleRepository,
+        private ServiceRepositoryInterface $serviceRepository,
+        private ItemRepositoryInterface $itemRepository
     ) {}
 
     public function execute(CreateServiceOrderDTO $dto): ServiceOrder
@@ -61,12 +65,15 @@ class CreateServiceOrderUseCase
             $this->vehicleRepository->save($vehicle);
         }
 
+        $services = $this->resolveServices($dto->services);
+        $parts = $this->resolveParts($dto->parts);
+
         $serviceOrder = ServiceOrder::create(
             customerId: $customer->id,
             customerDocument: $customer->document,
             vehicleId: $vehicle->id,
-            services: $dto->services,
-            parts: $dto->parts
+            services: $services,
+            parts: $parts
         );
 
         if ($dto->sendQuote) {
@@ -76,5 +83,41 @@ class CreateServiceOrderUseCase
         $this->serviceOrderRepository->save($serviceOrder);
 
         return $serviceOrder;
+    }
+
+    private function resolveServices(array $services): array
+    {
+        return array_map(function (array $item): array {
+            $service = $this->serviceRepository->findById($item['service_id']);
+
+            if (!$service) {
+                throw new \DomainException("Servico '{$item['service_id']}' nao encontrado.");
+            }
+
+            return [
+                'service_id' => $service->id,
+                'name'       => $service->name,
+                'quantity'   => (float) $item['quantity'],
+                'unit_price' => $service->price,
+            ];
+        }, $services);
+    }
+
+    private function resolveParts(array $parts): array
+    {
+        return array_map(function (array $item): array {
+            $part = $this->itemRepository->findById($item['item_id']);
+
+            if (!$part) {
+                throw new \DomainException("Peca '{$item['item_id']}' nao encontrada.");
+            }
+
+            return [
+                'item_id'    => $part->id,
+                'name'       => $part->name,
+                'quantity'   => (float) $item['quantity'],
+                'unit_price' => $part->unitPrice ?? 0.0,
+            ];
+        }, $parts);
     }
 }

@@ -29,10 +29,6 @@ class StockWithdrawalUseCase
 
         $this->itemRepository->update($item);
 
-        // TODO: implementar a associacao de ordem de servico com a movimentacao de saida.
-        // O StockMovement deve receber um service_order_id (nullable) para rastreabilidade,
-        // faturamento e auditoria. Requer: novo dominio ServiceOrder, campo service_order_id
-        // na tabela stock_movements (nullable FK) e atualizacao do DTO/entidade/repositorio.
         $movement = StockMovement::record(
             itemId: $item->id,
             movementType: new MovementType(MovementType::WITHDRAWAL),

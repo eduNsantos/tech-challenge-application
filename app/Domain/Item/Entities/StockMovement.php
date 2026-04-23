@@ -7,10 +7,10 @@ use Illuminate\Support\Str;
 
 class StockMovement
 {
-    // TODO: adicionar propriedade ?string $serviceOrderId para associar saidas a uma OS.
     public function __construct(
         public string $id,
         public string $itemId,
+        public ?string $serviceOrderId,
         public MovementType $movementType,
         public float $quantity,
         public float $previousQuantity,
@@ -26,11 +26,13 @@ class StockMovement
         float $previousQuantity,
         float $currentQuantity,
         string $reason,
-        ?string $notes
+        ?string $notes,
+        ?string $serviceOrderId = null
     ): self {
         return new self(
             id: Str::uuid()->toString(),
             itemId: $itemId,
+            serviceOrderId: $serviceOrderId,
             movementType: $movementType,
             quantity: $quantity,
             previousQuantity: $previousQuantity,
