@@ -4,7 +4,7 @@ namespace App\Application\Customer\UseCases;
 
 use App\Application\Customer\DTOs\CreateCustomerDTO;
 use App\Domain\Customer\Events\CustomerCreated;
-use App\Domain\Customer\interfaces\CustomerRepositoryInterface;
+use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Customer\Entities\Customer;
 use App\Domain\Customer\ValueObjects\Document;
 
