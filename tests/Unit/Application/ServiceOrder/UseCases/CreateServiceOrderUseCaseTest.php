@@ -5,7 +5,7 @@ namespace Tests\Unit\Application\ServiceOrder\UseCases;
 use App\Application\ServiceOrder\DTOs\CreateServiceOrderDTO;
 use App\Application\ServiceOrder\UseCases\CreateServiceOrderUseCase;
 use App\Domain\Customer\Entities\Customer;
-use App\Domain\Customer\interfaces\CustomerRepositoryInterface;
+use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Item\Entities\Item;
 use App\Domain\Item\Interfaces\ItemRepositoryInterface;
 use App\Domain\Item\ValueObjects\ItemCode;

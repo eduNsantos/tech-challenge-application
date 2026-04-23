@@ -3,7 +3,7 @@
 namespace App\Application\Customer\UseCases;
 
 use App\Application\Customer\DTOs\ListCustomerDTO;
-use App\Domain\Customer\interfaces\CustomerRepositoryInterface;
+use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Customer\Entities\Customer;
 
 class ListCustomerUseCase
