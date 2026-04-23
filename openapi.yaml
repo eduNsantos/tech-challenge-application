@@ -851,6 +851,261 @@ paths:
         '422':
           $ref: '#/components/responses/ErroValidacaoLaravel'
 
+  # ── Ordens de Serviço ────────────────────────────────────────────────────────
+
+  /service-order:
+    get:
+      tags:
+        - Ordens de Serviço
+      summary: Listar ordens de serviço
+      description: |-
+        Retorna a lista de ordens de serviço paginada.
+
+        **Requer autenticação.**
+      operationId: service-order-list
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: perPage
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+      responses:
+        '200':
+          description: Lista retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceOrder'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+
+    post:
+      tags:
+        - Ordens de Serviço
+      summary: Criar ordem de serviço
+      description: |-
+        Cria uma nova ordem de serviço vinculada ao cliente autenticado.
+
+        - O cliente é identificado pelo documento (`document`) do usuário autenticado.
+          Se ainda não existir um cadastro de cliente com esse documento, ele é criado automaticamente.
+        - O veículo é localizado pela placa. Se não existir, é criado automaticamente.
+        - Cada serviço em `services` deve referenciar um `service_id` válido; nome e
+          preço são snapshots do catálogo no momento da criação.
+        - Cada peça em `parts` deve referenciar um `item_id` válido; nome e
+          preço unitário são snapshots do almoxarifado no momento da criação.
+
+        **Requer autenticação.**
+      operationId: service-order-store
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateServiceOrderRequest'
+            example:
+              vehicle_brand: Toyota
+              vehicle_model: Corolla
+              vehicle_year: 2020
+              vehicle_plate: ABC1D23
+              services:
+                - service_id: "550e8400-e29b-41d4-a716-446655440010"
+                  quantity: 1
+              parts:
+                - item_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  quantity: 2
+              send_quote: false
+      responses:
+        '201':
+          description: Ordem de serviço criada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service_order:
+                    $ref: '#/components/schemas/ServiceOrder'
+                  message:
+                    type: string
+              example:
+                service_order:
+                  id: "b1c2d3e4-f5a6-7890-bcde-f01234567890"
+                  customer_id: "c1d2e3f4-a5b6-7890-cdef-012345678901"
+                  customer_document: "52998224725"
+                  vehicle_id: "d1e2f3a4-b5c6-7890-defa-123456789012"
+                  services:
+                    - service_id: "550e8400-e29b-41d4-a716-446655440010"
+                      name: Troca de óleo
+                      quantity: 1
+                      unit_price: 150.00
+                  parts:
+                    - item_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                      name: Filtro de óleo
+                      quantity: 2
+                      unit_price: 35.00
+                  status: recebida
+                  services_total: 150.00
+                  parts_total: 70.00
+                  total_budget: 220.00
+                  quote_sent_at: null
+                  quote_approved_at: null
+                message: Ordem de servico criada com sucesso
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
+  /service-order/{id}:
+    get:
+      tags:
+        - Ordens de Serviço
+      summary: Obter ordem de serviço
+      description: |-
+        Retorna os dados de uma ordem de serviço específica.
+
+        **Requer autenticação.**
+      operationId: service-order-show
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: Ordem de serviço retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service_order:
+                    $ref: '#/components/schemas/ServiceOrder'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
+    put:
+      tags:
+        - Ordens de Serviço
+      summary: Atualizar ordem de serviço
+      description: |-
+        Atualiza os dados de uma ordem de serviço existente. Todos os campos são opcionais.
+
+        - Para aprovar o orçamento e mover a OS para `em_execucao`, envie `approve_quote: true`.
+          Isso dispara a **baixa automática de estoque** de todas as peças listadas na OS.
+        - Para enviar o orçamento para aprovação, envie `send_quote: true`.
+
+        **Requer autenticação.**
+      operationId: service-order-update
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateServiceOrderRequest'
+            example:
+              services:
+                - service_id: "550e8400-e29b-41d4-a716-446655440010"
+                  quantity: 2
+              approve_quote: true
+      responses:
+        '200':
+          description: Ordem de serviço atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service_order:
+                    $ref: '#/components/schemas/ServiceOrder'
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
+    delete:
+      tags:
+        - Ordens de Serviço
+      summary: Excluir ordem de serviço
+      description: |-
+        Remove uma ordem de serviço do sistema.
+
+        **Requer autenticação.**
+      operationId: service-order-destroy
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '204':
+          description: Ordem de serviço removida com sucesso
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
+  /service-order/{id}/status:
+    patch:
+      tags:
+        - Ordens de Serviço
+      summary: Atualizar status da ordem de serviço
+      description: |-
+        Altera diretamente o status de uma ordem de serviço.
+
+        **Statuses disponíveis:** `recebida`, `em_diagnostico`, `aguardando_aprovacao`,
+        `em_execucao`, `finalizada`, `entregue`.
+
+        **Requer autenticação.**
+      operationId: service-order-update-status
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateServiceOrderStatusRequest'
+            example:
+              status: em_execucao
+      responses:
+        '200':
+          description: Status atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service_order:
+                    $ref: '#/components/schemas/ServiceOrder'
+                  message:
+                    type: string
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
 components:
 
   securitySchemes:
@@ -872,6 +1127,256 @@ components:
         example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
   schemas:
+
+    # ── Ordens de Serviço ─────────────────────────────────────────────────────
+
+    ServiceOrder:
+      type: object
+      description: Ordem de serviço com todos os campos
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "b1c2d3e4-f5a6-7890-bcde-f01234567890"
+        customer_id:
+          type: string
+          format: uuid
+          example: "c1d2e3f4-a5b6-7890-cdef-012345678901"
+        customer_document:
+          type: string
+          description: CPF (11 dígitos) ou CNPJ (14 dígitos) do cliente
+          example: "52998224725"
+        vehicle_id:
+          type: string
+          format: uuid
+          example: "d1e2f3a4-b5c6-7890-defa-123456789012"
+        services:
+          type: array
+          description: Serviços incluídos na OS (snapshot do catálogo no momento da criação)
+          items:
+            $ref: '#/components/schemas/ServiceOrderItem'
+        parts:
+          type: array
+          description: Peças incluídas na OS (snapshot do almoxarifado no momento da criação)
+          items:
+            $ref: '#/components/schemas/ServiceOrderPart'
+        status:
+          type: string
+          enum: [recebida, em_diagnostico, aguardando_aprovacao, em_execucao, finalizada, entregue]
+          example: recebida
+        services_total:
+          type: number
+          format: float
+          description: Soma total dos serviços (quantity × unit_price)
+          example: 150.00
+        parts_total:
+          type: number
+          format: float
+          description: Soma total das peças (quantity × unit_price)
+          example: 70.00
+        total_budget:
+          type: number
+          format: float
+          description: Orçamento total (services_total + parts_total)
+          example: 220.00
+        quote_sent_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Data/hora em que o orçamento foi enviado para aprovação
+          example: null
+        quote_approved_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Data/hora em que o orçamento foi aprovado pelo cliente
+          example: null
+
+    ServiceOrderItem:
+      type: object
+      description: Serviço incluído em uma OS (snapshot do catálogo)
+      properties:
+        service_id:
+          type: string
+          format: uuid
+          description: ID do serviço no catálogo
+          example: "550e8400-e29b-41d4-a716-446655440010"
+        name:
+          type: string
+          description: Nome do serviço (snapshot)
+          example: Troca de óleo
+        quantity:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 1
+        unit_price:
+          type: number
+          format: float
+          description: Preço unitário no momento da criação da OS (snapshot)
+          example: 150.00
+
+    ServiceOrderPart:
+      type: object
+      description: Peça incluída em uma OS (snapshot do almoxarifado)
+      properties:
+        item_id:
+          type: string
+          format: uuid
+          description: ID do item no almoxarifado
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        name:
+          type: string
+          description: Nome do item (snapshot)
+          example: Filtro de óleo
+        quantity:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 2
+        unit_price:
+          type: number
+          format: float
+          description: Preço unitário no momento da criação da OS (snapshot)
+          example: 35.00
+
+    CreateServiceOrderRequest:
+      type: object
+      required: [vehicle_brand, vehicle_model, vehicle_year, vehicle_plate, services]
+      properties:
+        vehicle_brand:
+          type: string
+          maxLength: 255
+          example: Toyota
+        vehicle_model:
+          type: string
+          maxLength: 255
+          example: Corolla
+        vehicle_year:
+          type: integer
+          minimum: 1900
+          example: 2020
+        vehicle_plate:
+          type: string
+          maxLength: 10
+          description: Placa no formato Mercosul (ex. ABC1D23)
+          example: ABC1D23
+        services:
+          type: array
+          minItems: 1
+          description: Lista de serviços a incluir. Deve conter ao menos um item.
+          items:
+            type: object
+            required: [service_id, quantity]
+            properties:
+              service_id:
+                type: string
+                format: uuid
+                description: ID de um serviço existente no catálogo
+                example: "550e8400-e29b-41d4-a716-446655440010"
+              quantity:
+                type: number
+                format: float
+                minimum: 0.01
+                example: 1
+        parts:
+          type: array
+          description: Lista de peças a incluir (opcional)
+          items:
+            type: object
+            required: [item_id, quantity]
+            properties:
+              item_id:
+                type: string
+                format: uuid
+                description: ID de um item existente no almoxarifado
+                example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              quantity:
+                type: number
+                format: float
+                minimum: 0.01
+                example: 2
+        send_quote:
+          type: boolean
+          description: >
+            Se `true`, a OS é criada já no status `aguardando_aprovacao`
+            e `quote_sent_at` é preenchido. Padrão: `false`.
+          default: false
+
+    UpdateServiceOrderRequest:
+      type: object
+      description: Todos os campos são opcionais
+      properties:
+        vehicle_brand:
+          type: string
+          maxLength: 255
+          example: Toyota
+        vehicle_model:
+          type: string
+          maxLength: 255
+          example: Corolla
+        vehicle_year:
+          type: integer
+          minimum: 1900
+          example: 2021
+        vehicle_plate:
+          type: string
+          maxLength: 10
+          example: ABC1D23
+        services:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [service_id, quantity]
+            properties:
+              service_id:
+                type: string
+                format: uuid
+                example: "550e8400-e29b-41d4-a716-446655440010"
+              quantity:
+                type: number
+                format: float
+                minimum: 0.01
+                example: 2
+        parts:
+          type: array
+          items:
+            type: object
+            required: [item_id, quantity]
+            properties:
+              item_id:
+                type: string
+                format: uuid
+                example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              quantity:
+                type: number
+                format: float
+                minimum: 0.01
+                example: 3
+        status:
+          type: string
+          enum: [recebida, em_diagnostico, aguardando_aprovacao, em_execucao, finalizada, entregue]
+          example: em_diagnostico
+        send_quote:
+          type: boolean
+          description: Envia o orçamento para aprovação (status → aguardando_aprovacao)
+          example: true
+        approve_quote:
+          type: boolean
+          description: >
+            Aprova o orçamento (status → em_execucao) e dispara a baixa
+            automática de estoque de todas as peças da OS.
+          example: true
+
+    UpdateServiceOrderStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [recebida, em_diagnostico, aguardando_aprovacao, em_execucao, finalizada, entregue]
+          example: finalizada
 
     # ── Auth ──────────────────────────────────────────────────────────────────
 
@@ -1357,6 +1862,12 @@ components:
           type: string
           format: uuid
           example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        service_order_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID da OS que originou a saída (preenchido apenas em baixas automáticas por aprovação de orçamento)
+          example: "b1c2d3e4-f5a6-7890-bcde-f01234567890"
         movement_type:
           type: string
           enum: [entry, withdrawal]
@@ -1411,10 +1922,10 @@ components:
     ErroNegocio:
       type: object
       properties:
-        error:
+        message:
           type: string
           description: Mensagem de erro de regra de negócio
-          example: Serviço já cadastrado
+          example: "Servico '00000000-0000-0000-0000-000000000000' nao encontrado."
 
   responses:
     NaoAutenticado:
@@ -1432,6 +1943,15 @@ components:
         application/json:
           example:
             message: Resource not found.
+    ErroNegocio:
+      description: Regra de negócio violada ou recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroNegocio'
+          example:
+            message: Servico '00000000-0000-0000-0000-000000000000' nao encontrado.
+
     ErroValidacaoLaravel:
       description: Erro de validação da requisição
       content:
