@@ -4,7 +4,7 @@ namespace App\Application\ServiceOrder\UseCases;
 
 use App\Application\ServiceOrder\DTOs\CreateServiceOrderDTO;
 use App\Domain\Customer\Entities\Customer;
-use App\Domain\Customer\interfaces\CustomerRepositoryInterface;
+use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Customer\ValueObjects\Document;
 use App\Domain\Item\Interfaces\ItemRepositoryInterface;
 use App\Domain\Service\Interfaces\ServiceRepositoryInterface;

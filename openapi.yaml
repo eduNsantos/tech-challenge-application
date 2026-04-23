@@ -34,6 +34,11 @@ tags:
     description: Controle de movimentações de estoque — entradas, saídas e histórico (requer autenticação)
   - name: Serviços
     description: Operações de gerenciamento de serviços (requer autenticação)
+  - name: Ordens de Serviço
+    description: >
+      Operação principal do sistema — abre, acompanha e encerra o atendimento de um veículo.
+      Fluxo de status: recebida → em_diagnostico → aguardando_aprovacao → em_execucao → finalizada → entregue.
+      A aprovação do orçamento dispara a baixa automática de estoque das peças (requer autenticação)
 
 paths:
 

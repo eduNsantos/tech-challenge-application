@@ -2,7 +2,7 @@
 
 namespace App\Infrastructure\Persistence\Eloquent\Repositories;
 
-use App\Domain\Customer\interfaces\CustomerRepositoryInterface;
+use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Customer\Entities\Customer;
 use App\Infrastructure\Persistence\Eloquent\Models\CustomerModel;
 use Illuminate\Support\Facades\Auth;
