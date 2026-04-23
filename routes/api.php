@@ -55,6 +55,7 @@ Route::group([
     Route::post('/{id}/stock/withdrawal', [StockController::class, 'withdrawal']);
     Route::get('/{id}/stock/movements', [StockController::class, 'movements']);
 });
+// TODO: falta route de costumer
 
 Route::group([
     'middleware' => 'auth:api',
