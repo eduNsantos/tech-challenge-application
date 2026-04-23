@@ -60,7 +60,7 @@ Route::group([
 Route::group([
     'middleware' => 'auth:api',
     'prefix' => 'service'
-], function() {
+], function () {
     Route::get('/', [ServiceController::class, 'list']);
     Route::post('/', [ServiceController::class, 'store']);
     Route::get('/{id}', [ServiceController::class, 'show']);
