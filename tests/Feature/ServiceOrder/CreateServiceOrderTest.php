@@ -1,0 +1,322 @@
+<?php
+
+namespace Tests\Feature\ServiceOrder;
+
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class CreateServiceOrderTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private User $user;
+    private string $serviceId;
+    private string $itemId;
+
+    // CPF válido para testes
+    private const VALID_CPF = '52998224725';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create(['document' => self::VALID_CPF]);
+
+        $this->serviceId = $this->actingAs($this->user, 'api')
+            ->postJson('/api/service', [
+                'name'  => 'Troca de óleo',
+                'price' => 150.0,
+            ])
+            ->json('id');
+
+        $this->itemId = $this->actingAs($this->user, 'api')
+            ->postJson('/api/item', [
+                'name'             => 'Filtro de óleo',
+                'code'             => 'FLT-001',
+                'type'             => 'part',
+                'measure_unit'     => 'un',
+                'minimum_quantity' => 2,
+                'unit_price'       => 35.0,
+            ])
+            ->json('id');
+
+        // Adiciona estoque ao item para testes que envolvem baixa
+        $this->actingAs($this->user, 'api')
+            ->postJson("/api/item/{$this->itemId}/stock/entry", [
+                'quantity' => 50,
+                'reason'   => 'Estoque inicial para testes',
+            ]);
+
+        $this->app['auth']->forgetGuards();
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private function validPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'vehicle_brand' => 'Toyota',
+            'vehicle_model' => 'Corolla',
+            'vehicle_year'  => 2020,
+            'vehicle_plate' => 'ABC1D23',
+            'services'      => [
+                ['service_id' => $this->serviceId, 'quantity' => 1],
+            ],
+            'send_quote'    => false,
+        ], $overrides);
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/service-order — fluxo principal
+    // -------------------------------------------------------------------------
+
+    public function test_creates_service_order_and_returns_201(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload());
+
+        $response->assertStatus(201)
+            ->assertJsonStructure([
+                'service_order' => [
+                    'id', 'customer_id', 'customer_document', 'vehicle_id',
+                    'services', 'parts', 'status',
+                    'services_total', 'parts_total', 'total_budget',
+                    'quote_sent_at', 'quote_approved_at',
+                ],
+                'message',
+            ])
+            ->assertJsonFragment([
+                'status'           => 'recebida',
+                'customer_document' => self::VALID_CPF,
+                'message'          => 'Ordem de servico criada com sucesso',
+            ]);
+    }
+
+    public function test_creates_order_without_parts(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload());
+
+        $response->assertStatus(201)
+            ->assertJsonPath('service_order.parts', [])
+            ->assertJsonPath('service_order.parts_total', 0);
+    }
+
+    public function test_creates_order_with_parts(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload([
+                'parts' => [
+                    ['item_id' => $this->itemId, 'quantity' => 2],
+                ],
+            ]));
+
+        $response->assertStatus(201);
+
+        $parts = $response->json('service_order.parts');
+        $this->assertCount(1, $parts);
+        $this->assertSame($this->itemId, $parts[0]['item_id']);
+        $this->assertSame('Filtro de óleo', $parts[0]['name']);
+        $this->assertEquals(2, $parts[0]['quantity']);
+    }
+
+    public function test_snapshots_service_data_from_catalog(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload([
+                'services' => [['service_id' => $this->serviceId, 'quantity' => 1]],
+            ]));
+
+        $response->assertStatus(201);
+
+        $service = $response->json('service_order.services.0');
+        $this->assertSame($this->serviceId, $service['service_id']);
+        $this->assertSame('Troca de óleo', $service['name']);
+        $this->assertEquals(150, $service['unit_price']);
+    }
+
+    public function test_calculates_totals_correctly(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload([
+                'services' => [['service_id' => $this->serviceId, 'quantity' => 2]],  // 2 × 150 = 300
+                'parts'    => [['item_id' => $this->itemId, 'quantity' => 3]],        // 3 × 35  = 105
+            ]));
+
+        $response->assertStatus(201)
+            ->assertJsonPath('service_order.services_total', 300)
+            ->assertJsonPath('service_order.parts_total', 105)
+            ->assertJsonPath('service_order.total_budget', 405);
+    }
+
+    // -------------------------------------------------------------------------
+    // send_quote
+    // -------------------------------------------------------------------------
+
+    public function test_status_is_recebida_when_send_quote_is_false(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload(['send_quote' => false]))
+            ->assertStatus(201)
+            ->assertJsonPath('service_order.status', 'recebida')
+            ->assertJsonPath('service_order.quote_sent_at', null);
+    }
+
+    public function test_status_is_aguardando_aprovacao_when_send_quote_is_true(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload(['send_quote' => true]));
+
+        $response->assertStatus(201)
+            ->assertJsonPath('service_order.status', 'aguardando_aprovacao');
+
+        $this->assertNotNull($response->json('service_order.quote_sent_at'));
+    }
+
+    // -------------------------------------------------------------------------
+    // Persistência no banco
+    // -------------------------------------------------------------------------
+
+    public function test_persists_service_order_to_database(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload());
+
+        $id = $response->json('service_order.id');
+
+        $this->assertDatabaseHas('service_orders', [
+            'id'                => $id,
+            'customer_document' => self::VALID_CPF,
+            'status'            => 'recebida',
+        ]);
+    }
+
+    public function test_persists_customer_to_database_when_new(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload());
+
+        $this->assertDatabaseHas('customers', [
+            'document' => self::VALID_CPF,
+        ]);
+    }
+
+    public function test_persists_vehicle_to_database_when_new(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload());
+
+        $this->assertDatabaseHas('vehicles', [
+            'plate' => 'ABC1D23',
+        ]);
+    }
+
+    public function test_reuses_existing_vehicle_on_second_order(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload());
+
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload());
+
+        $this->assertDatabaseCount('vehicles', 1);
+    }
+
+    // -------------------------------------------------------------------------
+    // Autenticação
+    // -------------------------------------------------------------------------
+
+    public function test_returns_401_without_authentication(): void
+    {
+        $this->postJson('/api/service-order', $this->validPayload())
+            ->assertStatus(401);
+    }
+
+    // -------------------------------------------------------------------------
+    // Validação de entrada (422)
+    // -------------------------------------------------------------------------
+
+    public function test_returns_422_when_vehicle_brand_is_missing(): void
+    {
+        $payload = $this->validPayload();
+        unset($payload['vehicle_brand']);
+
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['vehicle_brand']);
+    }
+
+    public function test_returns_422_when_services_array_is_empty(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload(['services' => []]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['services']);
+    }
+
+    public function test_returns_422_when_service_id_is_not_uuid(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload([
+                'services' => [['service_id' => 'nao-e-uuid', 'quantity' => 1]],
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['services.0.service_id']);
+    }
+
+    public function test_returns_422_when_service_quantity_is_zero(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload([
+                'services' => [['service_id' => $this->serviceId, 'quantity' => 0]],
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['services.0.quantity']);
+    }
+
+    public function test_returns_422_when_part_item_id_is_not_uuid(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload([
+                'parts' => [['item_id' => 'nao-e-uuid', 'quantity' => 1]],
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['parts.0.item_id']);
+    }
+
+    // -------------------------------------------------------------------------
+    // Erros de domínio (422)
+    // -------------------------------------------------------------------------
+
+    public function test_returns_422_when_service_id_does_not_exist(): void
+    {
+        $uuidInexistente = '00000000-0000-0000-0000-000000000000';
+
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload([
+                'services' => [['service_id' => $uuidInexistente, 'quantity' => 1]],
+            ]))
+            ->assertStatus(422)
+            ->assertJsonFragment([
+                'message' => "Servico '{$uuidInexistente}' nao encontrado.",
+            ]);
+    }
+
+    public function test_returns_422_when_item_id_does_not_exist(): void
+    {
+        $uuidInexistente = '00000000-0000-0000-0000-000000000000';
+
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload([
+                'parts' => [['item_id' => $uuidInexistente, 'quantity' => 1]],
+            ]))
+            ->assertStatus(422)
+            ->assertJsonFragment([
+                'message' => "Peca '{$uuidInexistente}' nao encontrada.",
+            ]);
+    }
+}
