@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Presentation\Http\Controllers\ServiceOrderController;
 use App\Presentation\Http\Controllers\ItemController;
+use App\Presentation\Http\Controllers\NotificationController;
 use App\Presentation\Http\Controllers\StockController;
 use App\Presentation\Http\Controllers\ServiceController;
 use App\Presentation\Http\Controllers\VehicleController;
@@ -65,4 +66,12 @@ Route::group([
     Route::post('/', [ServiceController::class, 'store']);
     Route::get('/{id}', [ServiceController::class, 'show']);
     Route::put('/{id}', [ServiceController::class, 'update']);
+});
+
+Route::group([
+    'middleware' => 'auth:api',
+    'prefix' => 'notification'
+], function () {
+    Route::get('/', [NotificationController::class, 'list']);
+    Route::get('/{id}', [NotificationController::class, 'show']);
 });
