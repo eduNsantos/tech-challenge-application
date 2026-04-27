@@ -19,15 +19,12 @@ use App\Domain\Vehicle\Entities\Vehicle;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use App\Domain\Vehicle\ValueObjects\Plate;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
 class CreateServiceOrderUseCaseTest extends TestCase
 {
-    use RefreshDatabase;
-
     private MockInterface $serviceOrderRepository;
     private MockInterface $customerRepository;
     private MockInterface $vehicleRepository;
@@ -43,8 +40,12 @@ class CreateServiceOrderUseCaseTest extends TestCase
     {
         parent::setUp();
 
-        $this->user = User::factory()->create(['document' => self::VALID_CPF]);
-        $this->actingAs($this->user);
+        $this->user = new User([
+            'name' => 'Test User',
+            'email' => 'test@test.com',
+            'document' => self::VALID_CPF,
+        ]);
+        $this->be($this->user);
 
         $this->serviceOrderRepository = Mockery::mock(ServiceOrderRepositoryInterface::class);
         $this->customerRepository     = Mockery::mock(CustomerRepositoryInterface::class);
@@ -353,8 +354,12 @@ class CreateServiceOrderUseCaseTest extends TestCase
 
     public function test_throws_exception_when_user_has_no_document(): void
     {
-        $userSemDoc = User::factory()->create(['document' => null]);
-        $this->actingAs($userSemDoc);
+        $userSemDoc = new User([
+            'name' => 'No Doc',
+            'email' => 'nodoc@test.com',
+            'document' => null,
+        ]);
+        $this->be($userSemDoc);
 
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Usuario autenticado sem documento vinculado');
