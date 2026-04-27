@@ -34,4 +34,14 @@ class NotificationRepositoryEloquent implements NotificationRepositoryInterface
             $model->sent_at
         );
     }
+
+    public function paginate(int $page, int $perPage): array
+    {
+        return NotificationModel::query()
+            ->skip(($page - 1) * $perPage)
+            ->take($perPage)
+            ->get()
+            ->toArray()
+        ;
+    }
 }
