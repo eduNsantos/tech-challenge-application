@@ -7,7 +7,18 @@ use App\Presentation\Http\Controllers\ItemController;
 use App\Presentation\Http\Controllers\NotificationController;
 use App\Presentation\Http\Controllers\StockController;
 use App\Presentation\Http\Controllers\ServiceController;
+use App\Presentation\Http\Controllers\CustomerController;
 use App\Presentation\Http\Controllers\VehicleController;
+
+Route::group([
+    'middleware' => 'auth:api',
+    'prefix' => 'customer'
+], function () {
+    Route::get('/', [CustomerController::class, 'list']);
+    Route::post('/', [CustomerController::class, 'store']);
+    Route::get('/{id}', [CustomerController::class, 'show']);
+    Route::put('/{id}', [CustomerController::class, 'update']);
+});
 
 Route::group([
     'middleware' => 'api',
@@ -56,7 +67,7 @@ Route::group([
     Route::post('/{id}/stock/withdrawal', [StockController::class, 'withdrawal']);
     Route::get('/{id}/stock/movements', [StockController::class, 'movements']);
 });
-// TODO: falta route de costumer
+// TODO: falta delete de costumer
 
 Route::group([
     'middleware' => 'auth:api',

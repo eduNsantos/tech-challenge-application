@@ -1,0 +1,89 @@
+<?php
+
+namespace Tests\Unit\Domain\Customer\ValueObjects;
+
+use App\Domain\Customer\ValueObjects\Document;
+use InvalidArgumentException;
+use PHPUnit\Framework\TestCase;
+
+class DocumentTest extends TestCase
+{
+    // -------------------------------------------------------------------------
+    // CPF válido
+    // -------------------------------------------------------------------------
+
+    public function test_accepts_valid_cpf(): void
+    {
+        $doc = new Document('529.982.247-25');
+
+        $this->assertSame('52998224725', $doc->getValue());
+    }
+
+    public function test_accepts_cpf_without_mask(): void
+    {
+        $doc = new Document('52998224725');
+
+        $this->assertSame('52998224725', $doc->getValue());
+    }
+
+    // -------------------------------------------------------------------------
+    // CPF inválido
+    // -------------------------------------------------------------------------
+
+    public function test_rejects_cpf_with_all_same_digits(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new Document('111.111.111-11');
+    }
+
+    public function test_rejects_cpf_with_wrong_check_digit(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new Document('529.982.247-99');
+    }
+
+    public function test_rejects_document_with_less_than_11_digits(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new Document('1234567');
+    }
+
+    public function test_rejects_document_with_between_11_and_14_digits(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new Document('1234567890123');
+    }
+
+    // -------------------------------------------------------------------------
+    // CNPJ válido
+    // -------------------------------------------------------------------------
+
+    public function test_accepts_valid_cnpj(): void
+    {
+        $doc = new Document('11.222.333/0001-81');
+
+        $this->assertSame('11222333000181', $doc->getValue());
+    }
+
+    public function test_accepts_cnpj_without_mask(): void
+    {
+        $doc = new Document('11222333000181');
+
+        $this->assertSame('11222333000181', $doc->getValue());
+    }
+
+    // -------------------------------------------------------------------------
+    // CNPJ inválido
+    // -------------------------------------------------------------------------
+
+    public function test_rejects_cnpj_with_all_same_digits(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new Document('11.111.111/1111-11');
+    }
+}
