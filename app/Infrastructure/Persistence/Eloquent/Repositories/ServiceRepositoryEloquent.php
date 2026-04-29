@@ -24,7 +24,9 @@ class ServiceRepositoryEloquent implements ServiceRepositoryInterface
     {
         $model = ServiceModel::where('name', $name)->first();
 
-        if (!$model) return null;
+        if (!$model) {
+            return null;
+        }
 
         return new Service(
             $model->id,
@@ -54,7 +56,9 @@ class ServiceRepositoryEloquent implements ServiceRepositoryInterface
     {
         $model = ServiceModel::find($id);
 
-        if (!$model) return null;
+        if (!$model) {
+            return null;
+        }
 
         return new Service(
             $model->id,
