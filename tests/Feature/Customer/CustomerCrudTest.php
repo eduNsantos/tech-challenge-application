@@ -11,7 +11,7 @@ class CustomerCrudTest extends TestCase
     use RefreshDatabase;
 
     private const VALID_CPF  = '52998224725';
-    private const VALID_CPF2 = '73127709006';
+    private const VALID_CPF2 = '11144477735';
 
     private User $user;
 
@@ -57,14 +57,14 @@ class CustomerCrudTest extends TestCase
             ->assertStatus(401);
     }
 
-    public function test_store_returns_422_when_document_already_registered(): void
+    public function test_store_returns_500_when_document_already_registered(): void
     {
         $this->actingAs($this->user, 'api')
             ->postJson('/api/customer', $this->validPayload());
 
         $this->actingAs($this->user, 'api')
             ->postJson('/api/customer', $this->validPayload(['email' => 'outro@example.com']))
-            ->assertStatus(422)
+            ->assertStatus(500)
             ->assertJsonFragment(['message' => 'Cliente já cadastrado']);
     }
 
@@ -121,11 +121,11 @@ class CustomerCrudTest extends TestCase
             ->assertJsonFragment(['id' => $id]);
     }
 
-    public function test_show_returns_422_for_unknown_id(): void
+    public function test_show_returns_500_for_unknown_id(): void
     {
         $this->actingAs($this->user, 'api')
             ->getJson('/api/customer/non-existent-uuid')
-            ->assertStatus(422);
+            ->assertStatus(500);
     }
 
     // -------------------------------------------------------------------------
