@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  app-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    env_file:
+      - .env.testing
+    depends_on:
+      - db-test
+    networks:
+      - app_network
+    command: >
+      sh -c "
+        php artisan config:clear &&
+        php artisan migrate --force &&
+        vendor/bin/phpunit --coverage-clover coverage.xml
+      "
+
+  db-test:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: test_db
+      MYSQL_USER: test_user
+      MYSQL_PASSWORD: test_password
+      # MYSQL_ALLOW_EMPTY_PASSWORD: yes
+    ports:
+      - 3307:3306
+    tmpfs:
+      - /var/lib/mysql
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge

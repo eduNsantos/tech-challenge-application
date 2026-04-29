@@ -11,6 +11,11 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip opcache
+
+RUN pecl install pcov
+
+RUN docker-php-ext-enable pcov
+
 WORKDIR /var/www/html
 COPY . .
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer

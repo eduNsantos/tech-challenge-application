@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 
 class ListVehicleUseCaseTest extends TestCase
 {
-    private MockInterface $repository;
+    private VehicleRepositoryInterface&MockInterface $repository;
     private ListVehicleUseCase $useCase;
 
     protected function setUp(): void
@@ -73,6 +73,8 @@ class ListVehicleUseCaseTest extends TestCase
             ->with(1, 10)
             ->andReturn([]);
 
-        $this->useCase->execute($dto);
+        $result = $this->useCase->execute($dto);
+
+        $this->assertSame([], $result);
     }
 }
