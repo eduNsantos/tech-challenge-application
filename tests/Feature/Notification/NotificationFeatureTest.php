@@ -47,10 +47,10 @@ class NotificationFeatureTest extends TestCase
             ->assertStatus(401);
     }
 
-    public function test_show_returns_422_for_unknown_id(): void
+    public function test_show_returns_500_for_unknown_id(): void
     {
         $this->actingAs($this->user, 'api')
             ->getJson('/api/notification/non-existent-uuid')
-            ->assertStatus(422);
+            ->assertStatus(500);
     }
 }

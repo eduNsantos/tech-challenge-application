@@ -178,9 +178,20 @@ class AuthenticationTest extends TestCase
 
     public function test_refresh_returns_new_token(): void
     {
-        $user = User::factory()->create(['document' => self::VALID_CPF]);
+        User::factory()->create([
+            'email'    => 'refresh@example.com',
+            'password' => bcrypt('password123'),
+            'document' => self::VALID_CPF,
+        ]);
 
-        $this->actingAs($user, 'api')
+        $loginResponse = $this->postJson('/api/auth/login', [
+            'email'    => 'refresh@example.com',
+            'password' => 'password123',
+        ]);
+
+        $token = $loginResponse->json('access_token');
+
+        $this->withHeader('Authorization', 'Bearer ' . $token)
             ->postJson('/api/auth/refresh')
             ->assertStatus(200)
             ->assertJsonStructure(['access_token', 'token_type', 'expires_in']);

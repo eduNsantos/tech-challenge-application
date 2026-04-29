@@ -11,7 +11,8 @@ services:
     env_file:
       - .env.testing
     depends_on:
-      - db-test
+      db-test:
+        condition: service_healthy
     networks:
       - app_network
     command: >
@@ -28,11 +29,16 @@ services:
       MYSQL_DATABASE: test_db
       MYSQL_USER: test_user
       MYSQL_PASSWORD: test_password
-      # MYSQL_ALLOW_EMPTY_PASSWORD: yes
     ports:
       - 3307:3306
     tmpfs:
       - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     networks:
       - app_network
 
