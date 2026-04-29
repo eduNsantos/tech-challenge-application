@@ -1,0 +1,6 @@
+projectKey=tech-challenge-1
+serverUrl=http://sonar:9000
+serverVersion=26.4.0.121862
+dashboardUrl=http://sonar:9000/dashboard?id=tech-challenge-1
+ceTaskId=809784c1-772c-49ca-ac01-205cb9d97f97
+ceTaskUrl=http://sonar:9000/api/ce/task?id=809784c1-772c-49ca-ac01-205cb9d97f97
