@@ -27,7 +27,9 @@ class VehicleRepositoryEloquent implements VehicleRepositoryInterface
     {
         $model = VehicleModel::where('plate', $plate)->first();
 
-        if (!$model) return null;
+        if (!$model) {
+            return null;
+        }
 
         return new Vehicle(
             $model->id,
@@ -59,7 +61,9 @@ class VehicleRepositoryEloquent implements VehicleRepositoryInterface
     {
         $model = VehicleModel::find($id);
 
-        if (!$model) return null;
+        if (!$model) {
+            return null;
+        }
 
         return new Vehicle(
             $model->id,

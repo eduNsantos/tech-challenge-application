@@ -58,5 +58,7 @@ class RepositoryServiceProvider extends ServiceProvider
         );
     }
 
-    public function boot(): void {}
+    public function boot(): void {
+        // No boot logic needed for this provider
+    }
 }
