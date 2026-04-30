@@ -19,6 +19,7 @@ use App\Domain\Vehicle\Entities\Vehicle;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use App\Domain\Vehicle\ValueObjects\Plate;
 use App\Models\User;
+use Illuminate\Support\Facades\Event;
 use Mockery;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -39,6 +40,9 @@ class CreateServiceOrderUseCaseTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Unit test: evita executar listeners reais que consultam banco fora do escopo do caso de uso.
+        Event::fake();
 
         $this->user = new User([
             'name' => 'Test User',

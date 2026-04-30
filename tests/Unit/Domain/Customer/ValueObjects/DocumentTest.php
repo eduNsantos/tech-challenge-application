@@ -83,7 +83,42 @@ class DocumentTest extends TestCase
     public function test_rejects_cnpj_with_all_same_digits(): void
     {
         $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('CNPJ inválido.');
 
         new Document('11.111.111/1111-11');
+    }
+
+    public function test_rejects_cnpj_with_wrong_first_check_digit(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('CNPJ inválido.');
+
+        // 11222333000181 é válido; trocar dígito 12 (índice 12) de 8 para 7 invalida o 1º dígito verificador
+        new Document('11222333000171');
+    }
+
+    public function test_rejects_cnpj_with_wrong_second_check_digit(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('CNPJ inválido.');
+
+        // 1º dígito verificador (posição 12) correto = 8, 2º (posição 13) alterado de 1 para 0
+        new Document('11222333000180');
+    }
+
+    public function test_rejects_cpf_exception_message(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('CPF inválido.');
+
+        new Document('529.982.247-99');
+    }
+
+    public function test_rejects_document_invalid_message(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Documento inválido. Deve ser um CPF ou CNPJ válido.');
+
+        new Document('123456789012'); // 12 dígitos — nem CPF nem CNPJ
     }
 }
