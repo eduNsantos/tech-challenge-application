@@ -7,7 +7,7 @@ class CreateServiceOrderDTO
     public function __construct(
         public string $vehicleId,
         public array $services,
-        public array $parts = [],
+        public array $items = [],
         public bool $sendQuote = true
     ) {}
 }
