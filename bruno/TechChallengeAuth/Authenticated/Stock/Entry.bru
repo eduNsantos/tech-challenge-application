@@ -5,13 +5,9 @@ meta {
 }
 
 post {
-  url: {{baseUrl}}/item/{{itemId}}/stock/entry
+  url: {{baseUrl}}/item/{{item_id}}/stock/entry
   body: json
   auth: inherit
-}
-
-vars:pre-request {
-  itemId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
 }
 
 body:json {
@@ -20,6 +16,10 @@ body:json {
     "reason": "Purchase NF 12345",
     "notes": "Supplier: Auto Parts Ltd"
   }
+}
+
+vars:pre-request {
+  itemId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
 }
 
 settings {

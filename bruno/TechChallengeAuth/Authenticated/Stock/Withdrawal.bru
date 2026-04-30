@@ -5,13 +5,9 @@ meta {
 }
 
 post {
-  url: {{baseUrl}}/item/{{itemId}}/stock/withdrawal
+  url: {{baseUrl}}/item/{{item_id}}/stock/withdrawal
   body: json
   auth: inherit
-}
-
-vars:pre-request {
-  itemId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
 }
 
 body:json {
@@ -20,6 +16,10 @@ body:json {
     "reason": "Used in WO #987",
     "notes": "Vehicle Toyota Corolla ABC1D23"
   }
+}
+
+vars:pre-request {
+  itemId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
 }
 
 settings {

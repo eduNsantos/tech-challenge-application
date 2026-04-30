@@ -24,10 +24,7 @@ class ServiceOrderController
     public function store(CreateServiceOrderRequest $request, CreateServiceOrderUseCase $useCase)
     {
         $dto = new CreateServiceOrderDTO(
-            vehicleBrand: $request->input('vehicle_brand'),
-            vehicleModel: $request->input('vehicle_model'),
-            vehicleYear: (int) $request->input('vehicle_year'),
-            vehiclePlate: $request->input('vehicle_plate'),
+            vehicleId: $request->input('vehicle_id'),
             services: $request->input('services', []),
             parts: $request->input('parts', []),
             sendQuote: $request->boolean('send_quote', true)
@@ -71,10 +68,7 @@ class ServiceOrderController
             id: $request->route('id'),
             services: $request->input('services'),
             parts: $request->input('parts'),
-            vehicleBrand: $request->input('vehicle_brand'),
-            vehicleModel: $request->input('vehicle_model'),
-            vehicleYear: $request->filled('vehicle_year') ? (int) $request->input('vehicle_year') : null,
-            vehiclePlate: $request->input('vehicle_plate'),
+            vehicleId: $request->input('vehicle_id'),
             status: $request->input('status'),
             sendQuote: $request->has('send_quote') ? $request->boolean('send_quote') : null,
             approveQuote: $request->has('approve_quote') ? $request->boolean('approve_quote') : null,
