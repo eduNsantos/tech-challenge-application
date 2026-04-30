@@ -26,11 +26,11 @@ use Tests\TestCase;
 
 class CreateServiceOrderUseCaseTest extends TestCase
 {
-    private MockInterface $serviceOrderRepository;
-    private MockInterface $customerRepository;
-    private MockInterface $vehicleRepository;
-    private MockInterface $serviceRepository;
-    private MockInterface $itemRepository;
+    private ServiceOrderRepositoryInterface&MockInterface $serviceOrderRepository;
+    private CustomerRepositoryInterface&MockInterface $customerRepository;
+    private VehicleRepositoryInterface&MockInterface $vehicleRepository;
+    private ServiceRepositoryInterface&MockInterface $serviceRepository;
+    private ItemRepositoryInterface&MockInterface $itemRepository;
     private CreateServiceOrderUseCase $useCase;
     private User $user;
 
