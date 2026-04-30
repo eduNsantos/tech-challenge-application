@@ -21,10 +21,7 @@ class UpdateServiceOrderRequest extends FormRequest
     {
         return [
             'id' => 'required|uuid',
-            'vehicle_brand' => 'sometimes|string|max:255',
-            'vehicle_model' => 'sometimes|string|max:255',
-            'vehicle_year' => 'sometimes|integer|min:1900|max:' . (date('Y') + 1),
-            'vehicle_plate' => 'sometimes|string|max:10',
+            'vehicle_id' => 'sometimes|uuid',
             'services'              => 'sometimes|array|min:1',
             'services.*.service_id' => 'required_with:services|uuid',
             'services.*.quantity'   => 'required_with:services|numeric|min:0.01',
