@@ -11,6 +11,7 @@ class CreateServiceOrderTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+    private string $vehicleId;
     private string $serviceId;
     private string $itemId;
 
@@ -41,6 +42,15 @@ class CreateServiceOrderTest extends TestCase
             ])
             ->json('id');
 
+        $this->vehicleId = $this->actingAs($this->user, 'api')
+            ->postJson('/api/vehicle', [
+                'brand' => 'Toyota',
+                'model' => 'Corolla',
+                'year'  => 2020,
+                'plate' => 'ABC1D23',
+            ])
+            ->json('id');
+
         // Adiciona estoque ao item para testes que envolvem baixa
         $this->actingAs($this->user, 'api')
             ->postJson("/api/item/{$this->itemId}/stock/entry", [
@@ -58,10 +68,7 @@ class CreateServiceOrderTest extends TestCase
     private function validPayload(array $overrides = []): array
     {
         return array_merge([
-            'vehicle_brand' => 'Toyota',
-            'vehicle_model' => 'Corolla',
-            'vehicle_year'  => 2020,
-            'vehicle_plate' => 'ABC1D23',
+            'vehicle_id'    => $this->vehicleId,
             'services'      => [
                 ['service_id' => $this->serviceId, 'quantity' => 1],
             ],
@@ -204,17 +211,18 @@ class CreateServiceOrderTest extends TestCase
         ]);
     }
 
-    public function test_persists_vehicle_to_database_when_new(): void
+    public function test_persists_vehicle_reference_on_service_order(): void
     {
-        $this->actingAs($this->user, 'api')
+        $response = $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload());
 
-        $this->assertDatabaseHas('vehicles', [
-            'plate' => 'ABC1D23',
+        $this->assertDatabaseHas('service_orders', [
+            'id' => $response->json('service_order.id'),
+            'vehicle_id' => $this->vehicleId,
         ]);
     }
 
-    public function test_reuses_existing_vehicle_on_second_order(): void
+    public function test_does_not_create_new_vehicle_when_creating_order(): void
     {
         $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload());
@@ -239,15 +247,15 @@ class CreateServiceOrderTest extends TestCase
     // Validação de entrada (422)
     // -------------------------------------------------------------------------
 
-    public function test_returns_422_when_vehicle_brand_is_missing(): void
+    public function test_returns_422_when_vehicle_id_is_missing(): void
     {
         $payload = $this->validPayload();
-        unset($payload['vehicle_brand']);
+        unset($payload['vehicle_id']);
 
         $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $payload)
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['vehicle_brand']);
+            ->assertJsonValidationErrors(['vehicle_id']);
     }
 
     public function test_returns_422_when_services_array_is_empty(): void

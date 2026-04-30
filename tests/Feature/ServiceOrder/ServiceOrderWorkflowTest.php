@@ -37,6 +37,7 @@ class ServiceOrderWorkflowTest extends TestCase
 
     private User $atendente;
     private User $mecanico;
+    private string $vehicleId;
     private string $serviceId;
     private string $itemId;
 
@@ -93,7 +94,7 @@ class ServiceOrderWorkflowTest extends TestCase
         // ─────────────────────────────────────────────────────────────────────
         // PASSO 1 — Atendente cadastra o veículo
         // ─────────────────────────────────────────────────────────────────────
-        $this->actingAs($this->atendente, 'api')
+        $vehicleResponse = $this->actingAs($this->atendente, 'api')
             ->postJson('/api/vehicle', [
                 'brand' => 'Toyota',
                 'model' => 'Corolla',
@@ -103,6 +104,8 @@ class ServiceOrderWorkflowTest extends TestCase
             ->assertOk()
             ->assertJsonStructure(['id', 'message']);
 
+        $this->vehicleId = (string) $vehicleResponse->json('id');
+
         $this->app['auth']->forgetGuards();
 
         // ─────────────────────────────────────────────────────────────────────
@@ -110,10 +113,7 @@ class ServiceOrderWorkflowTest extends TestCase
         // ─────────────────────────────────────────────────────────────────────
         $osResponse = $this->actingAs($this->atendente, 'api')
             ->postJson('/api/service-order', [
-                'vehicle_brand' => 'Toyota',
-                'vehicle_model' => 'Corolla',
-                'vehicle_year'  => 2020,
-                'vehicle_plate' => 'ABC1D23',
+                'vehicle_id'    => $this->vehicleId,
                 'services'      => [
                     ['service_id' => $this->serviceId, 'quantity' => 1],
                 ],
