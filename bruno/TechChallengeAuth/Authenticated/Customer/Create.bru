@@ -1,0 +1,25 @@
+meta {
+  name: Create Customer
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/customer
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "João Silva",
+    "email": "joao@example.com",
+    "document": "52998224725",
+    "phone": "11999999999"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

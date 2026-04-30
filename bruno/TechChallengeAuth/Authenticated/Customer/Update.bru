@@ -1,0 +1,28 @@
+meta {
+  name: Update Customer
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/customer/{{customerId}}
+  body: json
+  auth: inherit
+}
+
+vars:pre-request {
+  customerId: c1d2e3f4-a5b6-7890-cdef-012345678901
+}
+
+body:json {
+  {
+    "name": "João Silva Atualizado",
+    "email": "joao.novo@example.com",
+    "phone": "11988888888"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

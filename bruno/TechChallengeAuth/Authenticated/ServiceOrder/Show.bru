@@ -1,0 +1,20 @@
+meta {
+  name: Show Service Order
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/service-order/{{serviceOrderId}}
+  body: none
+  auth: inherit
+}
+
+vars:pre-request {
+  serviceOrderId: b1c2d3e4-f5a6-7890-bcde-f01234567890
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
