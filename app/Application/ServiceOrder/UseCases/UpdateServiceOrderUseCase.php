@@ -50,40 +50,6 @@ class UpdateServiceOrderUseCase
             $this->withdrawStockForParts($serviceOrder);
         }
 
-        if (
-            $dto->vehicleBrand !== null ||
-            $dto->vehicleModel !== null ||
-            $dto->vehicleYear !== null ||
-            $dto->vehiclePlate !== null
-        ) {
-            $vehicle = $this->vehicleRepository->findById($serviceOrder->vehicleId);
-
-            if (!$vehicle) {
-                throw new \Exception('Veiculo da ordem de servico nao encontrado');
-            }
-
-            $plate = $dto->vehiclePlate !== null
-                ? new Plate($dto->vehiclePlate)
-                : null;
-
-            if ($plate !== null) {
-                $existing = $this->vehicleRepository->findByPlate($plate->getValue());
-
-                if ($existing !== null && $existing->id !== $vehicle->id) {
-                    throw new \Exception('Placa ja cadastrada para outro veiculo');
-                }
-            }
-
-            $vehicle->updateData(
-                $dto->vehicleBrand,
-                $dto->vehicleModel,
-                $dto->vehicleYear,
-                $plate
-            );
-
-            $this->vehicleRepository->update($vehicle);
-        }
-
         $this->serviceOrderRepository->update($serviceOrder);
 
         if ($dto->sendQuote === true) {

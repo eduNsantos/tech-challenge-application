@@ -18,11 +18,8 @@ class CreateServiceOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'vehicle_brand'          => 'required|string|max:255',
-            'vehicle_model'          => 'required|string|max:255',
-            'vehicle_year'           => 'required|integer|min:1900|max:' . (date('Y') + 1),
-            'vehicle_plate'          => 'required|string|max:10',
-            'services'               => 'required|array|min:1',
+            'vehicle_id'          => 'required|uuid',
+            'services'               => 'array|required|min:1',
             'services.*.service_id'  => 'required|uuid',
             'services.*.quantity'    => 'required|numeric|min:0.01',
             'parts'                  => 'sometimes|array',

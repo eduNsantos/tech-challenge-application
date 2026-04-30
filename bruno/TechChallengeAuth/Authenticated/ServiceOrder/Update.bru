@@ -10,20 +10,20 @@ put {
   auth: inherit
 }
 
-vars:pre-request {
-  serviceOrderId: b1c2d3e4-f5a6-7890-bcde-f01234567890
-}
-
 body:json {
   {
     "services": [
       {
-        "service_id": "550e8400-e29b-41d4-a716-446655440010",
-        "quantity": 2
+        "service_id": "{{service_id}}",
+        "quantity": 3
       }
     ],
     "approve_quote": true
   }
+}
+
+vars:pre-request {
+  serviceOrderId: 58fcf673-2ed0-46d8-83f8-e6877bf67b76
 }
 
 settings {

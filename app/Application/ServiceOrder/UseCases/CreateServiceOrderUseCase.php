@@ -52,19 +52,6 @@ class CreateServiceOrderUseCase
             $this->customerRepository->save($customer);
         }
 
-        $plate = new Plate($dto->vehiclePlate);
-        $vehicle = $this->vehicleRepository->findByPlate($plate->getValue());
-
-        if (!$vehicle) {
-            $vehicle = Vehicle::create(
-                $dto->vehicleBrand,
-                $dto->vehicleModel,
-                $dto->vehicleYear,
-                $plate
-            );
-
-            $this->vehicleRepository->save($vehicle);
-        }
 
         $services = $this->resolveServices($dto->services);
         $parts = $this->resolveParts($dto->parts);
@@ -72,7 +59,7 @@ class CreateServiceOrderUseCase
         $serviceOrder = ServiceOrder::create(
             customerId: $customer->id,
             customerDocument: $customer->document,
-            vehicleId: $vehicle->id,
+            vehicleId: $dto->vehicleId,
             services: $services,
             parts: $parts
         );
