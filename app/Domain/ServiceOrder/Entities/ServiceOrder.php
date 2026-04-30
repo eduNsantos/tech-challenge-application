@@ -19,10 +19,10 @@ class ServiceOrder
         public string $vehicleId,
         public string $customerDocument,
         public array $services,
-        public array $parts,
+        public array $items,
         public string $status,
         public float $servicesTotal,
-        public float $partsTotal,
+        public float $itemsTotal,
         public float $totalBudget,
         public ?string $quoteSentAt,
         public ?string $quoteApprovedAt
@@ -35,10 +35,10 @@ class ServiceOrder
         string $vehicleId,
         string $customerDocument,
         array $services,
-        array $parts
+        array $items
     ): self {
         $servicesTotal = self::calculateItemsTotal($services);
-        $partsTotal = self::calculateItemsTotal($parts);
+        $itemsTotal = self::calculateItemsTotal($items);
 
         return new self(
             id: Str::uuid()->toString(),
@@ -46,29 +46,29 @@ class ServiceOrder
             vehicleId: $vehicleId,
             customerDocument: $customerDocument,
             services: $services,
-            parts: $parts,
+            items: $items,
             status: self::STATUS_RECEBIDA,
             servicesTotal: $servicesTotal,
-            partsTotal: $partsTotal,
-            totalBudget: $servicesTotal + $partsTotal,
+            itemsTotal: $itemsTotal,
+            totalBudget: $servicesTotal + $itemsTotal,
             quoteSentAt: null,
             quoteApprovedAt: null
         );
     }
 
-    public function updateItems(?array $services, ?array $parts): void
+    public function updateItems(?array $services, ?array $items): void
     {
         if ($services !== null) {
             $this->services = $services;
         }
 
-        if ($parts !== null) {
-            $this->parts = $parts;
+        if ($items !== null) {
+            $this->items = $items;
         }
 
         $this->servicesTotal = self::calculateItemsTotal($this->services);
-        $this->partsTotal = self::calculateItemsTotal($this->parts);
-        $this->totalBudget = $this->servicesTotal + $this->partsTotal;
+        $this->itemsTotal = self::calculateItemsTotal($this->items);
+        $this->totalBudget = $this->servicesTotal + $this->itemsTotal;
     }
 
     public function changeStatus(string $status): void
