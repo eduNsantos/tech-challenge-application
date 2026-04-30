@@ -19,6 +19,9 @@ up: ## Sobe os containers de desenvolvimento (app, db, swagger, sonar)
 down: ## Para e remove os containers de desenvolvimento
 	$(COMPOSE) down
 
+migrate:
+	$(COMPOSE) exec app-php php artisan migrate --force
+
 ## ── Testes ───────────────────────────────────────────────────────────────────
 
 test: ## Roda a suíte de testes sem gerar coverage (mais rápido)
