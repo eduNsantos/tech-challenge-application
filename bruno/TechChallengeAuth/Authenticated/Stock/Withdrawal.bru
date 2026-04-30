@@ -1,0 +1,28 @@
+meta {
+  name: Stock Withdrawal
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/item/{{itemId}}/stock/withdrawal
+  body: json
+  auth: inherit
+}
+
+vars:pre-request {
+  itemId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+}
+
+body:json {
+  {
+    "quantity": 2,
+    "reason": "Used in WO #987",
+    "notes": "Vehicle Toyota Corolla ABC1D23"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,28 @@
+meta {
+  name: Update Item
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/item/{{itemId}}
+  body: json
+  auth: inherit
+}
+
+vars:pre-request {
+  itemId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+}
+
+body:json {
+  {
+    "name": "Synthetic oil filter",
+    "minimum_quantity": 8,
+    "unit_price": 34.90
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

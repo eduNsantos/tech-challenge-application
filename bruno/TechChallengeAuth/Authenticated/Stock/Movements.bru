@@ -1,0 +1,20 @@
+meta {
+  name: Stock Movements
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/item/{{itemId}}/stock/movements?page=1&perPage=20
+  body: none
+  auth: inherit
+}
+
+vars:pre-request {
+  itemId: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

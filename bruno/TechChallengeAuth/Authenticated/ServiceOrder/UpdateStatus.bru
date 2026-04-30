@@ -1,0 +1,26 @@
+meta {
+  name: Update Service Order Status
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/service-order/{{serviceOrderId}}/status
+  body: json
+  auth: inherit
+}
+
+vars:pre-request {
+  serviceOrderId: b1c2d3e4-f5a6-7890-bcde-f01234567890
+}
+
+body:json {
+  {
+    "status": "em_execucao"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
