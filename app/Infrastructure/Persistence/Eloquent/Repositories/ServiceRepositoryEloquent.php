@@ -75,4 +75,9 @@ class ServiceRepositoryEloquent implements ServiceRepositoryInterface
             'updated_user_id' => Auth::id()
         ]);
     }
+
+    public function delete(string $id): void
+    {
+        ServiceModel::where('id', $id)->delete();
+    }
 }

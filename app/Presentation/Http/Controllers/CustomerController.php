@@ -3,6 +3,7 @@
 namespace App\Presentation\Http\Controllers;
 
 use App\Application\Customer\UseCases\CreateCustomerUseCase;
+use App\Application\Customer\UseCases\DeleteCustomerUseCase;
 use App\Application\Customer\UseCases\ListCustomerUseCase;
 use App\Application\Customer\UseCases\ShowCustomerUseCase;
 use App\Application\Customer\UseCases\UpdateCustomerUseCase;
@@ -78,5 +79,11 @@ class CustomerController
                 'document' => $customer->document,
             ],
         ]);
+    }
+
+    public function destroy(string $id, DeleteCustomerUseCase $useCase)
+    {
+        $useCase->execute($id);
+        return response()->json(null, 204);
     }
 }

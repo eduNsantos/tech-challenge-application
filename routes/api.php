@@ -19,6 +19,7 @@ Route::group([
     Route::post('/', [CustomerController::class, 'store']);
     Route::get('/{id}', [CustomerController::class, 'show']);
     Route::put('/{id}', [CustomerController::class, 'update']);
+    Route::delete('/{id}', [CustomerController::class, 'destroy']);
 });
 
 Route::group([
@@ -40,6 +41,7 @@ Route::group([
     Route::post('/', [VehicleController::class, 'store']);
     Route::get('/{id}', [VehicleController::class, 'show']);
     Route::put('/{id}', [VehicleController::class, 'update']);
+    Route::delete('/{id}', [VehicleController::class, 'destroy']);
 });
 
 Route::group([
@@ -78,8 +80,6 @@ Route::group([
     Route::post('/{id}/stock/withdrawal', [StockController::class, 'withdrawal']);
     Route::get('/{id}/stock/movements', [StockController::class, 'movements']);
 });
-// TODO: falta delete de costumer
-
 Route::group([
     'middleware' => 'auth:api',
     'prefix' => 'service'
@@ -88,6 +88,7 @@ Route::group([
     Route::post('/', [ServiceController::class, 'store']);
     Route::get('/{id}', [ServiceController::class, 'show']);
     Route::put('/{id}', [ServiceController::class, 'update']);
+    Route::delete('/{id}', [ServiceController::class, 'destroy']);
 });
 
 Route::group([
