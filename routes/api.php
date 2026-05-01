@@ -66,6 +66,7 @@ Route::group([
     'middleware' => 'auth:api',
     'prefix' => 'service-order-service'
 ], function () {
+    Route::get('/metrics/average-execution-time', [ServiceOrderServiceController::class, 'averageExecutionTime']);
     Route::patch('/{id}/start', [ServiceOrderServiceController::class, 'start']);
     Route::patch('/{id}/finish', [ServiceOrderServiceController::class, 'finish']);
 });
