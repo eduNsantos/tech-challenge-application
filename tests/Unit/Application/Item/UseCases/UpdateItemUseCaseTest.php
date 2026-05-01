@@ -120,6 +120,7 @@ class UpdateItemUseCaseTest extends TestCase
         $this->repository->shouldNotReceive('findByCode');
         $this->repository->shouldReceive('update')->once();
 
-        $this->useCase->execute($dto);
+        $result = $this->useCase->execute($dto);
+        $this->assertSame('New Name', $result->name);
     }
 }

@@ -93,7 +93,8 @@ class ListItemUseCaseTest extends TestCase
             ->with(1, 10, null)
             ->andReturn([]);
 
-        $this->useCase->execute($dto);
+        $result = $this->useCase->execute($dto);
+        $this->assertSame([], $result);
     }
 
     public function test_passes_type_filter_to_find_all(): void
@@ -122,7 +123,8 @@ class ListItemUseCaseTest extends TestCase
             ->with(2, 5, 'supply')
             ->andReturn([]);
 
-        $this->useCase->execute($dto);
+        $result = $this->useCase->execute($dto);
+        $this->assertSame([], $result);
     }
 
     public function test_returns_empty_array_when_no_items_exist(): void

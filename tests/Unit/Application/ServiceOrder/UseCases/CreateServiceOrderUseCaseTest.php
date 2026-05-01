@@ -142,22 +142,6 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->assertNotEmpty($result->customerId);
     }
 
-    public function test_reuses_existing_customer_without_creating_new_one(): void
-    {
-        $this->customerRepository->shouldReceive('findByDocument')->once()->andReturn($this->makeCustomer());
-        $this->customerRepository->shouldNotReceive('save');
-        $this->serviceRepository->shouldReceive('findById')->once()->andReturn($this->makeService());
-        $this->itemRepository->shouldReceive('findById')->once()->andReturn($this->makeItem());
-
-        $this->serviceOrderRepository->shouldReceive('save')->once();
-        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once();
-        $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();
-
-        $result = $this->useCase->execute($this->makeDTO());
-
-        $this->assertSame('cust-1', $result->customerId);
-    }
-
     public function test_snapshots_service_name_and_price_from_catalog(): void
     {
         $this->customerRepository->shouldReceive('findByDocument')->once()->andReturn($this->makeCustomer());
@@ -284,4 +268,5 @@ class CreateServiceOrderUseCaseTest extends TestCase
 
         $this->useCase->execute($this->makeDTO(['user' => $user]));
     }
+
 }

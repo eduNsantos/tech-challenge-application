@@ -90,6 +90,7 @@ class ShowItemUseCaseTest extends TestCase
             ->with('uuid-ABCD')
             ->andReturn($item);
 
-        $this->useCase->execute(new ShowItemDTO('uuid-ABCD'));
+        $result = $this->useCase->execute(new ShowItemDTO('uuid-ABCD'));
+        $this->assertSame('uuid-ABCD', $result->id);
     }
 }

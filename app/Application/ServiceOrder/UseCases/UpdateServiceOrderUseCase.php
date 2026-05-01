@@ -12,13 +12,11 @@ use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use App\Domain\ServiceOrder\Events\ServiceOrderQuoteSent;
-use App\Domain\Vehicle\ValueObjects\Plate;
 
 class UpdateServiceOrderUseCase
 {
     public function __construct(
         private ServiceOrderRepositoryInterface $serviceOrderRepository,
-        private VehicleRepositoryInterface $vehicleRepository,
         private ServiceRepositoryInterface $serviceRepository,
         private ItemRepositoryInterface $itemRepository,
         private StockMovementRepositoryInterface $stockMovementRepository

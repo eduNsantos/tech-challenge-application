@@ -15,7 +15,6 @@ use App\Domain\Service\Entities\Service;
 use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
-use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\TestCase;
@@ -23,7 +22,6 @@ use PHPUnit\Framework\TestCase;
 class UpdateServiceOrderUseCaseTest extends TestCase
 {
     private ServiceOrderRepositoryInterface&MockInterface $serviceOrderRepository;
-    private VehicleRepositoryInterface&MockInterface $vehicleRepository;
     private ServiceRepositoryInterface&MockInterface $serviceRepository;
     private ItemRepositoryInterface&MockInterface $itemRepository;
     private StockMovementRepositoryInterface&MockInterface $stockMovementRepository;
@@ -34,14 +32,12 @@ class UpdateServiceOrderUseCaseTest extends TestCase
         parent::setUp();
 
         $this->serviceOrderRepository = Mockery::mock(ServiceOrderRepositoryInterface::class);
-        $this->vehicleRepository = Mockery::mock(VehicleRepositoryInterface::class);
         $this->serviceRepository = Mockery::mock(ServiceRepositoryInterface::class);
         $this->itemRepository = Mockery::mock(ItemRepositoryInterface::class);
         $this->stockMovementRepository = Mockery::mock(StockMovementRepositoryInterface::class);
 
         $this->useCase = new UpdateServiceOrderUseCase(
             $this->serviceOrderRepository,
-            $this->vehicleRepository,
             $this->serviceRepository,
             $this->itemRepository,
             $this->stockMovementRepository
@@ -182,5 +178,67 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             sendQuote: null,
             approveQuote: null
         ));
+    }
+
+    public function test_throws_when_item_id_is_empty_in_resolveItems(): void
+    {
+        $serviceOrder = $this->makeServiceOrder();
+
+        $this->serviceOrderRepository->shouldReceive('findById')->once()->andReturn($serviceOrder);
+        $this->serviceOrderRepository->shouldNotReceive('update');
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('Item da OS sem identificador informado.');
+
+        $this->useCase->execute(new UpdateServiceOrderDTO(
+            id: 'os-1',
+            services: null,
+            items: [['quantity' => 1]],
+            vehicleId: null,
+            status: null,
+            sendQuote: null,
+            approveQuote: null
+        ));
+    }
+
+    public function test_throws_when_item_not_found_during_withdrawal(): void
+    {
+        $serviceOrder = $this->makeServiceOrder();
+
+        $this->serviceOrderRepository->shouldReceive('findById')->once()->andReturn($serviceOrder);
+        $this->itemRepository->shouldReceive('findById')->with('item-1')->andReturnNull();
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage("Peca 'item-1' nao encontrada ao baixar estoque.");
+
+        $this->useCase->execute(new UpdateServiceOrderDTO(
+            id: 'os-1',
+            services: null,
+            items: null,
+            vehicleId: null,
+            status: null,
+            sendQuote: null,
+            approveQuote: true
+        ));
+    }
+
+    public function test_changes_status_when_status_is_provided(): void
+    {
+        $serviceOrder = $this->makeServiceOrder();
+
+        $this->serviceOrderRepository->shouldReceive('findById')->once()->andReturn($serviceOrder);
+        $this->serviceOrderRepository->shouldReceive('update')->once()->with($serviceOrder);
+
+        $result = $this->useCase->execute(new UpdateServiceOrderDTO(
+            id: 'os-1',
+            services: null,
+            items: null,
+            vehicleId: null,
+            status: ServiceOrder::STATUS_EM_EXECUCAO,
+            sendQuote: null,
+            approveQuote: null
+        ));
+
+        $this->assertSame(ServiceOrder::STATUS_EM_EXECUCAO, $result->status);
     }
 }
