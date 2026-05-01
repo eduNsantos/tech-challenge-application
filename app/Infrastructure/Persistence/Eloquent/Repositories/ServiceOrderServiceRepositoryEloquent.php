@@ -5,14 +5,14 @@ namespace App\Infrastructure\Persistence\Eloquent\Repositories;
 use App\Application\ServiceOrderService\DTOs\CreateServiceOrderServiceDTO;
 use App\Domain\ServiceOrderService\Entities\ServiceOrderService as EntitiesServiceOrderService;
 use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
-use App\Infrastructure\Persistence\Eloquent\Models\ServiceOrderService;
+use App\Infrastructure\Persistence\Eloquent\Models\ServiceOrderServiceModel;
 use Illuminate\Support\Str;
 
 class ServiceOrderServiceRepositoryEloquent implements ServiceOrderServiceInterface
 {
     public function createServiceOrderService(CreateServiceOrderServiceDTO $dto): EntitiesServiceOrderService
     {
-        $result = ServiceOrderService::create([
+        $result = ServiceOrderServiceModel::create([
             'id' => Str::uuid()->toString(),
             'service_order_id' => $dto->service_order_id,
             'service_id' => $dto->service_id,
@@ -27,7 +27,7 @@ class ServiceOrderServiceRepositoryEloquent implements ServiceOrderServiceInterf
 
     public function findById(string $id): ?EntitiesServiceOrderService
     {
-        $model = ServiceOrderService::find($id);
+        $model = ServiceOrderServiceModel::find($id);
 
         if (!$model) {
             return null;
@@ -38,7 +38,7 @@ class ServiceOrderServiceRepositoryEloquent implements ServiceOrderServiceInterf
 
     public function startService(string $id, ?int $startedUserId = null): EntitiesServiceOrderService
     {
-        $model = ServiceOrderService::find($id);
+        $model = ServiceOrderServiceModel::find($id);
 
         if (!$model) {
             throw new \DomainException('Servico da OS nao encontrado.');
@@ -55,7 +55,7 @@ class ServiceOrderServiceRepositoryEloquent implements ServiceOrderServiceInterf
 
     public function finishService(string $id, ?int $finishedUserId = null): EntitiesServiceOrderService
     {
-        $model = ServiceOrderService::find($id);
+        $model = ServiceOrderServiceModel::find($id);
 
         if (!$model) {
             throw new \DomainException('Servico da OS nao encontrado.');
@@ -70,7 +70,7 @@ class ServiceOrderServiceRepositoryEloquent implements ServiceOrderServiceInterf
         return $this->toEntity($model);
     }
 
-    private function toEntity(ServiceOrderService $model): EntitiesServiceOrderService
+    private function toEntity(ServiceOrderServiceModel $model): EntitiesServiceOrderService
     {
         return new EntitiesServiceOrderService(
             id: $model->id,
