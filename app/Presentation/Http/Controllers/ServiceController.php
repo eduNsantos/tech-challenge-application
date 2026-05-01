@@ -7,6 +7,7 @@ use App\Application\Service\DTOs\ListServiceDTO;
 use App\Application\Service\DTOs\ShowServiceDTO;
 use App\Application\Service\DTOs\UpdateServiceDTO;
 use App\Application\Service\UseCases\CreateServiceUseCase;
+use App\Application\Service\UseCases\DeleteServiceUseCase;
 use App\Application\Service\UseCases\ListServiceUseCase;
 use App\Application\Service\UseCases\ShowServiceUseCase;
 use App\Application\Service\UseCases\UpdateServiceUseCase;
@@ -84,5 +85,11 @@ class ServiceController
             ],
             'message' => 'Serviço atualizado com sucesso'
         ], 200);
+    }
+
+    public function destroy(string $id, DeleteServiceUseCase $useCase)
+    {
+        $useCase->execute($id);
+        return response()->json(null, 204);
     }
 }

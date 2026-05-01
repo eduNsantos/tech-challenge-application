@@ -84,4 +84,9 @@ class VehicleRepositoryEloquent implements VehicleRepositoryInterface
             'updated_user_id' => Auth::id()
         ]);
     }
+
+    public function delete(string $id): void
+    {
+        VehicleModel::where('id', $id)->delete();
+    }
 }

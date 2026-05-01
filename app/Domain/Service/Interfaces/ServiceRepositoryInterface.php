@@ -15,4 +15,5 @@ interface ServiceRepositoryInterface
     public function paginate(int $page, int $perPage): array;
     public function findById(string $id): ?Service;
     public function update(Service $service): void;
+    public function delete(string $id): void;
 }
