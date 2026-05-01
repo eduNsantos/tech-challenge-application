@@ -1,7 +1,7 @@
 meta {
-  name: Update Service Order
+  name: Update Service Order - Approve Quote
   type: http
-  seq: 4
+  seq: 10
 }
 
 put {
@@ -10,14 +10,14 @@ put {
   auth: inherit
 }
 
+vars:pre-request {
+  serviceOrderId: 7f4b9068-892f-416d-971a-78872e0a6e0f
+}
+
 body:json {
   {
     "approve_quote": true
   }
-}
-
-vars:pre-request {
-  serviceOrderId: 7f4b9068-892f-416d-971a-78872e0a6e0f
 }
 
 settings {

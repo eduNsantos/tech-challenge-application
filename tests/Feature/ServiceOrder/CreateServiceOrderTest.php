@@ -75,9 +75,6 @@ class CreateServiceOrderTest extends TestCase
             'items'         => [
                 ['item_id' => $this->itemId, 'quantity' => 1],
             ],
-            'parts'         => [
-                ['item_id' => $this->itemId, 'quantity' => 1],
-            ],
             'send_quote'    => false,
         ], $overrides);
     }
@@ -95,8 +92,8 @@ class CreateServiceOrderTest extends TestCase
             ->assertJsonStructure([
                 'service_order' => [
                     'id', 'customer_id', 'customer_document', 'vehicle_id',
-                    'services', 'parts', 'status',
-                    'services_total', 'parts_total', 'total_budget',
+                    'services', 'items', 'status',
+                    'services_total', 'items_total', 'total_budget',
                     'quote_sent_at', 'quote_approved_at',
                 ],
                 'message',
@@ -120,25 +117,22 @@ class CreateServiceOrderTest extends TestCase
             ->assertJsonValidationErrors(['items']);
     }
 
-    public function test_creates_order_with_parts(): void
+    public function test_creates_order_with_items(): void
     {
         $response = $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload([
                 'items' => [
                     ['item_id' => $this->itemId, 'quantity' => 2],
                 ],
-                'parts' => [
-                    ['item_id' => $this->itemId, 'quantity' => 2],
-                ],
             ]));
 
         $response->assertStatus(201);
 
-        $parts = $response->json('service_order.parts');
-        $this->assertCount(1, $parts);
-        $this->assertSame($this->itemId, $parts[0]['item_id']);
-        $this->assertSame('Filtro de óleo', $parts[0]['name']);
-        $this->assertEquals(2, $parts[0]['quantity']);
+        $items = $response->json('service_order.items');
+        $this->assertCount(1, $items);
+        $this->assertSame($this->itemId, $items[0]['item_id']);
+        $this->assertSame('Filtro de óleo', $items[0]['name']);
+        $this->assertEquals(2, $items[0]['quantity']);
     }
 
     public function test_snapshots_service_data_from_catalog(): void
@@ -162,12 +156,11 @@ class CreateServiceOrderTest extends TestCase
             ->postJson('/api/service-order', $this->validPayload([
                 'services' => [['service_id' => $this->serviceId, 'quantity' => 2]],  // 2 × 150 = 300
                 'items'    => [['item_id' => $this->itemId, 'quantity' => 3]],        // 3 × 35  = 105
-                'parts'    => [['item_id' => $this->itemId, 'quantity' => 3]],        // 3 × 35  = 105
             ]));
 
         $response->assertStatus(201)
             ->assertJsonPath('service_order.services_total', 300)
-            ->assertJsonPath('service_order.parts_total', 105)
+            ->assertJsonPath('service_order.items_total', 105)
             ->assertJsonPath('service_order.total_budget', 405);
     }
 

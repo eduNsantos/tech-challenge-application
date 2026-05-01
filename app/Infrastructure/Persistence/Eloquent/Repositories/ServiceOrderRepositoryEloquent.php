@@ -4,10 +4,12 @@ namespace App\Infrastructure\Persistence\Eloquent\Repositories;
 
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
-use App\Infrastructure\Persistence\Eloquent\Models\ServiceOrderItem;
+use App\Infrastructure\Persistence\Eloquent\Models\ServiceOrderItemModel;
 use App\Infrastructure\Persistence\Eloquent\Models\ServiceOrderModel;
-use App\Infrastructure\Persistence\Eloquent\Models\ServiceOrderService;
+use App\Infrastructure\Persistence\Eloquent\Models\ServiceOrderServiceModel;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
 {
@@ -37,7 +39,7 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
             return null;
         }
 
-        $services = ServiceOrderService::query()
+        $services = ServiceOrderServiceModel::query()
             ->where('service_order_id', $id)
             ->get(['service_id', 'quantity', 'price'])
             ->map(static fn ($service) => [
@@ -48,7 +50,7 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
             ->values()
             ->all();
 
-        $items = ServiceOrderItem::query()
+        $items = ServiceOrderItemModel::query()
             ->where('service_order_id', $id)
             ->get(['item_id', 'quantity', 'price'])
             ->map(static fn ($item) => [
@@ -77,12 +79,12 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
 
     public function findAll(): array
     {
-        return ServiceOrderModel::with(['customer', 'vehicle'])->get()->toArray();
+        return ServiceOrderModel::with(['customer', 'vehicle', 'services', 'services.service', 'items', 'items.item'])->get()->toArray();
     }
 
     public function paginate(int $page, int $perPage): array
     {
-        return ServiceOrderModel::with(['customer', 'vehicle'])
+        return ServiceOrderModel::with(['customer', 'vehicle', 'services', 'services.service', 'items', 'items.item'])
             ->skip(($page - 1) * $perPage)
             ->take($perPage)
             ->orderByDesc('created_at')
@@ -92,15 +94,54 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
 
     public function update(ServiceOrder $serviceOrder): void
     {
-        ServiceOrderModel::where('id', $serviceOrder->id)->update([
-            'status' => $serviceOrder->status,
-            'services_total' => $serviceOrder->servicesTotal,
-            'parts_total' => $serviceOrder->itemsTotal,
-            'total_budget' => $serviceOrder->totalBudget,
-            'quote_sent_at' => $serviceOrder->quoteSentAt,
-            'quote_approved_at' => $serviceOrder->quoteApprovedAt,
-            'updated_user_id' => Auth::id(),
-        ]);
+        DB::transaction(function () use ($serviceOrder): void {
+            ServiceOrderModel::where('id', $serviceOrder->id)->update([
+                'status' => $serviceOrder->status,
+                'services_total' => $serviceOrder->servicesTotal,
+                'parts_total' => $serviceOrder->itemsTotal,
+                'total_budget' => $serviceOrder->totalBudget,
+                'quote_sent_at' => $serviceOrder->quoteSentAt,
+                'quote_approved_at' => $serviceOrder->quoteApprovedAt,
+                'updated_user_id' => Auth::id(),
+            ]);
+
+            $this->syncServices($serviceOrder);
+            $this->syncItems($serviceOrder);
+        });
+    }
+
+    private function syncServices(ServiceOrder $serviceOrder): void
+    {
+        ServiceOrderServiceModel::query()
+            ->where('service_order_id', $serviceOrder->id)
+            ->delete();
+
+        foreach ($serviceOrder->services as $service) {
+            ServiceOrderServiceModel::query()->create([
+                'id' => Str::uuid()->toString(),
+                'service_order_id' => $serviceOrder->id,
+                'service_id' => $service['service_id'],
+                'quantity' => (int) ($service['quantity'] ?? 0),
+                'price' => (float) ($service['unit_price'] ?? 0),
+            ]);
+        }
+    }
+
+    private function syncItems(ServiceOrder $serviceOrder): void
+    {
+        ServiceOrderItemModel::query()
+            ->where('service_order_id', $serviceOrder->id)
+            ->delete();
+
+        foreach ($serviceOrder->items as $item) {
+            ServiceOrderItemModel::query()->create([
+                'id' => Str::uuid()->toString(),
+                'service_order_id' => $serviceOrder->id,
+                'item_id' => $item['item_id'],
+                'quantity' => (int) ($item['quantity'] ?? 0),
+                'price' => (float) ($item['unit_price'] ?? 0),
+            ]);
+        }
     }
 
     public function delete(string $id): void

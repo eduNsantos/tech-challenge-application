@@ -42,4 +42,14 @@ class ServiceOrderModel extends Model
     {
         return $this->belongsTo(VehicleModel::class, 'vehicle_id');
     }
+
+    public function services()
+    {
+        return $this->hasMany(ServiceOrderServiceModel::class, 'service_order_id');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(ServiceOrderItemModel::class, 'service_order_id');
+    }
 }

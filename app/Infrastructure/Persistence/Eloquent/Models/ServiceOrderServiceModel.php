@@ -4,7 +4,7 @@ namespace App\Infrastructure\Persistence\Eloquent\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ServiceOrderService extends Model
+class ServiceOrderServiceModel extends Model
 {
     protected $table = 'service_order_services';
 
@@ -26,4 +26,14 @@ class ServiceOrderService extends Model
         'started_user_id' => 'integer',
         'finished_user_id' => 'integer',
     ];
+
+    public function service()
+    {
+        return $this->belongsTo(ServiceModel::class, 'service_id');
+    }
+
+    public function serviceOrder()
+    {
+        return $this->belongsTo(ServiceOrderModel::class, 'service_order_id');
+    }
 }

@@ -1,0 +1,27 @@
+meta {
+  name: Update Service Order - Vehicle
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{baseUrl}}/service-order/{{serviceOrderId}}
+  body: json
+  auth: inherit
+}
+
+vars:pre-request {
+  serviceOrderId: 7f4b9068-892f-416d-971a-78872e0a6e0f
+  vehicleId: 3aefbe97-bf9c-47d8-b3e9-f211d5469e8e
+}
+
+body:json {
+  {
+    "vehicle_id": "{{vehicleId}}"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
