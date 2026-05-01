@@ -5,7 +5,9 @@ namespace App\Presentation\Http\Controllers;
 use App\Application\ServiceOrderService\DTOs\FinishServiceOrderServiceDTO;
 use App\Application\ServiceOrderService\DTOs\StartServiceOrderServiceDTO;
 use App\Application\ServiceOrderService\UseCases\FinishServiceOrderServiceUseCase;
+use App\Application\ServiceOrderService\UseCases\GetAverageServiceExecutionTimeUseCase;
 use App\Application\ServiceOrderService\UseCases\StartServiceOrderServiceUseCase;
+use App\Domain\ServiceOrderService\Entities\ServiceOrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -47,7 +49,15 @@ class ServiceOrderServiceController
         ]);
     }
 
-    private function present($serviceOrderService): array
+    public function averageExecutionTime(GetAverageServiceExecutionTimeUseCase $useCase): JsonResponse
+    {
+        return response()->json([
+            'metrics' => $useCase->execute(),
+            'message' => 'Tempo medio por servico obtido com sucesso',
+        ]);
+    }
+
+    private function present(ServiceOrderService $serviceOrderService): array
     {
         return [
             'id'                => $serviceOrderService->id,

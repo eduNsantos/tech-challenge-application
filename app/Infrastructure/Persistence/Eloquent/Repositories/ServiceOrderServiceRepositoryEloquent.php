@@ -6,6 +6,7 @@ use App\Application\ServiceOrderService\DTOs\CreateServiceOrderServiceDTO;
 use App\Domain\ServiceOrderService\Entities\ServiceOrderService as EntitiesServiceOrderService;
 use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
 use App\Infrastructure\Persistence\Eloquent\Models\ServiceOrderServiceModel;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ServiceOrderServiceRepositoryEloquent implements ServiceOrderServiceInterface
@@ -68,6 +69,31 @@ class ServiceOrderServiceRepositoryEloquent implements ServiceOrderServiceInterf
         $model->save();
 
         return $this->toEntity($model);
+    }
+
+    public function averageExecutionTimeByService(): array
+    {
+        return ServiceOrderServiceModel::query()
+            ->join('services', 'service_order_services.service_id', '=', 'services.id')
+            ->whereNotNull('service_order_services.started_at')
+            ->whereNotNull('service_order_services.finished_at')
+            ->groupBy('service_order_services.service_id', 'services.name')
+            ->orderBy('services.name')
+            ->get([
+                'service_order_services.service_id',
+                'services.name as service_name',
+                DB::raw('COUNT(*) as executions_count'),
+                DB::raw('AVG(TIMESTAMPDIFF(SECOND, service_order_services.started_at, service_order_services.finished_at)) as average_execution_seconds'),
+            ])
+            ->map(static fn ($row) => [
+                'service_id' => $row->service_id,
+                'service_name' => $row->service_name,
+                'executions_count' => (int) $row->executions_count,
+                'average_execution_seconds' => (float) $row->average_execution_seconds,
+                'average_execution_minutes' => round(((float) $row->average_execution_seconds) / 60, 2),
+            ])
+            ->values()
+            ->all();
     }
 
     private function toEntity(ServiceOrderServiceModel $model): EntitiesServiceOrderService

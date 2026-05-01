@@ -14,4 +14,6 @@ interface ServiceOrderServiceInterface
     public function startService(string $id, ?int $startedUserId = null): ServiceOrderService;
 
     public function finishService(string $id, ?int $finishedUserId = null): ServiceOrderService;
+
+    public function averageExecutionTimeByService(): array;
 }
