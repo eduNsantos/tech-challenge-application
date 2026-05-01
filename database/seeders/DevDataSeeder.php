@@ -17,6 +17,7 @@ use App\Application\Vehicle\UseCases\CreateVehicleUseCase;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class DevDataSeeder extends Seeder
@@ -120,6 +121,20 @@ class DevDataSeeder extends Seeder
             sendQuote: false,
         ));
 
+        $serviceOrderServiceId = (string) (DB::table('service_order_services')
+            ->where('service_order_id', $serviceOrder->id)
+            ->where('service_id', $service->id)
+            ->value('id') ?? 'COLE_O_ID_GERADO_PELO_DEVDATASEEDER');
+
+        $this->updateBrunoFolderVars(
+            vehicleId: $vehicle->id,
+            serviceId: $service->id,
+            itemId: $item->id,
+            customerId: $customer->id,
+            serviceOrderId: $serviceOrder->id,
+            serviceOrderServiceId: $serviceOrderServiceId
+        );
+
         // ------------------------------------------------------------------ //
         // Output
         // ------------------------------------------------------------------ //
@@ -136,8 +151,48 @@ class DevDataSeeder extends Seeder
                 ['Customer ID',       $customer->id],
                 ['Item ID',           $item->id],
                 ['Service Order ID',  $serviceOrder->id],
+                ['Order Service ID',  $serviceOrderServiceId],
             ]
         );
         $this->command->newLine();
+    }
+
+    private function updateBrunoFolderVars(
+        string $vehicleId,
+        string $serviceId,
+        string $itemId,
+        string $customerId,
+        string $serviceOrderId,
+        string $serviceOrderServiceId
+    ): void {
+        $filePath = base_path('bruno/TechChallengeAuth/Authenticated/folder.bru');
+
+        if (!is_file($filePath)) {
+            return;
+        }
+
+        $content = file_get_contents($filePath);
+
+        if ($content === false) {
+            return;
+        }
+
+        $replacementBlock = "vars:pre-request {\n"
+            . "  vehicleId: {$vehicleId}\n"
+            . "  serviceId: {$serviceId}\n"
+            . "  itemId: {$itemId}\n"
+            . "  customerId: {$customerId}\n"
+            . "  serviceOrderId: {$serviceOrderId}\n"
+            . "  serviceOrderServiceId: {$serviceOrderServiceId}\n"
+            . "  notificationId: COLE_O_ID_DA_NOTIFICACAO\n"
+            . "}";
+
+        $updated = preg_replace('/vars:pre-request\s*\{[\s\S]*?\}/', $replacementBlock, $content, 1);
+
+        if ($updated === null) {
+            return;
+        }
+
+        file_put_contents($filePath, $updated);
     }
 }

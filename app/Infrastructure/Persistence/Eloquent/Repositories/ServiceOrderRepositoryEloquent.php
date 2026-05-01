@@ -41,23 +41,45 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
         }
 
         $services = ServiceOrderServiceModel::query()
-            ->where('service_order_id', $id)
-            ->get(['service_id', 'quantity', 'price'])
+            ->join('services', 'service_order_services.service_id', '=', 'services.id')
+            ->where('service_order_services.service_order_id', $id)
+            ->get([
+                'service_order_services.service_id',
+                'service_order_services.quantity',
+                'service_order_services.price as price',
+                'services.name as name'
+            ])
             ->map(static fn ($service) => [
                 'service_id' => $service->service_id,
                 'quantity' => (float) $service->quantity,
                 'unit_price' => (float) $service->price,
+                'service' => [
+                    'id' => $service->service_id,
+                    'name' => $service->name
+                ],
             ])
             ->values()
             ->all();
 
         $items = ServiceOrderItemModel::query()
-            ->where('service_order_id', $id)
-            ->get(['item_id', 'quantity', 'price'])
+            ->join('items', 'service_order_items.item_id', '=', 'items.id')
+            ->where('service_order_items.service_order_id', $id)
+            ->get([
+                'service_order_items.item_id',
+                'service_order_items.quantity',
+                'service_order_items.price as price',
+                'items.name as name',
+                'items.description as description',
+            ])
             ->map(static fn ($item) => [
                 'item_id' => $item->item_id,
                 'quantity' => (float) $item->quantity,
                 'unit_price' => (float) $item->price,
+                'item' => [
+                    'id' => $item->item_id,
+                    'name' => $item->name,
+                    'description' => $item->description,
+                ],
             ])
             ->values()
             ->all();
@@ -97,6 +119,11 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
     public function update(ServiceOrder $serviceOrder): void
     {
         DB::transaction(function () use ($serviceOrder): void {
+            $actorId = Auth::id()
+                ?? ServiceOrderModel::query()->where('id', $serviceOrder->id)->value('updated_user_id')
+                ?? ServiceOrderModel::query()->where('id', $serviceOrder->id)->value('created_user_id')
+                ?? DB::table('users')->value('id');
+
             ServiceOrderModel::where('id', $serviceOrder->id)->update([
                 'vehicle_id' => $serviceOrder->vehicleId,
                 'status' => $serviceOrder->status,
@@ -106,7 +133,7 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
                 'quote_sent_at' => $serviceOrder->quoteSentAt,
                 'quote_approved_at' => $serviceOrder->quoteApprovedAt,
                 'approval_token' => $serviceOrder->approvalToken,
-                'updated_user_id' => Auth::id(),
+                'updated_user_id' => $actorId,
             ]);
 
             $this->syncServices($serviceOrder);

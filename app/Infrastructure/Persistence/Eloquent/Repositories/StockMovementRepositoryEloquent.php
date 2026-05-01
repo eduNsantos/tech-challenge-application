@@ -6,11 +6,19 @@ use App\Domain\Item\Entities\StockMovement;
 use App\Domain\Item\Interfaces\StockMovementRepositoryInterface;
 use App\Infrastructure\Persistence\Eloquent\Models\StockMovementModel;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class StockMovementRepositoryEloquent implements StockMovementRepositoryInterface
 {
     public function save(StockMovement $movement): void
     {
+        $actorId = Auth::id()
+            ?? DB::table('service_orders')->where('id', $movement->serviceOrderId)->value('updated_user_id')
+            ?? DB::table('service_orders')->where('id', $movement->serviceOrderId)->value('created_user_id')
+            ?? DB::table('items')->where('id', $movement->itemId)->value('updated_user_id')
+            ?? DB::table('items')->where('id', $movement->itemId)->value('created_user_id')
+            ?? DB::table('users')->value('id');
+
         StockMovementModel::create([
             'id'                => $movement->id,
             'item_id'           => $movement->itemId,
@@ -21,7 +29,7 @@ class StockMovementRepositoryEloquent implements StockMovementRepositoryInterfac
             'current_quantity'  => $movement->currentQuantity,
             'reason'            => $movement->reason,
             'notes'             => $movement->notes,
-            'created_user_id'   => Auth::id(),
+            'created_user_id'   => $actorId,
             'created_at'        => now(),
         ]);
     }
