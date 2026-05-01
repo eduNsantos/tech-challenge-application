@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
 
 class ShowItemUseCaseTest extends TestCase
 {
-    private MockInterface $repository;
+    private ItemRepositoryInterface&MockInterface $repository;
     private ShowItemUseCase $useCase;
 
     protected function setUp(): void

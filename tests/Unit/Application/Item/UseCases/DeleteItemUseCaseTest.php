@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 
 class DeleteItemUseCaseTest extends TestCase
 {
-    private MockInterface $repository;
+    private ItemRepositoryInterface&MockInterface $repository;
     private DeleteItemUseCase $useCase;
 
     protected function setUp(): void
