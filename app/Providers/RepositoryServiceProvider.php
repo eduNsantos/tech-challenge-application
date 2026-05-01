@@ -18,7 +18,6 @@ use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceRepositoryEloque
 use App\Infrastructure\Persistence\Eloquent\Repositories\StockMovementRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\VehicleRepositoryEloquent;
 use Illuminate\Support\ServiceProvider;
-use ServiceOrderItemRepositoryEloquent;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
@@ -61,11 +60,8 @@ class RepositoryServiceProvider extends ServiceProvider
 
         $this->app->bind(
             ServiceOrderItemInterface::class,
-            ServiceOrderItemRepositoryEloquent::class
+            'App\\Infrastructure\\Persistence\\Eloquent\\Repositories\\ServiceOrderItemRepositoryEloquent'
         );
-
-        //Parei no momento de salvar os items no database, preciso criar o repository e a entidade de ServiceOrderItem para isso
-        // ja estão criados, preciso ver o que ele está salvando no banco e adaptar para a minha entidade, depois disso é só chamar o repository no use case e salvar os itens um por um
     }
 
     public function boot(): void {

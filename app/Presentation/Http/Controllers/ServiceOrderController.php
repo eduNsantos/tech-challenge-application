@@ -24,9 +24,10 @@ class ServiceOrderController
     public function store(CreateServiceOrderRequest $request, CreateServiceOrderUseCase $useCase)
     {
         $dto = new CreateServiceOrderDTO(
+            user: $request->user(),
             vehicleId: $request->input('vehicle_id'),
             services: $request->input('services', []),
-            parts: $request->input('parts', []),
+            items: $request->input('items', []),
             sendQuote: $request->boolean('send_quote', true)
         );
 
@@ -67,7 +68,7 @@ class ServiceOrderController
         $dto = new UpdateServiceOrderDTO(
             id: $request->route('id'),
             services: $request->input('services'),
-            parts: $request->input('parts'),
+            items: $request->input('items', $request->input('parts')),
             vehicleId: $request->input('vehicle_id'),
             status: $request->input('status'),
             sendQuote: $request->has('send_quote') ? $request->boolean('send_quote') : null,
@@ -115,10 +116,12 @@ class ServiceOrderController
             'customer_document' => $serviceOrder->customerDocument,
             'vehicle_id' => $serviceOrder->vehicleId,
             'services' => $serviceOrder->services,
-            'parts' => $serviceOrder->parts,
+            'items' => $serviceOrder->items,
+            'parts' => $serviceOrder->items,
             'status' => $serviceOrder->status,
             'services_total' => $serviceOrder->servicesTotal,
-            'parts_total' => $serviceOrder->partsTotal,
+            'items_total' => $serviceOrder->itemsTotal,
+            'parts_total' => $serviceOrder->itemsTotal,
             'total_budget' => $serviceOrder->totalBudget,
             'quote_sent_at' => $serviceOrder->quoteSentAt,
             'quote_approved_at' => $serviceOrder->quoteApprovedAt,

@@ -33,9 +33,9 @@ class UpdateServiceOrderUseCase
         }
 
         $services = $dto->services !== null ? $this->resolveServices($dto->services) : null;
-        $parts    = $dto->parts !== null ? $this->resolveParts($dto->parts) : null;
+        $items = $dto->items !== null ? $this->resolveItems($dto->items) : null;
 
-        $serviceOrder->updateItems($services, $parts);
+        $serviceOrder->updateItems($services, $items);
 
         if ($dto->status !== null) {
             $serviceOrder->changeStatus($dto->status);
@@ -47,7 +47,7 @@ class UpdateServiceOrderUseCase
 
         if ($dto->approveQuote === true) {
             $serviceOrder->approveQuote();
-            $this->withdrawStockForParts($serviceOrder);
+            $this->withdrawStockForItems($serviceOrder);
         }
 
         $this->serviceOrderRepository->update($serviceOrder);
@@ -77,13 +77,19 @@ class UpdateServiceOrderUseCase
         }, $services);
     }
 
-    private function resolveParts(array $parts): array
+    private function resolveItems(array $items): array
     {
         return array_map(function (array $item): array {
-            $part = $this->itemRepository->findById($item['item_id']);
+            $itemId = (string) ($item['item_id'] ?? $item['item'] ?? '');
+
+            if ($itemId === '') {
+                throw new \DomainException('Item da OS sem identificador informado.');
+            }
+
+            $part = $this->itemRepository->findById($itemId);
 
             if (!$part) {
-                throw new \DomainException("Peca '{$item['item_id']}' nao encontrada.");
+                throw new \DomainException("Peca '{$itemId}' nao encontrada.");
             }
 
             return [
@@ -92,12 +98,12 @@ class UpdateServiceOrderUseCase
                 'quantity'   => (float) $item['quantity'],
                 'unit_price' => $part->unitPrice ?? 0.0,
             ];
-        }, $parts);
+        }, $items);
     }
 
-    private function withdrawStockForParts(ServiceOrder $serviceOrder): void
+    private function withdrawStockForItems(ServiceOrder $serviceOrder): void
     {
-        foreach ($serviceOrder->parts as $part) {
+        foreach ($serviceOrder->items as $part) {
             $itemId   = $part['item_id'] ?? null;
             $quantity = (float) ($part['quantity'] ?? 0);
 
