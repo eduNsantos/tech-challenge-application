@@ -25,7 +25,18 @@ class ServiceOrderServiceRepositoryEloquent implements ServiceOrderServiceInterf
         return $this->toEntity($result);
     }
 
-    public function startService(string $id): EntitiesServiceOrderService
+    public function findById(string $id): ?EntitiesServiceOrderService
+    {
+        $model = ServiceOrderService::find($id);
+
+        if (!$model) {
+            return null;
+        }
+
+        return $this->toEntity($model);
+    }
+
+    public function startService(string $id, ?int $startedUserId = null): EntitiesServiceOrderService
     {
         $model = ServiceOrderService::find($id);
 
@@ -34,12 +45,15 @@ class ServiceOrderServiceRepositoryEloquent implements ServiceOrderServiceInterf
         }
 
         $model->started_at = now();
+        if ($startedUserId !== null) {
+            $model->started_user_id = $startedUserId;
+        }
         $model->save();
 
         return $this->toEntity($model);
     }
 
-    public function finishService(string $id): EntitiesServiceOrderService
+    public function finishService(string $id, ?int $finishedUserId = null): EntitiesServiceOrderService
     {
         $model = ServiceOrderService::find($id);
 
@@ -48,6 +62,9 @@ class ServiceOrderServiceRepositoryEloquent implements ServiceOrderServiceInterf
         }
 
         $model->finished_at = now();
+        if ($finishedUserId !== null) {
+            $model->finished_user_id = $finishedUserId;
+        }
         $model->save();
 
         return $this->toEntity($model);
@@ -62,7 +79,9 @@ class ServiceOrderServiceRepositoryEloquent implements ServiceOrderServiceInterf
             quantity: $model->quantity,
             price: $model->price,
             started_at: $model->started_at?->toDateTimeString(),
-            finished_at: $model->finished_at?->toDateTimeString()
+            finished_at: $model->finished_at?->toDateTimeString(),
+            started_user_id: $model->started_user_id,
+            finished_user_id: $model->finished_user_id
         );
     }
 }

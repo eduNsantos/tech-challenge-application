@@ -1,0 +1,20 @@
+meta {
+  name: Start Service
+  type: http
+  seq: 1
+}
+
+patch {
+  url: {{baseUrl}}/service-order-service/{{serviceOrderServiceId}}/start
+  body: none
+  auth: inherit
+}
+
+vars:pre-request {
+  serviceOrderServiceId: 00000000-0000-0000-0000-000000000000
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

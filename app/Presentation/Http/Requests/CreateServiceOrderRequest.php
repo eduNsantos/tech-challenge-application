@@ -20,14 +20,11 @@ class CreateServiceOrderRequest extends FormRequest
         return [
             'vehicle_id'          => 'required|uuid',
             'services'               => 'array|required|min:1',
-            'services.*.service_id'  => 'required|uuid',
+            'services.*.service_id'  => 'required|uuid|exists:services,id',
             'services.*.quantity'    => 'required|numeric|min:0.01',
             'items'                  => 'required|array|min:1',
-            'items.*.item_id'        => 'required_with:items|uuid',
+            'items.*.item_id'        => 'required_with:items|uuid|exists:items,id',
             'items.*.quantity'       => 'required_with:items|numeric|min:0.01',
-            'parts'                  => 'required|array|min:1',
-            'parts.*.item_id'        => 'required_with:parts|uuid',
-            'parts.*.quantity'       => 'required_with:parts|numeric|min:0.01',
             'send_quote'             => 'sometimes|boolean',
         ];
     }

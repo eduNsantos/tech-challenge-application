@@ -9,7 +9,9 @@ interface ServiceOrderServiceInterface
 {
     public function createServiceOrderService(CreateServiceOrderServiceDTO $dto): ServiceOrderService;
 
-    public function startService(string $id): ServiceOrderService;
+    public function findById(string $id): ?ServiceOrderService;
 
-    public function finishService(string $id): ServiceOrderService;
+    public function startService(string $id, ?int $startedUserId = null): ServiceOrderService;
+
+    public function finishService(string $id, ?int $finishedUserId = null): ServiceOrderService;
 }

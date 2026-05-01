@@ -108,16 +108,16 @@ class CreateServiceOrderTest extends TestCase
             ]);
     }
 
-    public function test_returns_422_when_parts_are_missing(): void
+    public function test_returns_422_when_items_are_missing(): void
     {
         $payload = $this->validPayload();
-        unset($payload['parts']);
+        unset($payload['items']);
 
         $response = $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $payload);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['parts']);
+            ->assertJsonValidationErrors(['items']);
     }
 
     public function test_creates_order_with_parts(): void
@@ -317,15 +317,14 @@ class CreateServiceOrderTest extends TestCase
             ->assertJsonValidationErrors(['services.0.quantity']);
     }
 
-    public function test_returns_422_when_part_item_id_is_not_uuid(): void
+    public function test_returns_422_when_item_id_is_not_uuid(): void
     {
         $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload([
-                'items' => [['item_id' => $this->itemId, 'quantity' => 1]],
-                'parts' => [['item_id' => 'nao-e-uuid', 'quantity' => 1]],
+                'items' => [['item_id' => 'nao-e-uuid', 'quantity' => 1]],
             ]))
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['parts.0.item_id']);
+            ->assertJsonValidationErrors(['items.0.item_id']);
     }
 
     // -------------------------------------------------------------------------
@@ -341,9 +340,7 @@ class CreateServiceOrderTest extends TestCase
                 'services' => [['service_id' => $uuidInexistente, 'quantity' => 1]],
             ]))
             ->assertStatus(422)
-            ->assertJsonFragment([
-                'message' => "Servico '{$uuidInexistente}' nao encontrado.",
-            ]);
+            ->assertJsonValidationErrors(['services.0.service_id']);
     }
 
     public function test_returns_422_when_item_id_does_not_exist(): void
@@ -353,11 +350,8 @@ class CreateServiceOrderTest extends TestCase
         $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload([
                 'items' => [['item_id' => $uuidInexistente, 'quantity' => 1]],
-                'parts' => [['item_id' => $this->itemId, 'quantity' => 1]],
             ]))
             ->assertStatus(422)
-            ->assertJsonFragment([
-                'message' => "Peca '{$uuidInexistente}' nao encontrada.",
-            ]);
+            ->assertJsonValidationErrors(['items.0.item_id']);
     }
 }
