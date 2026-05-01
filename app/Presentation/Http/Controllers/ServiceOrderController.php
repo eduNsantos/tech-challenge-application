@@ -38,10 +38,16 @@ class ServiceOrderController
 
         $serviceOrder = $useCase->execute($dto);
 
-        return response()->json([
+        $response = [
             'service_order' => $this->present($serviceOrder),
             'message' => 'Ordem de servico criada com sucesso',
-        ], 201);
+        ];
+
+        if ($serviceOrder->approvalToken !== null) {
+            $response['approval_link'] = url("/api/service-order/approve/{$serviceOrder->approvalToken}");
+        }
+
+        return response()->json($response, 201);
     }
 
     public function list(ListServiceOrderRequest $request, ListServiceOrderUseCase $useCase)
@@ -82,10 +88,16 @@ class ServiceOrderController
 
         $serviceOrder = $useCase->execute($dto);
 
-        return response()->json([
+        $response = [
             'service_order' => $this->present($serviceOrder),
             'message' => 'Ordem de servico atualizada com sucesso',
-        ]);
+        ];
+
+        if ($dto->sendQuote === true && $serviceOrder->approvalToken !== null) {
+            $response['approval_link'] = url("/api/service-order/approve/{$serviceOrder->approvalToken}");
+        }
+
+        return response()->json($response);
     }
 
     public function updateStatus(
@@ -158,6 +170,7 @@ class ServiceOrderController
             'total_budget' => $serviceOrder->totalBudget,
             'quote_sent_at' => $serviceOrder->quoteSentAt,
             'quote_approved_at' => $serviceOrder->quoteApprovedAt,
+            'approval_token' => $serviceOrder->approvalToken,
         ];
     }
 }

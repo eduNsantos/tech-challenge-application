@@ -11,6 +11,10 @@ use App\Presentation\Http\Controllers\ServiceController;
 use App\Presentation\Http\Controllers\CustomerController;
 use App\Presentation\Http\Controllers\VehicleController;
 
+use App\Presentation\Http\Controllers\ServiceOrderApprovalController;
+
+Route::get('/service-order/approve/{token}', [ServiceOrderApprovalController::class, 'approve']);
+
 Route::group([
     'middleware' => 'auth:api',
     'prefix' => 'customer'

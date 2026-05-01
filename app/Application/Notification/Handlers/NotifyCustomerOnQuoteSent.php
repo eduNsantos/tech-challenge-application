@@ -28,12 +28,14 @@ class NotifyCustomerOnQuoteSent
             return;
         }
 
+        $approvalLink = url("/api/service-order/approve/{$serviceOrder->approvalToken}");
+
         $notification = new EntityNotification(
             Str::uuid()->toString(),
             $customer->email,
             NotificationType::EMAIL,
             'Orçamento da sua ordem de serviço disponível',
-            "Olá {$customer->name}, o orçamento da sua ordem de serviço foi gerado e aguarda a sua aprovação. Total: R$ {$serviceOrder->totalBudget}.",
+            "Olá {$customer->name}, o orçamento da sua ordem de serviço foi gerado. Total: R$ {$serviceOrder->totalBudget}.\n\nClique no link abaixo para aprovar:\n{$approvalLink}",
             NotificationStatus::PENDING,
             new \DateTimeImmutable()
         );

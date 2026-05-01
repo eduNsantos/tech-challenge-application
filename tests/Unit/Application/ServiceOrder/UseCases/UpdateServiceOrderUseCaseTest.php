@@ -17,6 +17,7 @@ use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\Vehicle\Entities\Vehicle;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
+use App\Domain\Vehicle\ValueObjects\Plate;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\TestCase;
@@ -88,7 +89,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             brand: 'Toyota',
             model: 'Corolla',
             year: 2020,
-            plate: 'ABC1D23'
+            plate: new Plate('ABC1D23')
         );
     }
 
