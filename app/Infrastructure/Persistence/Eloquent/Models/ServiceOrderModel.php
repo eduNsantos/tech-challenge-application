@@ -21,6 +21,7 @@ class ServiceOrderModel extends Model
         'total_budget',
         'quote_sent_at',
         'quote_approved_at',
+        'approval_token',
         'created_user_id',
         'updated_user_id'
     ];

@@ -80,6 +80,17 @@ class ServiceOrderTest extends TestCase
         $this->assertSame('2026-04-27 10:00:00', $serviceOrder->quoteSentAt);
     }
 
+    public function test_send_quote_for_approval_generates_approval_token(): void
+    {
+        $serviceOrder = $this->makeServiceOrder();
+
+        $serviceOrder->sendQuoteForApproval();
+
+        $this->assertNotNull($serviceOrder->approvalToken);
+        $this->assertSame(64, strlen($serviceOrder->approvalToken));
+        $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $serviceOrder->approvalToken);
+    }
+
     public function test_approve_quote_sets_status_and_timestamp(): void
     {
         Carbon::setTestNow('2026-04-27 11:00:00');
@@ -89,5 +100,24 @@ class ServiceOrderTest extends TestCase
 
         $this->assertSame(ServiceOrder::STATUS_EM_EXECUCAO, $serviceOrder->status);
         $this->assertSame('2026-04-27 11:00:00', $serviceOrder->quoteApprovedAt);
+    }
+
+    public function test_approve_quote_clears_approval_token(): void
+    {
+        $serviceOrder = $this->makeServiceOrder();
+        $serviceOrder->sendQuoteForApproval();
+
+        $this->assertNotNull($serviceOrder->approvalToken);
+
+        $serviceOrder->approveQuote();
+
+        $this->assertNull($serviceOrder->approvalToken);
+    }
+
+    public function test_create_initializes_approval_token_as_null(): void
+    {
+        $serviceOrder = $this->makeServiceOrder();
+
+        $this->assertNull($serviceOrder->approvalToken);
     }
 }

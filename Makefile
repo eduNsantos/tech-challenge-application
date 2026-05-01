@@ -22,6 +22,16 @@ down: ## Para e remove os containers de desenvolvimento
 migrate:
 	$(COMPOSE) exec app-php php artisan migrate --force
 
+seed: ## Roda as seeders no ambiente de desenvolvimento
+	$(COMPOSE) exec app-php php artisan db:seed --force
+
+seed-dev: ## Roda apenas o DevDataSeeder (dados de desenvolvimento)
+	$(COMPOSE) exec app-php php artisan db:seed --class=DevDataSeeder --force
+
+migrate-seed: ## Roda as migrations e em seguida as seeders
+	$(COMPOSE) exec app-php php artisan migrate --force
+	$(COMPOSE) exec app-php php artisan db:seed --force
+
 ## ── Testes ───────────────────────────────────────────────────────────────────
 
 test: ## Roda a suíte de testes sem gerar coverage (mais rápido)

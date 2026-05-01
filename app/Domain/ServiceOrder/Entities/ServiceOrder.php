@@ -25,7 +25,8 @@ class ServiceOrder
         public float $itemsTotal,
         public float $totalBudget,
         public ?string $quoteSentAt,
-        public ?string $quoteApprovedAt
+        public ?string $quoteApprovedAt,
+        public ?string $approvalToken = null
     ) {
         $this->assertStatus($status);
     }
@@ -52,7 +53,8 @@ class ServiceOrder
             itemsTotal: $itemsTotal,
             totalBudget: $servicesTotal + $itemsTotal,
             quoteSentAt: null,
-            quoteApprovedAt: null
+            quoteApprovedAt: null,
+            approvalToken: null
         );
     }
 
@@ -81,12 +83,14 @@ class ServiceOrder
     {
         $this->status = self::STATUS_AGUARDANDO_APROVACAO;
         $this->quoteSentAt = now()->toDateTimeString();
+        $this->approvalToken = bin2hex(random_bytes(32));
     }
 
     public function approveQuote(): void
     {
         $this->status = self::STATUS_EM_EXECUCAO;
         $this->quoteApprovedAt = now()->toDateTimeString();
+        $this->approvalToken = null;
     }
 
     public static function allowedStatuses(): array

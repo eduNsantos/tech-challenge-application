@@ -26,6 +26,7 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
             'total_budget' => $serviceOrder->totalBudget,
             'quote_sent_at' => $serviceOrder->quoteSentAt,
             'quote_approved_at' => $serviceOrder->quoteApprovedAt,
+            'approval_token' => $serviceOrder->approvalToken,
             'created_user_id' => Auth::id(),
             'updated_user_id' => Auth::id(),
         ]);
@@ -73,7 +74,8 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
             itemsTotal: (float) $model->parts_total,
             totalBudget: (float) $model->total_budget,
             quoteSentAt: $model->quote_sent_at?->toDateTimeString(),
-            quoteApprovedAt: $model->quote_approved_at?->toDateTimeString()
+            quoteApprovedAt: $model->quote_approved_at?->toDateTimeString(),
+            approvalToken: $model->approval_token
         );
     }
 
@@ -96,12 +98,14 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
     {
         DB::transaction(function () use ($serviceOrder): void {
             ServiceOrderModel::where('id', $serviceOrder->id)->update([
+                'vehicle_id' => $serviceOrder->vehicleId,
                 'status' => $serviceOrder->status,
                 'services_total' => $serviceOrder->servicesTotal,
                 'parts_total' => $serviceOrder->itemsTotal,
                 'total_budget' => $serviceOrder->totalBudget,
                 'quote_sent_at' => $serviceOrder->quoteSentAt,
                 'quote_approved_at' => $serviceOrder->quoteApprovedAt,
+                'approval_token' => $serviceOrder->approvalToken,
                 'updated_user_id' => Auth::id(),
             ]);
 
@@ -147,5 +151,16 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
     public function delete(string $id): void
     {
         ServiceOrderModel::where('id', $id)->delete();
+    }
+
+    public function findByApprovalToken(string $token): ?ServiceOrder
+    {
+        $model = ServiceOrderModel::where('approval_token', $token)->first();
+
+        if (!$model) {
+            return null;
+        }
+
+        return $this->findById($model->id);
     }
 }
