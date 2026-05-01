@@ -7,7 +7,7 @@ class UpdateServiceOrderDTO
     public function __construct(
         public string $id,
         public ?array $services,
-        public ?array $parts,
+        public ?array $items,
         public ?string $vehicleId,
         public ?string $status,
         public ?bool $sendQuote,

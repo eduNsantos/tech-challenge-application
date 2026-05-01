@@ -4,7 +4,6 @@ namespace App\Application\ServiceOrder\UseCases;
 
 use App\Application\ServiceOrder\DTOs\CreateServiceOrderDTO;
 use App\Application\ServiceOrderItem\DTOs\CreateServiceOrderItemDTO;
-use App\Application\ServiceOrderItem\UseCases\CreateServiceOrderItemUseCase;
 use App\Domain\Customer\Entities\Customer;
 use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Customer\ValueObjects\Document;
@@ -14,8 +13,6 @@ use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrder\Events\ServiceOrderCreated;
 use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
-use GuzzleHttp\Promise\Create;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class CreateServiceOrderUseCase
@@ -31,7 +28,7 @@ class CreateServiceOrderUseCase
     public function execute(CreateServiceOrderDTO $dto): ServiceOrder
     {
         /** @var \App\Models\User|null $user */
-        $user = Auth::user();
+        $user = $dto->user;
 
         if ($user === null) {
             throw new \Exception('Usuario autenticado nao encontrado');
@@ -40,7 +37,6 @@ class CreateServiceOrderUseCase
         if (empty($user->document)) {
             throw new \Exception('Usuario autenticado sem documento vinculado');
         }
-
 
         $document = new Document($user->document);
         $customer = $this->customerRepository->findByDocument($document->getValue());
@@ -56,28 +52,35 @@ class CreateServiceOrderUseCase
             $this->customerRepository->save($customer);
         }
 
-
-
-        DB::beginTransaction();
-
-
         $services = $this->resolveServices($dto->services);
+        $items = $this->resolveItems($dto->items);
 
         $serviceOrder = ServiceOrder::create(
             customerId: $customer->id,
             customerDocument: $customer->document,
             vehicleId: $dto->vehicleId,
-            services: $services
+            services: $services,
+            items: $items
         );
-
-
-        $items = $this->resolveItems($dto->items);
 
         if ($dto->sendQuote) {
             $serviceOrder->sendQuoteForApproval();
         }
 
-        $this->serviceOrderRepository->save($serviceOrder);
+        DB::transaction(function () use ($serviceOrder, $items): void {
+            $this->serviceOrderRepository->save($serviceOrder);
+
+            foreach ($items as $item) {
+                $this->serviceOrderItemRepository->createServiceOrderItem(
+                    new CreateServiceOrderItemDTO(
+                        service_order_id: $serviceOrder->id,
+                        item_id: (string) $item['item_id'],
+                        quantity: (int) $item['quantity'],
+                        price: (float) $item['unit_price']
+                    )
+                );
+            }
+        });
 
         event(new ServiceOrderCreated($serviceOrder));
 
@@ -104,37 +107,25 @@ class CreateServiceOrderUseCase
 
     private function resolveItems(array $items): array
     {
-        return array_map(function (array $item) {
-            $part = $this->itemRepository->findById($item['item']);
-
-            $createServiceOrderItemDTO = new CreateServiceOrderItemDTO(
-                service_order_id: '',
-                item_id: $item['item'],
-                quantity: (float) $item['quantity'],
-                price: $part->unitPrice ?? 0.0
-            );
-
-            $useCase = $this->serviceOrderItemRepository->createServiceOrderItem($createServiceOrderItemDTO);
-
-            return $useCase;
-        }, $items);
-    }
-
-    private function resolveParts(array $parts): array
-    {
         return array_map(function (array $item): array {
-            $part = $this->itemRepository->findById($item['item_id']);
+            $itemId = (string) ($item['item_id'] ?? $item['item'] ?? '');
+
+            if ($itemId === '') {
+                throw new \DomainException('Item da OS sem identificador informado.');
+            }
+
+            $part = $this->itemRepository->findById($itemId);
 
             if (!$part) {
-                throw new \DomainException("Peca '{$item['item_id']}' nao encontrada.");
+                throw new \DomainException("Peca '{$itemId}' nao encontrada.");
             }
 
             return [
-                'item_id'    => $part->id,
-                'name'       => $part->name,
-                'quantity'   => (float) $item['quantity'],
-                'unit_price' => $part->unitPrice ?? 0.0,
+                'item_id' => $part->id,
+                'name' => $part->name,
+                'quantity' => (float) $item['quantity'],
+                'unit_price' => (float) ($part->unitPrice ?? 0.0),
             ];
-        }, $parts);
+        }, $items);
     }
 }

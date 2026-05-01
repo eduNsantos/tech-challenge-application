@@ -72,6 +72,12 @@ class CreateServiceOrderTest extends TestCase
             'services'      => [
                 ['service_id' => $this->serviceId, 'quantity' => 1],
             ],
+            'items'         => [
+                ['item_id' => $this->itemId, 'quantity' => 1],
+            ],
+            'parts'         => [
+                ['item_id' => $this->itemId, 'quantity' => 1],
+            ],
             'send_quote'    => false,
         ], $overrides);
     }
@@ -102,20 +108,25 @@ class CreateServiceOrderTest extends TestCase
             ]);
     }
 
-    public function test_creates_order_without_parts(): void
+    public function test_returns_422_when_parts_are_missing(): void
     {
-        $response = $this->actingAs($this->user, 'api')
-            ->postJson('/api/service-order', $this->validPayload());
+        $payload = $this->validPayload();
+        unset($payload['parts']);
 
-        $response->assertStatus(201)
-            ->assertJsonPath('service_order.parts', [])
-            ->assertJsonPath('service_order.parts_total', 0);
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $payload);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['parts']);
     }
 
     public function test_creates_order_with_parts(): void
     {
         $response = $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload([
+                'items' => [
+                    ['item_id' => $this->itemId, 'quantity' => 2],
+                ],
                 'parts' => [
                     ['item_id' => $this->itemId, 'quantity' => 2],
                 ],
@@ -150,6 +161,7 @@ class CreateServiceOrderTest extends TestCase
         $response = $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload([
                 'services' => [['service_id' => $this->serviceId, 'quantity' => 2]],  // 2 × 150 = 300
+                'items'    => [['item_id' => $this->itemId, 'quantity' => 3]],        // 3 × 35  = 105
                 'parts'    => [['item_id' => $this->itemId, 'quantity' => 3]],        // 3 × 35  = 105
             ]));
 
@@ -290,6 +302,7 @@ class CreateServiceOrderTest extends TestCase
     {
         $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload([
+                'items' => [['item_id' => $this->itemId, 'quantity' => 1]],
                 'parts' => [['item_id' => 'nao-e-uuid', 'quantity' => 1]],
             ]))
             ->assertStatus(422)
@@ -320,7 +333,8 @@ class CreateServiceOrderTest extends TestCase
 
         $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload([
-                'parts' => [['item_id' => $uuidInexistente, 'quantity' => 1]],
+                'items' => [['item_id' => $uuidInexistente, 'quantity' => 1]],
+                'parts' => [['item_id' => $this->itemId, 'quantity' => 1]],
             ]))
             ->assertStatus(422)
             ->assertJsonFragment([
