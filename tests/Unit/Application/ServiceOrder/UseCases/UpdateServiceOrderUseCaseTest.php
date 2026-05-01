@@ -15,6 +15,8 @@ use App\Domain\Service\Entities\Service;
 use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
+use App\Domain\Vehicle\Entities\Vehicle;
+use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\TestCase;
@@ -25,6 +27,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
     private ServiceRepositoryInterface&MockInterface $serviceRepository;
     private ItemRepositoryInterface&MockInterface $itemRepository;
     private StockMovementRepositoryInterface&MockInterface $stockMovementRepository;
+    private VehicleRepositoryInterface&MockInterface $vehicleRepository;
     private UpdateServiceOrderUseCase $useCase;
 
     protected function setUp(): void
@@ -35,12 +38,14 @@ class UpdateServiceOrderUseCaseTest extends TestCase
         $this->serviceRepository = Mockery::mock(ServiceRepositoryInterface::class);
         $this->itemRepository = Mockery::mock(ItemRepositoryInterface::class);
         $this->stockMovementRepository = Mockery::mock(StockMovementRepositoryInterface::class);
+        $this->vehicleRepository = Mockery::mock(VehicleRepositoryInterface::class);
 
         $this->useCase = new UpdateServiceOrderUseCase(
             $this->serviceOrderRepository,
             $this->serviceRepository,
             $this->itemRepository,
-            $this->stockMovementRepository
+            $this->stockMovementRepository,
+            $this->vehicleRepository
         );
     }
 
@@ -73,6 +78,17 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             minimumQuantity: 2.0,
             description: null,
             unitPrice: 20.0
+        );
+    }
+
+    private function makeVehicle(string $id = 'veh-2'): Vehicle
+    {
+        return new Vehicle(
+            id: $id,
+            brand: 'Toyota',
+            model: 'Corolla',
+            year: 2020,
+            plate: 'ABC1D23'
         );
     }
 
@@ -240,5 +256,48 @@ class UpdateServiceOrderUseCaseTest extends TestCase
         ));
 
         $this->assertSame(ServiceOrder::STATUS_EM_EXECUCAO, $result->status);
+    }
+
+    public function test_updates_vehicle_when_vehicle_id_is_provided(): void
+    {
+        $serviceOrder = $this->makeServiceOrder();
+
+        $this->serviceOrderRepository->shouldReceive('findById')->once()->with('os-1')->andReturn($serviceOrder);
+        $this->vehicleRepository->shouldReceive('findById')->once()->with('veh-2')->andReturn($this->makeVehicle('veh-2'));
+        $this->serviceOrderRepository->shouldReceive('update')->once()->with($serviceOrder);
+
+        $result = $this->useCase->execute(new UpdateServiceOrderDTO(
+            id: 'os-1',
+            services: null,
+            items: null,
+            vehicleId: 'veh-2',
+            status: null,
+            sendQuote: null,
+            approveQuote: null
+        ));
+
+        $this->assertSame('veh-2', $result->vehicleId);
+    }
+
+    public function test_throws_when_vehicle_not_found_during_update(): void
+    {
+        $serviceOrder = $this->makeServiceOrder();
+
+        $this->serviceOrderRepository->shouldReceive('findById')->once()->with('os-1')->andReturn($serviceOrder);
+        $this->vehicleRepository->shouldReceive('findById')->once()->with('veh-x')->andReturnNull();
+        $this->serviceOrderRepository->shouldNotReceive('update');
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage("Veiculo 'veh-x' nao encontrado.");
+
+        $this->useCase->execute(new UpdateServiceOrderDTO(
+            id: 'os-1',
+            services: null,
+            items: null,
+            vehicleId: 'veh-x',
+            status: null,
+            sendQuote: null,
+            approveQuote: null
+        ));
     }
 }

@@ -51,6 +51,8 @@ Route::group([
     Route::get('/{id}', [ServiceOrderController::class, 'show']);
     Route::put('/{id}', [ServiceOrderController::class, 'update']);
     Route::patch('/{id}/status', [ServiceOrderController::class, 'updateStatus']);
+    Route::delete('/{id}/services/{serviceId}', [ServiceOrderController::class, 'removeService']);
+    Route::delete('/{id}/items/{itemId}', [ServiceOrderController::class, 'removeItem']);
     Route::delete('/{id}', [ServiceOrderController::class, 'destroy']);
 });
 

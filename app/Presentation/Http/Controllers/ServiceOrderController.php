@@ -5,12 +5,16 @@ namespace App\Presentation\Http\Controllers;
 use App\Application\ServiceOrder\DTOs\CreateServiceOrderDTO;
 use App\Application\ServiceOrder\DTOs\DeleteServiceOrderDTO;
 use App\Application\ServiceOrder\DTOs\ListServiceOrderDTO;
+use App\Application\ServiceOrder\DTOs\RemoveServiceOrderItemDTO;
+use App\Application\ServiceOrder\DTOs\RemoveServiceOrderServiceDTO;
 use App\Application\ServiceOrder\DTOs\ShowServiceOrderDTO;
 use App\Application\ServiceOrder\DTOs\UpdateServiceOrderDTO;
 use App\Application\ServiceOrder\DTOs\UpdateServiceOrderStatusDTO;
 use App\Application\ServiceOrder\UseCases\CreateServiceOrderUseCase;
 use App\Application\ServiceOrder\UseCases\DeleteServiceOrderUseCase;
 use App\Application\ServiceOrder\UseCases\ListServiceOrderUseCase;
+use App\Application\ServiceOrder\UseCases\RemoveServiceOrderItemUseCase;
+use App\Application\ServiceOrder\UseCases\RemoveServiceOrderServiceUseCase;
 use App\Application\ServiceOrder\UseCases\ShowServiceOrderUseCase;
 use App\Application\ServiceOrder\UseCases\UpdateServiceOrderStatusUseCase;
 use App\Application\ServiceOrder\UseCases\UpdateServiceOrderUseCase;
@@ -107,6 +111,36 @@ class ServiceOrderController
         $useCase->execute($dto);
 
         return response()->noContent();
+    }
+
+    public function removeService(string $id, string $serviceId, RemoveServiceOrderServiceUseCase $useCase)
+    {
+        $dto = new RemoveServiceOrderServiceDTO(
+            id: $id,
+            serviceId: $serviceId
+        );
+
+        $serviceOrder = $useCase->execute($dto);
+
+        return response()->json([
+            'service_order' => $this->present($serviceOrder),
+            'message' => 'Servico removido da ordem de servico com sucesso',
+        ]);
+    }
+
+    public function removeItem(string $id, string $itemId, RemoveServiceOrderItemUseCase $useCase)
+    {
+        $dto = new RemoveServiceOrderItemDTO(
+            id: $id,
+            itemId: $itemId
+        );
+
+        $serviceOrder = $useCase->execute($dto);
+
+        return response()->json([
+            'service_order' => $this->present($serviceOrder),
+            'message' => 'Item removido da ordem de servico com sucesso',
+        ]);
     }
 
     private function present(ServiceOrder $serviceOrder): array
