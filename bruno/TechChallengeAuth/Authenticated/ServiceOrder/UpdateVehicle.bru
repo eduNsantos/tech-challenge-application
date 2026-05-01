@@ -1,22 +1,13 @@
 meta {
   name: Update Service Order - Vehicle
   type: http
-  seq: 9
+  seq: 8
 }
 
 put {
   url: {{baseUrl}}/service-order/{{serviceOrderId}}
   body: json
   auth: inherit
-}
-
-docs {
-  Troca o veículo vinculado a uma OS.
-
-  Pré-requisitos:
-  - Execute `php artisan db:seed --class=DevDataSeeder` e copie o serviceOrderId exibido no console.
-  - Cole o serviceOrderId na variável acima.
-  - vehicleId já está fixo com o veículo criado pelo DevDataSeeder.
 }
 
 body:json {
@@ -28,4 +19,13 @@ body:json {
 settings {
   encodeUrl: true
   timeout: 0
+}
+
+docs {
+  Troca o veículo vinculado a uma OS.
+  
+  Pré-requisitos:
+  - Execute `php artisan db:seed --class=DevDataSeeder` e copie o serviceOrderId exibido no console.
+  - Cole o serviceOrderId na variável acima.
+  - vehicleId já está fixo com o veículo criado pelo DevDataSeeder.
 }

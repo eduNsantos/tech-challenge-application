@@ -9,6 +9,7 @@ use App\Domain\Item\ValueObjects\ItemType;
 use App\Domain\Item\ValueObjects\MeasureUnit;
 use App\Infrastructure\Persistence\Eloquent\Models\ItemModel;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ItemRepositoryEloquent implements ItemRepositoryInterface
 {
@@ -75,6 +76,11 @@ class ItemRepositoryEloquent implements ItemRepositoryInterface
 
     public function update(Item $item): void
     {
+        $actorId = Auth::id()
+            ?? ItemModel::query()->where('id', $item->id)->value('updated_user_id')
+            ?? ItemModel::query()->where('id', $item->id)->value('created_user_id')
+            ?? DB::table('users')->value('id');
+
         ItemModel::where('id', $item->id)->update([
             'name'             => $item->name,
             'code'             => $item->code->getValue(),
@@ -84,7 +90,7 @@ class ItemRepositoryEloquent implements ItemRepositoryInterface
             'stock_quantity'   => $item->stockQuantity,
             'minimum_quantity' => $item->minimumQuantity,
             'unit_price'       => $item->unitPrice,
-            'updated_user_id'  => Auth::id(),
+            'updated_user_id'  => $actorId,
         ]);
     }
 
