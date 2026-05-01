@@ -15,8 +15,6 @@ class ServiceOrderModel extends Model
         'customer_id',
         'vehicle_id',
         'customer_document',
-        'services',
-        'parts',
         'status',
         'services_total',
         'parts_total',
@@ -28,8 +26,6 @@ class ServiceOrderModel extends Model
     ];
 
     protected $casts = [
-        'services' => 'array',
-        'parts' => 'array',
         'services_total' => 'float',
         'parts_total' => 'float',
         'total_budget' => 'float',

@@ -9,11 +9,13 @@ use App\Domain\Notification\Interfaces\NotificationRepositoryInterface;
 use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
+use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use App\Infrastructure\Persistence\Eloquent\Repositories\CustomerRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\ItemRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\NotificationRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceOrderRepositoryEloquent;
+use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceOrderServiceRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\StockMovementRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\VehicleRepositoryEloquent;
@@ -61,6 +63,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ServiceOrderItemInterface::class,
             'App\\Infrastructure\\Persistence\\Eloquent\\Repositories\\ServiceOrderItemRepositoryEloquent'
+        );
+
+        $this->app->bind(
+            ServiceOrderServiceInterface::class,
+            ServiceOrderServiceRepositoryEloquent::class
         );
     }
 

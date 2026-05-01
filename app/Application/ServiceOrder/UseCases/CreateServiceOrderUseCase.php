@@ -4,6 +4,7 @@ namespace App\Application\ServiceOrder\UseCases;
 
 use App\Application\ServiceOrder\DTOs\CreateServiceOrderDTO;
 use App\Application\ServiceOrderItem\DTOs\CreateServiceOrderItemDTO;
+use App\Application\ServiceOrderService\DTOs\CreateServiceOrderServiceDTO;
 use App\Domain\Customer\Entities\Customer;
 use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Customer\ValueObjects\Document;
@@ -13,6 +14,7 @@ use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrder\Events\ServiceOrderCreated;
 use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
+use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
 use Illuminate\Support\Facades\DB;
 
 class CreateServiceOrderUseCase
@@ -22,7 +24,8 @@ class CreateServiceOrderUseCase
         private CustomerRepositoryInterface $customerRepository,
         private ServiceRepositoryInterface $serviceRepository,
         private ItemRepositoryInterface $itemRepository,
-        private ServiceOrderItemInterface $serviceOrderItemRepository
+        private ServiceOrderItemInterface $serviceOrderItemRepository,
+        private ServiceOrderServiceInterface $serviceOrderServiceRepository
     ) {}
 
     public function execute(CreateServiceOrderDTO $dto): ServiceOrder
@@ -67,8 +70,21 @@ class CreateServiceOrderUseCase
             $serviceOrder->sendQuoteForApproval();
         }
 
-        DB::transaction(function () use ($serviceOrder, $items): void {
+        DB::transaction(function () use ($serviceOrder, $items, $services): void {
             $this->serviceOrderRepository->save($serviceOrder);
+
+            foreach ($services as $service) {
+                $this->serviceOrderServiceRepository->createServiceOrderService(
+                    new CreateServiceOrderServiceDTO(
+                        $serviceOrder->id,
+                        (string) $service['service_id'],
+                        (int) $service['quantity'],
+                        (float) $service['unit_price'],
+                        null,
+                        null
+                    )
+                );
+            }
 
             foreach ($items as $item) {
                 $this->serviceOrderItemRepository->createServiceOrderItem(

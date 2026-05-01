@@ -15,20 +15,18 @@ use App\Domain\Service\Entities\Service;
 use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
-use App\Domain\Vehicle\Entities\Vehicle;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
-use App\Domain\Vehicle\ValueObjects\Plate;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\TestCase;
 
 class UpdateServiceOrderUseCaseTest extends TestCase
 {
-    private MockInterface $serviceOrderRepository;
-    private MockInterface $vehicleRepository;
-    private MockInterface $serviceRepository;
-    private MockInterface $itemRepository;
-    private MockInterface $stockMovementRepository;
+    private ServiceOrderRepositoryInterface&MockInterface $serviceOrderRepository;
+    private VehicleRepositoryInterface&MockInterface $vehicleRepository;
+    private ServiceRepositoryInterface&MockInterface $serviceRepository;
+    private ItemRepositoryInterface&MockInterface $itemRepository;
+    private StockMovementRepositoryInterface&MockInterface $stockMovementRepository;
     private UpdateServiceOrderUseCase $useCase;
 
     protected function setUp(): void
@@ -67,11 +65,6 @@ class UpdateServiceOrderUseCaseTest extends TestCase
         );
     }
 
-    private function makeVehicle(string $id = 'veh-1', string $plate = 'ABC1D23'): Vehicle
-    {
-        return new Vehicle($id, 'Toyota', 'Corolla', 2020, new Plate($plate));
-    }
-
     private function makeItem(string $id = 'item-1', float $stock = 10.0): Item
     {
         return new Item(
@@ -87,35 +80,27 @@ class UpdateServiceOrderUseCaseTest extends TestCase
         );
     }
 
-    public function test_updates_services_and_vehicle_data(): void
+    public function test_updates_services_and_items_data(): void
     {
         $serviceOrder = $this->makeServiceOrder();
-        $vehicle = $this->makeVehicle();
 
         $this->serviceOrderRepository->shouldReceive('findById')->once()->with('os-1')->andReturn($serviceOrder);
         $this->serviceRepository->shouldReceive('findById')->once()->with('svc-2')->andReturn(new Service('svc-2', 'Alinhamento', 90.0));
-        $this->itemRepository->shouldNotReceive('findById');
-        $this->vehicleRepository->shouldReceive('findById')->once()->with('veh-1')->andReturn($vehicle);
-        $this->vehicleRepository->shouldReceive('findByPlate')->once()->with('DEF2G34')->andReturnNull();
-        $this->vehicleRepository->shouldReceive('update')->once()->with($vehicle);
+        $this->itemRepository->shouldReceive('findById')->once()->with('item-2')->andReturn($this->makeItem('item-2', 12.0));
         $this->serviceOrderRepository->shouldReceive('update')->once()->with($serviceOrder);
 
         $result = $this->useCase->execute(new UpdateServiceOrderDTO(
             id: 'os-1',
             services: [['service_id' => 'svc-2', 'quantity' => 2.0]],
-            parts: null,
-            vehicleBrand: 'Honda',
-            vehicleModel: 'Civic',
-            vehicleYear: 2024,
-            vehiclePlate: 'DEF2G34',
+            items: [['item_id' => 'item-2', 'quantity' => 3.0]],
+            vehicleId: null,
             status: null,
             sendQuote: null,
             approveQuote: null
         ));
 
         $this->assertSame('Alinhamento', $result->services[0]['name']);
-        $this->assertSame('Honda', $vehicle->brand);
-        $this->assertSame('DEF2G34', $vehicle->plate->getValue());
+        $this->assertSame('item-2', $result->items[0]['item_id']);
     }
 
     public function test_approving_quote_withdraws_stock_and_records_movement(): void
@@ -124,7 +109,6 @@ class UpdateServiceOrderUseCaseTest extends TestCase
         $item = $this->makeItem('item-1', 10.0);
 
         $this->serviceOrderRepository->shouldReceive('findById')->once()->with('os-1')->andReturn($serviceOrder);
-        $this->vehicleRepository->shouldNotReceive('findById');
         $this->itemRepository->shouldReceive('findById')->once()->with('item-1')->andReturn($item);
         $this->itemRepository->shouldReceive('update')->once()->with($item);
         $this->stockMovementRepository->shouldReceive('save')->once()->with(Mockery::type(StockMovement::class));
@@ -133,11 +117,8 @@ class UpdateServiceOrderUseCaseTest extends TestCase
         $result = $this->useCase->execute(new UpdateServiceOrderDTO(
             id: 'os-1',
             services: null,
-            parts: null,
-            vehicleBrand: null,
-            vehicleModel: null,
-            vehicleYear: null,
-            vehiclePlate: null,
+            items: null,
+            vehicleId: null,
             status: null,
             sendQuote: null,
             approveQuote: true
@@ -156,38 +137,50 @@ class UpdateServiceOrderUseCaseTest extends TestCase
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Ordem de servico nao encontrada');
 
-        $this->useCase->execute(new UpdateServiceOrderDTO('os-404', null, null, null, null, null, null, null, null, null));
+        $this->useCase->execute(new UpdateServiceOrderDTO('os-404', null, null, null, null, null, null));
     }
 
-    public function test_throws_when_vehicle_of_service_order_is_not_found(): void
+    public function test_throws_when_service_not_found_during_update(): void
     {
         $serviceOrder = $this->makeServiceOrder();
 
         $this->serviceOrderRepository->shouldReceive('findById')->once()->with('os-1')->andReturn($serviceOrder);
-        $this->vehicleRepository->shouldReceive('findById')->once()->with('veh-1')->andReturnNull();
+        $this->serviceRepository->shouldReceive('findById')->once()->with('svc-x')->andReturnNull();
         $this->serviceOrderRepository->shouldNotReceive('update');
 
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Veiculo da ordem de servico nao encontrado');
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage("Servico 'svc-x' nao encontrado.");
 
-        $this->useCase->execute(new UpdateServiceOrderDTO('os-1', null, null, 'Honda', null, null, null, null, null, null));
+        $this->useCase->execute(new UpdateServiceOrderDTO(
+            id: 'os-1',
+            services: [['service_id' => 'svc-x', 'quantity' => 1]],
+            items: null,
+            vehicleId: null,
+            status: null,
+            sendQuote: null,
+            approveQuote: null
+        ));
     }
 
-    public function test_throws_when_plate_is_already_used_by_another_vehicle(): void
+    public function test_throws_when_item_not_found_during_update(): void
     {
         $serviceOrder = $this->makeServiceOrder();
-        $vehicle = $this->makeVehicle('veh-1', 'ABC1D23');
-        $otherVehicle = $this->makeVehicle('veh-2', 'DEF2G34');
 
         $this->serviceOrderRepository->shouldReceive('findById')->once()->with('os-1')->andReturn($serviceOrder);
-        $this->vehicleRepository->shouldReceive('findById')->once()->with('veh-1')->andReturn($vehicle);
-        $this->vehicleRepository->shouldReceive('findByPlate')->once()->with('DEF2G34')->andReturn($otherVehicle);
-        $this->vehicleRepository->shouldNotReceive('update');
+        $this->itemRepository->shouldReceive('findById')->once()->with('item-x')->andReturnNull();
         $this->serviceOrderRepository->shouldNotReceive('update');
 
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Placa ja cadastrada para outro veiculo');
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage("Peca 'item-x' nao encontrada.");
 
-        $this->useCase->execute(new UpdateServiceOrderDTO('os-1', null, null, null, null, null, 'DEF2G34', null, null, null));
+        $this->useCase->execute(new UpdateServiceOrderDTO(
+            id: 'os-1',
+            services: null,
+            items: [['item_id' => 'item-x', 'quantity' => 1]],
+            vehicleId: null,
+            status: null,
+            sendQuote: null,
+            approveQuote: null
+        ));
     }
 }
