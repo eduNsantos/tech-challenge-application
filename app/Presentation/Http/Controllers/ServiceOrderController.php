@@ -14,6 +14,7 @@ use App\Application\ServiceOrder\UseCases\ListServiceOrderUseCase;
 use App\Application\ServiceOrder\UseCases\ShowServiceOrderUseCase;
 use App\Application\ServiceOrder\UseCases\UpdateServiceOrderStatusUseCase;
 use App\Application\ServiceOrder\UseCases\UpdateServiceOrderUseCase;
+use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Presentation\Http\Requests\CreateServiceOrderRequest;
 use App\Presentation\Http\Requests\ListServiceOrderRequest;
 use App\Presentation\Http\Requests\UpdateServiceOrderRequest;
@@ -108,7 +109,7 @@ class ServiceOrderController
         return response()->noContent();
     }
 
-    private function present($serviceOrder): array
+    private function present(ServiceOrder $serviceOrder): array
     {
         return [
             'id' => $serviceOrder->id,
@@ -117,11 +118,9 @@ class ServiceOrderController
             'vehicle_id' => $serviceOrder->vehicleId,
             'services' => $serviceOrder->services,
             'items' => $serviceOrder->items,
-            'parts' => $serviceOrder->items,
             'status' => $serviceOrder->status,
             'services_total' => $serviceOrder->servicesTotal,
             'items_total' => $serviceOrder->itemsTotal,
-            'parts_total' => $serviceOrder->itemsTotal,
             'total_budget' => $serviceOrder->totalBudget,
             'quote_sent_at' => $serviceOrder->quoteSentAt,
             'quote_approved_at' => $serviceOrder->quoteApprovedAt,

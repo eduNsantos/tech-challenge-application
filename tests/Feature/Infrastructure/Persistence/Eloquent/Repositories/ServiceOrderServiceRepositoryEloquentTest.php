@@ -119,6 +119,7 @@ class ServiceOrderServiceRepositoryEloquentTest extends TestCase
     public function test_start_service_sets_started_at(): void
     {
         [$orderId, $serviceId] = $this->seedDependencies();
+        $user = User::factory()->create();
 
         $this->repository->createServiceOrderService(
             new CreateServiceOrderServiceDTO($orderId, $serviceId, 1, 50.0)
@@ -129,15 +130,18 @@ class ServiceOrderServiceRepositoryEloquentTest extends TestCase
             ->where('service_id', $serviceId)
             ->value('id');
 
-        $started = $this->repository->startService((string) $persistedId);
+        $started = $this->repository->startService((string) $persistedId, $user->id);
 
         $this->assertNotNull($started->started_at);
+        $this->assertSame($user->id, $started->started_user_id);
         $this->assertNotNull(DB::table('service_order_services')->where('id', $persistedId)->value('started_at'));
+        $this->assertSame($user->id, DB::table('service_order_services')->where('id', $persistedId)->value('started_user_id'));
     }
 
     public function test_finish_service_sets_finished_at(): void
     {
         [$orderId, $serviceId] = $this->seedDependencies();
+        $user = User::factory()->create();
 
         $this->repository->createServiceOrderService(
             new CreateServiceOrderServiceDTO($orderId, $serviceId, 1, 50.0)
@@ -148,10 +152,12 @@ class ServiceOrderServiceRepositoryEloquentTest extends TestCase
             ->where('service_id', $serviceId)
             ->value('id');
 
-        $finished = $this->repository->finishService((string) $persistedId);
+        $finished = $this->repository->finishService((string) $persistedId, $user->id);
 
         $this->assertNotNull($finished->finished_at);
+        $this->assertSame($user->id, $finished->finished_user_id);
         $this->assertNotNull(DB::table('service_order_services')->where('id', $persistedId)->value('finished_at'));
+        $this->assertSame($user->id, DB::table('service_order_services')->where('id', $persistedId)->value('finished_user_id'));
     }
 
     public function test_start_service_throws_when_not_found(): void

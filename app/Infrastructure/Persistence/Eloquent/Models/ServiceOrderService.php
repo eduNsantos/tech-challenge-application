@@ -16,10 +16,14 @@ class ServiceOrderService extends Model
         'price',
         'started_at',
         'finished_at',
+        'started_user_id',
+        'finished_user_id',
     ];
 
     protected $casts = [
         'started_at' => 'datetime',
         'finished_at' => 'datetime',
+        'started_user_id' => 'integer',
+        'finished_user_id' => 'integer',
     ];
 }

@@ -11,6 +11,8 @@ class ServiceOrderService
         public int $quantity,
         public float $price,
         public ?string $started_at,
-        public ?string $finished_at
+        public ?string $finished_at,
+        public ?int $started_user_id = null,
+        public ?int $finished_user_id = null
     ) {}
 }

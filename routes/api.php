@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Presentation\Http\Controllers\ServiceOrderController;
+use App\Presentation\Http\Controllers\ServiceOrderServiceController;
 use App\Presentation\Http\Controllers\ItemController;
 use App\Presentation\Http\Controllers\NotificationController;
 use App\Presentation\Http\Controllers\StockController;
@@ -51,6 +52,14 @@ Route::group([
     Route::put('/{id}', [ServiceOrderController::class, 'update']);
     Route::patch('/{id}/status', [ServiceOrderController::class, 'updateStatus']);
     Route::delete('/{id}', [ServiceOrderController::class, 'destroy']);
+});
+
+Route::group([
+    'middleware' => 'auth:api',
+    'prefix' => 'service-order-service'
+], function () {
+    Route::patch('/{id}/start', [ServiceOrderServiceController::class, 'start']);
+    Route::patch('/{id}/finish', [ServiceOrderServiceController::class, 'finish']);
 });
 
 Route::group([
