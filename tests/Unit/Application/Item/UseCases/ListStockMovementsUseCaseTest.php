@@ -142,6 +142,7 @@ class ListStockMovementsUseCaseTest extends TestCase
             ->with('uuid-1111', 3, 5)
             ->andReturn([]);
 
-        $this->useCase->execute($dto);
+        $result = $this->useCase->execute($dto);
+        $this->assertSame([], $result);
     }
 }
