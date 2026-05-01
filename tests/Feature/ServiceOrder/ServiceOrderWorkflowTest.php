@@ -117,6 +117,12 @@ class ServiceOrderWorkflowTest extends TestCase
                 'services'      => [
                     ['service_id' => $this->serviceId, 'quantity' => 1],
                 ],
+                'items'         => [
+                    ['item_id' => $this->itemId, 'quantity' => 2],
+                ],
+                'parts'         => [
+                    ['item_id' => $this->itemId, 'quantity' => 2],
+                ],
                 'send_quote'    => false,
             ])
             ->assertCreated()

@@ -213,6 +213,25 @@ class CreateServiceOrderTest extends TestCase
         ]);
     }
 
+    public function test_persists_services_lines_to_database(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload([
+                'services' => [
+                    ['service_id' => $this->serviceId, 'quantity' => 2],
+                ],
+            ]));
+
+        $orderId = $response->json('service_order.id');
+
+        $this->assertDatabaseHas('service_order_services', [
+            'service_order_id' => $orderId,
+            'service_id' => $this->serviceId,
+            'quantity' => 2,
+            'price' => 150.0,
+        ]);
+    }
+
     public function test_persists_customer_to_database_when_new(): void
     {
         $this->actingAs($this->user, 'api')

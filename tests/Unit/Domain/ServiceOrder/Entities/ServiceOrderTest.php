@@ -32,7 +32,7 @@ class ServiceOrderTest extends TestCase
         $this->assertNotEmpty($serviceOrder->id);
         $this->assertSame(ServiceOrder::STATUS_RECEBIDA, $serviceOrder->status);
         $this->assertSame(200.0, $serviceOrder->servicesTotal);
-        $this->assertSame(60.0, $serviceOrder->partsTotal);
+        $this->assertSame(60.0, $serviceOrder->itemsTotal);
         $this->assertSame(260.0, $serviceOrder->totalBudget);
     }
 
@@ -46,7 +46,7 @@ class ServiceOrderTest extends TestCase
         );
 
         $this->assertSame(50.0, $serviceOrder->servicesTotal);
-        $this->assertSame(0.0, $serviceOrder->partsTotal);
+        $this->assertSame(0.0, $serviceOrder->itemsTotal);
         $this->assertSame(50.0, $serviceOrder->totalBudget);
     }
 
