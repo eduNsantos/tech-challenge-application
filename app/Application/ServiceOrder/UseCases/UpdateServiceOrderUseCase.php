@@ -19,7 +19,8 @@ class UpdateServiceOrderUseCase
         private ServiceOrderRepositoryInterface $serviceOrderRepository,
         private ServiceRepositoryInterface $serviceRepository,
         private ItemRepositoryInterface $itemRepository,
-        private StockMovementRepositoryInterface $stockMovementRepository
+        private StockMovementRepositoryInterface $stockMovementRepository,
+        private VehicleRepositoryInterface $vehicleRepository
     ) {}
 
     public function execute(UpdateServiceOrderDTO $dto): ServiceOrder
@@ -34,6 +35,16 @@ class UpdateServiceOrderUseCase
         $items = $dto->items !== null ? $this->resolveItems($dto->items) : null;
 
         $serviceOrder->updateItems($services, $items);
+
+        if ($dto->vehicleId !== null) {
+            $vehicle = $this->vehicleRepository->findById($dto->vehicleId);
+
+            if (!$vehicle) {
+                throw new \DomainException("Veiculo '{$dto->vehicleId}' nao encontrado.");
+            }
+
+            $serviceOrder->vehicleId = $vehicle->id;
+        }
 
         if ($dto->status !== null) {
             $serviceOrder->changeStatus($dto->status);

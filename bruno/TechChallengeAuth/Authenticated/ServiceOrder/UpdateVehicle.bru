@@ -10,9 +10,13 @@ put {
   auth: inherit
 }
 
-vars:pre-request {
-  serviceOrderId: 7f4b9068-892f-416d-971a-78872e0a6e0f
-  vehicleId: 3aefbe97-bf9c-47d8-b3e9-f211d5469e8e
+docs {
+  Troca o veículo vinculado a uma OS.
+
+  Pré-requisitos:
+  - Execute `php artisan db:seed --class=DevDataSeeder` e copie o serviceOrderId exibido no console.
+  - Cole o serviceOrderId na variável acima.
+  - vehicleId já está fixo com o veículo criado pelo DevDataSeeder.
 }
 
 body:json {

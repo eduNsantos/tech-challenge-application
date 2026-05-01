@@ -5,18 +5,9 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/vehicle/123
-  body: json
+  url: {{baseUrl}}/vehicle/{{vehicleId}}
+  body: none
   auth: inherit
-}
-
-body:json {
-  {
-    "brand": "GM",
-    "model": "Celta",
-    "year": "2012",
-    "plate": "EFB1B31"
-  }
 }
 
 settings {
