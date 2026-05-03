@@ -11,16 +11,16 @@ use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
-use App\Domain\Vehicle\ValueObjects\Plate;
+use App\Domain\ServiceOrder\Events\ServiceOrderQuoteSent;
 
 class UpdateServiceOrderUseCase
 {
     public function __construct(
         private ServiceOrderRepositoryInterface $serviceOrderRepository,
-        private VehicleRepositoryInterface $vehicleRepository,
         private ServiceRepositoryInterface $serviceRepository,
         private ItemRepositoryInterface $itemRepository,
-        private StockMovementRepositoryInterface $stockMovementRepository
+        private StockMovementRepositoryInterface $stockMovementRepository,
+        private VehicleRepositoryInterface $vehicleRepository
     ) {}
 
     public function execute(UpdateServiceOrderDTO $dto): ServiceOrder
@@ -32,9 +32,19 @@ class UpdateServiceOrderUseCase
         }
 
         $services = $dto->services !== null ? $this->resolveServices($dto->services) : null;
-        $parts    = $dto->parts !== null ? $this->resolveParts($dto->parts) : null;
+        $items = $dto->items !== null ? $this->resolveItems($dto->items) : null;
 
-        $serviceOrder->updateItems($services, $parts);
+        $serviceOrder->updateItems($services, $items);
+
+        if ($dto->vehicleId !== null) {
+            $vehicle = $this->vehicleRepository->findById($dto->vehicleId);
+
+            if (!$vehicle) {
+                throw new \DomainException("Veiculo '{$dto->vehicleId}' nao encontrado.");
+            }
+
+            $serviceOrder->vehicleId = $vehicle->id;
+        }
 
         if ($dto->status !== null) {
             $serviceOrder->changeStatus($dto->status);
@@ -46,44 +56,14 @@ class UpdateServiceOrderUseCase
 
         if ($dto->approveQuote === true) {
             $serviceOrder->approveQuote();
-            $this->withdrawStockForParts($serviceOrder);
-        }
-
-        if (
-            $dto->vehicleBrand !== null ||
-            $dto->vehicleModel !== null ||
-            $dto->vehicleYear !== null ||
-            $dto->vehiclePlate !== null
-        ) {
-            $vehicle = $this->vehicleRepository->findById($serviceOrder->vehicleId);
-
-            if (!$vehicle) {
-                throw new \Exception('Veiculo da ordem de servico nao encontrado');
-            }
-
-            $plate = $dto->vehiclePlate !== null
-                ? new Plate($dto->vehiclePlate)
-                : null;
-
-            if ($plate !== null) {
-                $existing = $this->vehicleRepository->findByPlate($plate->getValue());
-
-                if ($existing !== null && $existing->id !== $vehicle->id) {
-                    throw new \Exception('Placa ja cadastrada para outro veiculo');
-                }
-            }
-
-            $vehicle->updateData(
-                $dto->vehicleBrand,
-                $dto->vehicleModel,
-                $dto->vehicleYear,
-                $plate
-            );
-
-            $this->vehicleRepository->update($vehicle);
+            $this->withdrawStockForItems($serviceOrder);
         }
 
         $this->serviceOrderRepository->update($serviceOrder);
+
+        if ($dto->sendQuote === true) {
+            event(new ServiceOrderQuoteSent($serviceOrder));
+        }
 
         return $serviceOrder;
     }
@@ -106,13 +86,19 @@ class UpdateServiceOrderUseCase
         }, $services);
     }
 
-    private function resolveParts(array $parts): array
+    private function resolveItems(array $items): array
     {
         return array_map(function (array $item): array {
-            $part = $this->itemRepository->findById($item['item_id']);
+            $itemId = (string) ($item['item_id'] ?? $item['item'] ?? '');
+
+            if ($itemId === '') {
+                throw new \DomainException('Item da OS sem identificador informado.');
+            }
+
+            $part = $this->itemRepository->findById($itemId);
 
             if (!$part) {
-                throw new \DomainException("Peca '{$item['item_id']}' nao encontrada.");
+                throw new \DomainException("Peca '{$itemId}' nao encontrada.");
             }
 
             return [
@@ -121,12 +107,12 @@ class UpdateServiceOrderUseCase
                 'quantity'   => (float) $item['quantity'],
                 'unit_price' => $part->unitPrice ?? 0.0,
             ];
-        }, $parts);
+        }, $items);
     }
 
-    private function withdrawStockForParts(ServiceOrder $serviceOrder): void
+    private function withdrawStockForItems(ServiceOrder $serviceOrder): void
     {
-        foreach ($serviceOrder->parts as $part) {
+        foreach ($serviceOrder->items as $part) {
             $itemId   = $part['item_id'] ?? null;
             $quantity = (float) ($part['quantity'] ?? 0);
 

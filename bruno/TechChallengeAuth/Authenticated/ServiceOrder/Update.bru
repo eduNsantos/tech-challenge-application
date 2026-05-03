@@ -1,0 +1,22 @@
+meta {
+  name: Update Service Order
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/service-order/{{serviceOrderId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "approve_quote": true
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -3,6 +3,8 @@
 namespace App\Application\ServiceOrder\UseCases;
 
 use App\Application\ServiceOrder\DTOs\CreateServiceOrderDTO;
+use App\Application\ServiceOrderItem\DTOs\CreateServiceOrderItemDTO;
+use App\Application\ServiceOrderService\DTOs\CreateServiceOrderServiceDTO;
 use App\Domain\Customer\Entities\Customer;
 use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Customer\ValueObjects\Document;
@@ -10,24 +12,26 @@ use App\Domain\Item\Interfaces\ItemRepositoryInterface;
 use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
-use App\Domain\Vehicle\Entities\Vehicle;
-use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
-use App\Domain\Vehicle\ValueObjects\Plate;
+use App\Domain\ServiceOrder\Events\ServiceOrderCreated;
+use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
+use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
+use Illuminate\Support\Facades\DB;
 
 class CreateServiceOrderUseCase
 {
     public function __construct(
         private ServiceOrderRepositoryInterface $serviceOrderRepository,
         private CustomerRepositoryInterface $customerRepository,
-        private VehicleRepositoryInterface $vehicleRepository,
         private ServiceRepositoryInterface $serviceRepository,
-        private ItemRepositoryInterface $itemRepository
+        private ItemRepositoryInterface $itemRepository,
+        private ServiceOrderItemInterface $serviceOrderItemRepository,
+        private ServiceOrderServiceInterface $serviceOrderServiceRepository
     ) {}
 
     public function execute(CreateServiceOrderDTO $dto): ServiceOrder
     {
         /** @var \App\Models\User|null $user */
-        $user = auth()->user();
+        $user = $dto->user;
 
         if ($user === null) {
             throw new \Exception('Usuario autenticado nao encontrado');
@@ -51,36 +55,50 @@ class CreateServiceOrderUseCase
             $this->customerRepository->save($customer);
         }
 
-        $plate = new Plate($dto->vehiclePlate);
-        $vehicle = $this->vehicleRepository->findByPlate($plate->getValue());
-
-        if (!$vehicle) {
-            $vehicle = Vehicle::create(
-                $dto->vehicleBrand,
-                $dto->vehicleModel,
-                $dto->vehicleYear,
-                $plate
-            );
-
-            $this->vehicleRepository->save($vehicle);
-        }
-
         $services = $this->resolveServices($dto->services);
-        $parts = $this->resolveParts($dto->parts);
+        $items = $this->resolveItems($dto->items);
 
         $serviceOrder = ServiceOrder::create(
             customerId: $customer->id,
             customerDocument: $customer->document,
-            vehicleId: $vehicle->id,
+            vehicleId: $dto->vehicleId,
             services: $services,
-            parts: $parts
+            items: $items
         );
 
         if ($dto->sendQuote) {
             $serviceOrder->sendQuoteForApproval();
         }
 
-        $this->serviceOrderRepository->save($serviceOrder);
+        DB::transaction(function () use ($serviceOrder, $items, $services): void {
+            $this->serviceOrderRepository->save($serviceOrder);
+
+            foreach ($services as $service) {
+                $this->serviceOrderServiceRepository->createServiceOrderService(
+                    new CreateServiceOrderServiceDTO(
+                        $serviceOrder->id,
+                        (string) $service['service_id'],
+                        (int) $service['quantity'],
+                        (float) $service['unit_price'],
+                        null,
+                        null
+                    )
+                );
+            }
+
+            foreach ($items as $item) {
+                $this->serviceOrderItemRepository->createServiceOrderItem(
+                    new CreateServiceOrderItemDTO(
+                        service_order_id: $serviceOrder->id,
+                        item_id: (string) $item['item_id'],
+                        quantity: (int) $item['quantity'],
+                        price: (float) $item['unit_price']
+                    )
+                );
+            }
+        });
+
+        event(new ServiceOrderCreated($serviceOrder));
 
         return $serviceOrder;
     }
@@ -103,21 +121,27 @@ class CreateServiceOrderUseCase
         }, $services);
     }
 
-    private function resolveParts(array $parts): array
+    private function resolveItems(array $items): array
     {
         return array_map(function (array $item): array {
-            $part = $this->itemRepository->findById($item['item_id']);
+            $itemId = (string) ($item['item_id'] ?? $item['item'] ?? '');
+
+            if ($itemId === '') {
+                throw new \DomainException('Item da OS sem identificador informado.');
+            }
+
+            $part = $this->itemRepository->findById($itemId);
 
             if (!$part) {
-                throw new \DomainException("Peca '{$item['item_id']}' nao encontrada.");
+                throw new \DomainException("Peca '{$itemId}' nao encontrada.");
             }
 
             return [
-                'item_id'    => $part->id,
-                'name'       => $part->name,
-                'quantity'   => (float) $item['quantity'],
-                'unit_price' => $part->unitPrice ?? 0.0,
+                'item_id' => $part->id,
+                'name' => $part->name,
+                'quantity' => (float) $item['quantity'],
+                'unit_price' => (float) ($part->unitPrice ?? 0.0),
             ];
-        }, $parts);
+        }, $items);
     }
 }

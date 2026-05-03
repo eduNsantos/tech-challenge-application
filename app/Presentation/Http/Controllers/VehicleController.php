@@ -7,6 +7,7 @@ use App\Application\Vehicle\DTOs\CreateVehicleDTO;
 use App\Application\Vehicle\DTOs\ListVehicleDTO;
 use App\Application\Vehicle\DTOs\ShowVehicleDTO;
 use App\Application\Vehicle\DTOs\UpdateVehicleDto;
+use App\Application\Vehicle\UseCases\DeleteVehicleUseCase;
 use App\Application\Vehicle\UseCases\ListVehicleUseCase;
 use App\Application\Vehicle\UseCases\ShowVehicleUseCase;
 use App\Application\Vehicle\UseCases\UpdateVehicleUseCase;
@@ -80,5 +81,11 @@ class VehicleController
             ],
             'message' => 'Veículo atualizado com sucesso'
         ], 200);
+    }
+
+    public function destroy(string $id, DeleteVehicleUseCase $useCase)
+    {
+        $useCase->execute($id);
+        return response()->json(null, 204);
     }
 }

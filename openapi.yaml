@@ -906,7 +906,7 @@ paths:
 
         - O cliente é identificado pelo documento (`document`) do usuário autenticado.
           Se ainda não existir um cadastro de cliente com esse documento, ele é criado automaticamente.
-        - O veículo é localizado pela placa. Se não existir, é criado automaticamente.
+        - O veículo é referenciado por `vehicle_id` (UUID) e deve existir previamente.
         - Cada serviço em `services` deve referenciar um `service_id` válido; nome e
           preço são snapshots do catálogo no momento da criação.
         - Cada peça em `parts` deve referenciar um `item_id` válido; nome e
@@ -923,10 +923,7 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateServiceOrderRequest'
             example:
-              vehicle_brand: Toyota
-              vehicle_model: Corolla
-              vehicle_year: 2020
-              vehicle_plate: ABC1D23
+              vehicle_id: "d1e2f3a4-b5c6-7890-defa-123456789012"
               services:
                 - service_id: "550e8400-e29b-41d4-a716-446655440010"
                   quantity: 1
@@ -1027,6 +1024,7 @@ paths:
             schema:
               $ref: '#/components/schemas/UpdateServiceOrderRequest'
             example:
+              vehicle_id: "d1e2f3a4-b5c6-7890-defa-123456789012"
               services:
                 - service_id: "550e8400-e29b-41d4-a716-446655440010"
                   quantity: 2
@@ -1247,25 +1245,13 @@ components:
 
     CreateServiceOrderRequest:
       type: object
-      required: [vehicle_brand, vehicle_model, vehicle_year, vehicle_plate, services]
+      required: [vehicle_id, services]
       properties:
-        vehicle_brand:
+        vehicle_id:
           type: string
-          maxLength: 255
-          example: Toyota
-        vehicle_model:
-          type: string
-          maxLength: 255
-          example: Corolla
-        vehicle_year:
-          type: integer
-          minimum: 1900
-          example: 2020
-        vehicle_plate:
-          type: string
-          maxLength: 10
-          description: Placa no formato Mercosul (ex. ABC1D23)
-          example: ABC1D23
+          format: uuid
+          description: ID de um veículo previamente cadastrado
+          example: "d1e2f3a4-b5c6-7890-defa-123456789012"
         services:
           type: array
           minItems: 1
@@ -1312,22 +1298,11 @@ components:
       type: object
       description: Todos os campos são opcionais
       properties:
-        vehicle_brand:
+        vehicle_id:
           type: string
-          maxLength: 255
-          example: Toyota
-        vehicle_model:
-          type: string
-          maxLength: 255
-          example: Corolla
-        vehicle_year:
-          type: integer
-          minimum: 1900
-          example: 2021
-        vehicle_plate:
-          type: string
-          maxLength: 10
-          example: ABC1D23
+          format: uuid
+          description: ID de um veículo previamente cadastrado
+          example: "d1e2f3a4-b5c6-7890-defa-123456789012"
         services:
           type: array
           minItems: 1

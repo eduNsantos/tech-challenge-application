@@ -1,0 +1,21 @@
+meta {
+  name: List Notifications
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/notification?page=1&perPage=20
+  body: none
+  auth: inherit
+}
+
+params:query {
+  page: 1
+  perPage: 20
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

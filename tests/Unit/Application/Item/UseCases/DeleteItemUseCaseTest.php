@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 
 class DeleteItemUseCaseTest extends TestCase
 {
-    private MockInterface $repository;
+    private ItemRepositoryInterface&MockInterface $repository;
     private DeleteItemUseCase $useCase;
 
     protected function setUp(): void
@@ -51,9 +51,10 @@ class DeleteItemUseCaseTest extends TestCase
         $item = $this->makeItem(stock: 0.0);
 
         $this->repository->shouldReceive('findById')->once()->with('uuid-1111')->andReturn($item);
-        $this->repository->shouldReceive('delete')->once()->with('uuid-1111');
+        $this->repository->shouldReceive('delete')->once()->with('uuid-1111')->andReturnNull();
 
-        $this->useCase->execute('uuid-1111');
+        $result = $this->useCase->execute('uuid-1111');
+        $this->assertTrue(true); // Verify delete was called via mock expectations
     }
 
     public function test_throws_when_item_not_found(): void

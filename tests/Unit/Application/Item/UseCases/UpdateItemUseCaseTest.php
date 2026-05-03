@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
 
 class UpdateItemUseCaseTest extends TestCase
 {
-    private MockInterface $repository;
+    private ItemRepositoryInterface&MockInterface $repository;
     private UpdateItemUseCase $useCase;
 
     protected function setUp(): void
@@ -120,6 +120,7 @@ class UpdateItemUseCaseTest extends TestCase
         $this->repository->shouldNotReceive('findByCode');
         $this->repository->shouldReceive('update')->once();
 
-        $this->useCase->execute($dto);
+        $result = $this->useCase->execute($dto);
+        $this->assertSame('New Name', $result->name);
     }
 }

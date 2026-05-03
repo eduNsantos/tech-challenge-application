@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
 
 class ShowItemUseCaseTest extends TestCase
 {
-    private MockInterface $repository;
+    private ItemRepositoryInterface&MockInterface $repository;
     private ShowItemUseCase $useCase;
 
     protected function setUp(): void
@@ -90,6 +90,7 @@ class ShowItemUseCaseTest extends TestCase
             ->with('uuid-ABCD')
             ->andReturn($item);
 
-        $this->useCase->execute(new ShowItemDTO('uuid-ABCD'));
+        $result = $this->useCase->execute(new ShowItemDTO('uuid-ABCD'));
+        $this->assertSame('uuid-ABCD', $result->id);
     }
 }
