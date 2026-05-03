@@ -193,12 +193,50 @@ curl -X POST http://localhost:8080/api/auth/logout \
 	-H "Authorization: Bearer seu-token-jwt"
 ```
 
-## Testes
+## Testes e qualidade de código
 
-Para executar os testes automatizados:
+O projeto usa um `Makefile` para centralizar os comandos de teste, coverage e análise estática. Certifique-se de ter o `make` instalado na máquina.
+
+### Referência rápida
+
+| Comando | Descrição |
+|---|---|
+| `make help` | Lista todos os targets disponíveis |
+| `make test` | Roda a suíte de testes **sem** gerar relatório de coverage (mais rápido) |
+| `make coverage` | Roda os testes e gera `coverage.xml` via PCOV |
+| `make scan` | Roda o SonarQube Scanner (requer `SONAR_TOKEN` e SonarQube em pé) |
+| `make ci` | `coverage` + `scan` em sequência — ideal para pipelines de CI |
+| `make all` | `up` + `coverage` + `scan` |
+| `make up` | Sobe os containers de desenvolvimento em background |
+| `make down` | Para e remove os containers de desenvolvimento |
+| `make lint` | Formata o código com Laravel Pint |
+
+### Rodar os testes
 
 ```bash
-docker compose run --rm app-php php artisan test
+# Execução rápida, sem relatório de cobertura
+make test
+
+# Com geração de coverage.xml
+make coverage
+```
+
+Os testes rodam dentro do container `app-test` definido em `docker-compose.test.yml`, usando um banco MySQL efêmero em tmpfs.
+
+### Análise de cobertura com SonarQube
+
+O SonarQube é configurado no `docker-compose.yml`. Na primeira execução, acesse `http://localhost:9000` para criar um projeto e gerar um token de acesso.
+
+```bash
+# Gera coverage e envia para o SonarQube
+SONAR_TOKEN=sqa_xxxx make ci
+```
+
+O `SONAR_TOKEN` também pode ser exportado no shell para não precisar repeti-lo:
+
+```bash
+export SONAR_TOKEN=sqa_xxxx
+make ci
 ```
 
 ## Observações

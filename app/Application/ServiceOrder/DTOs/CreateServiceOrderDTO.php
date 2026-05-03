@@ -2,15 +2,15 @@
 
 namespace App\Application\ServiceOrder\DTOs;
 
+use App\Models\User;
+
 class CreateServiceOrderDTO
 {
     public function __construct(
-        public string $vehicleBrand,
-        public string $vehicleModel,
-        public int $vehicleYear,
-        public string $vehiclePlate,
+        public User $user,
+        public string $vehicleId,
         public array $services,
-        public array $parts = [],
+        public array $items = [],
         public bool $sendQuote = true
     ) {}
 }

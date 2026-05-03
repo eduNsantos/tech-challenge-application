@@ -16,8 +16,8 @@ use App\Domain\ServiceOrder\Entities\ServiceOrder;
 
 class NotifyServiceOrderStatusTest extends TestCase
 {
-    private MockInterface $repositoryMock;
-    private MockInterface $serviceMock;
+    private NotificationRepositoryInterface&MockInterface $repositoryMock;
+    private NotificationServiceInterface&MockInterface $serviceMock;
     private SendServiceOrderStatusNotification $handler;
 
     protected function setUp(): void
@@ -42,10 +42,10 @@ class NotifyServiceOrderStatusTest extends TestCase
             vehicleId: '456',
             customerDocument: '1234567890',
             services: [],
-            parts: [],
+            items: [],
             status: ServiceOrder::STATUS_RECEBIDA,
             servicesTotal: 0,
-            partsTotal: 0,
+            itemsTotal: 0,
             totalBudget: 0,
             quoteSentAt: null,
             quoteApprovedAt: null
@@ -89,10 +89,10 @@ class NotifyServiceOrderStatusTest extends TestCase
             vehicleId: '456',
             customerDocument: '1234567890',
             services: [],
-            parts: [],
+            items: [],
             status: ServiceOrder::STATUS_FINALIZADA,
             servicesTotal: 0,
-            partsTotal: 0,
+            itemsTotal: 0,
             totalBudget: 0,
             quoteSentAt: null,
             quoteApprovedAt: null

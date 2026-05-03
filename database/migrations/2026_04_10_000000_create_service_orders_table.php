@@ -17,8 +17,6 @@ return new class extends Migration
             $table->uuid('customer_id');
             $table->uuid('vehicle_id');
             $table->string('customer_document', 14);
-            $table->json('services');
-            $table->json('parts')->nullable();
             $table->string('status', 40);
             $table->decimal('services_total', 10, 2)->default(0);
             $table->decimal('parts_total', 10, 2)->default(0);

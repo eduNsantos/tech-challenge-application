@@ -24,7 +24,9 @@ class ServiceRepositoryEloquent implements ServiceRepositoryInterface
     {
         $model = ServiceModel::where('name', $name)->first();
 
-        if (!$model) return null;
+        if (!$model) {
+            return null;
+        }
 
         return new Service(
             $model->id,
@@ -54,7 +56,9 @@ class ServiceRepositoryEloquent implements ServiceRepositoryInterface
     {
         $model = ServiceModel::find($id);
 
-        if (!$model) return null;
+        if (!$model) {
+            return null;
+        }
 
         return new Service(
             $model->id,
@@ -70,5 +74,10 @@ class ServiceRepositoryEloquent implements ServiceRepositoryInterface
             'price' => $service->price,
             'updated_user_id' => Auth::id()
         ]);
+    }
+
+    public function delete(string $id): void
+    {
+        ServiceModel::where('id', $id)->delete();
     }
 }

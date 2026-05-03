@@ -27,7 +27,9 @@ class VehicleRepositoryEloquent implements VehicleRepositoryInterface
     {
         $model = VehicleModel::where('plate', $plate)->first();
 
-        if (!$model) return null;
+        if (!$model) {
+            return null;
+        }
 
         return new Vehicle(
             $model->id,
@@ -59,7 +61,9 @@ class VehicleRepositoryEloquent implements VehicleRepositoryInterface
     {
         $model = VehicleModel::find($id);
 
-        if (!$model) return null;
+        if (!$model) {
+            return null;
+        }
 
         return new Vehicle(
             $model->id,
@@ -79,5 +83,10 @@ class VehicleRepositoryEloquent implements VehicleRepositoryInterface
             'plate' => $vehicle->plate->getValue(),
             'updated_user_id' => Auth::id()
         ]);
+    }
+
+    public function delete(string $id): void
+    {
+        VehicleModel::where('id', $id)->delete();
     }
 }

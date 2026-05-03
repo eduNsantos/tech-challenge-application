@@ -1,0 +1,35 @@
+meta {
+  name: Create Service Order
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/service-order
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "vehicle_id": "{{vehicleId}}",
+    "services": [
+      {
+        "service_id": "{{serviceId}}",
+        "quantity": 1
+      }
+    ],
+    "items": [
+      {
+        "item_id": "{{itemId}}",
+        "quantity": 2
+      }
+    ],
+    "send_quote": false
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

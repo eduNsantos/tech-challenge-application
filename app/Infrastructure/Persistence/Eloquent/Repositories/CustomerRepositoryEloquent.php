@@ -25,7 +25,11 @@ class CustomerRepositoryEloquent implements CustomerRepositoryInterface
     public function findById(string $id): ?Customer
     {
         $model = CustomerModel::find($id);
-        if (!$model) return null;
+
+        if (!$model) {
+            return null;
+        }
+
         return new Customer(
             $model->id,
             $model->name,
@@ -37,7 +41,11 @@ class CustomerRepositoryEloquent implements CustomerRepositoryInterface
     public function findByDocument(string $document): ?Customer
     {
         $model = CustomerModel::where('document', $document)->first();
-        if (!$model) return null;
+
+        if (!$model) {
+            return null;
+        }
+
         return new Customer(
             $model->id,
             $model->name,
@@ -49,7 +57,11 @@ class CustomerRepositoryEloquent implements CustomerRepositoryInterface
     public function findByEmail(string $email): ?Customer
     {
         $model = CustomerModel::where('email', $email)->first();
-        if (!$model) return null;
+
+        if (!$model) {
+            return null;
+        }
+
         return new Customer(
             $model->id,
             $model->name,
@@ -58,15 +70,18 @@ class CustomerRepositoryEloquent implements CustomerRepositoryInterface
             $model->document
         );
     }
+
     public function findAll(): array
     {
         $models = CustomerModel::all()->toArray();
         return $models;
     }
+
     public function paginate(int $page, int $perPage): array
     {
         return CustomerModel::query()->skip(($page - 1) * $perPage)->take($perPage)->get()->toArray();
     }
+
     public function update(Customer $customer): void
     {
         CustomerModel::where('id', $customer->id)->update([
@@ -77,6 +92,7 @@ class CustomerRepositoryEloquent implements CustomerRepositoryInterface
             'updated_user_id' => Auth::id()
         ]);
     }
+
     public function delete(string $id): void
     {
         CustomerModel::where('id', $id)->delete();

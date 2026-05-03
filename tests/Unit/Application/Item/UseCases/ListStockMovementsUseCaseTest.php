@@ -18,8 +18,8 @@ use PHPUnit\Framework\TestCase;
 
 class ListStockMovementsUseCaseTest extends TestCase
 {
-    private MockInterface $itemRepository;
-    private MockInterface $movementRepository;
+    private ItemRepositoryInterface&MockInterface $itemRepository;
+    private StockMovementRepositoryInterface&MockInterface $movementRepository;
     private ListStockMovementsUseCase $useCase;
 
     protected function setUp(): void
@@ -142,6 +142,7 @@ class ListStockMovementsUseCaseTest extends TestCase
             ->with('uuid-1111', 3, 5)
             ->andReturn([]);
 
-        $this->useCase->execute($dto);
+        $result = $this->useCase->execute($dto);
+        $this->assertSame([], $result);
     }
 }

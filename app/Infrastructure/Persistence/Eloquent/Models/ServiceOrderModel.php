@@ -15,21 +15,18 @@ class ServiceOrderModel extends Model
         'customer_id',
         'vehicle_id',
         'customer_document',
-        'services',
-        'parts',
         'status',
         'services_total',
         'parts_total',
         'total_budget',
         'quote_sent_at',
         'quote_approved_at',
+        'approval_token',
         'created_user_id',
         'updated_user_id'
     ];
 
     protected $casts = [
-        'services' => 'array',
-        'parts' => 'array',
         'services_total' => 'float',
         'parts_total' => 'float',
         'total_budget' => 'float',
@@ -45,5 +42,15 @@ class ServiceOrderModel extends Model
     public function vehicle()
     {
         return $this->belongsTo(VehicleModel::class, 'vehicle_id');
+    }
+
+    public function services()
+    {
+        return $this->hasMany(ServiceOrderServiceModel::class, 'service_order_id');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(ServiceOrderItemModel::class, 'service_order_id');
     }
 }

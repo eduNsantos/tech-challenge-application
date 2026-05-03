@@ -5,15 +5,20 @@ namespace App\Presentation\Http\Controllers;
 use App\Application\ServiceOrder\DTOs\CreateServiceOrderDTO;
 use App\Application\ServiceOrder\DTOs\DeleteServiceOrderDTO;
 use App\Application\ServiceOrder\DTOs\ListServiceOrderDTO;
+use App\Application\ServiceOrder\DTOs\RemoveServiceOrderItemDTO;
+use App\Application\ServiceOrder\DTOs\RemoveServiceOrderServiceDTO;
 use App\Application\ServiceOrder\DTOs\ShowServiceOrderDTO;
 use App\Application\ServiceOrder\DTOs\UpdateServiceOrderDTO;
 use App\Application\ServiceOrder\DTOs\UpdateServiceOrderStatusDTO;
 use App\Application\ServiceOrder\UseCases\CreateServiceOrderUseCase;
 use App\Application\ServiceOrder\UseCases\DeleteServiceOrderUseCase;
 use App\Application\ServiceOrder\UseCases\ListServiceOrderUseCase;
+use App\Application\ServiceOrder\UseCases\RemoveServiceOrderItemUseCase;
+use App\Application\ServiceOrder\UseCases\RemoveServiceOrderServiceUseCase;
 use App\Application\ServiceOrder\UseCases\ShowServiceOrderUseCase;
 use App\Application\ServiceOrder\UseCases\UpdateServiceOrderStatusUseCase;
 use App\Application\ServiceOrder\UseCases\UpdateServiceOrderUseCase;
+use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Presentation\Http\Requests\CreateServiceOrderRequest;
 use App\Presentation\Http\Requests\ListServiceOrderRequest;
 use App\Presentation\Http\Requests\UpdateServiceOrderRequest;
@@ -24,21 +29,25 @@ class ServiceOrderController
     public function store(CreateServiceOrderRequest $request, CreateServiceOrderUseCase $useCase)
     {
         $dto = new CreateServiceOrderDTO(
-            vehicleBrand: $request->input('vehicle_brand'),
-            vehicleModel: $request->input('vehicle_model'),
-            vehicleYear: (int) $request->input('vehicle_year'),
-            vehiclePlate: $request->input('vehicle_plate'),
+            user: $request->user(),
+            vehicleId: $request->input('vehicle_id'),
             services: $request->input('services', []),
-            parts: $request->input('parts', []),
+            items: $request->input('items', []),
             sendQuote: $request->boolean('send_quote', true)
         );
 
         $serviceOrder = $useCase->execute($dto);
 
-        return response()->json([
+        $response = [
             'service_order' => $this->present($serviceOrder),
             'message' => 'Ordem de servico criada com sucesso',
-        ], 201);
+        ];
+
+        if ($serviceOrder->approvalToken !== null) {
+            $response['approval_link'] = url("/api/service-order/approve/{$serviceOrder->approvalToken}");
+        }
+
+        return response()->json($response, 201);
     }
 
     public function list(ListServiceOrderRequest $request, ListServiceOrderUseCase $useCase)
@@ -70,11 +79,8 @@ class ServiceOrderController
         $dto = new UpdateServiceOrderDTO(
             id: $request->route('id'),
             services: $request->input('services'),
-            parts: $request->input('parts'),
-            vehicleBrand: $request->input('vehicle_brand'),
-            vehicleModel: $request->input('vehicle_model'),
-            vehicleYear: $request->filled('vehicle_year') ? (int) $request->input('vehicle_year') : null,
-            vehiclePlate: $request->input('vehicle_plate'),
+            items: $request->input('items', $request->input('parts')),
+            vehicleId: $request->input('vehicle_id'),
             status: $request->input('status'),
             sendQuote: $request->has('send_quote') ? $request->boolean('send_quote') : null,
             approveQuote: $request->has('approve_quote') ? $request->boolean('approve_quote') : null,
@@ -82,10 +88,16 @@ class ServiceOrderController
 
         $serviceOrder = $useCase->execute($dto);
 
-        return response()->json([
+        $response = [
             'service_order' => $this->present($serviceOrder),
             'message' => 'Ordem de servico atualizada com sucesso',
-        ]);
+        ];
+
+        if ($dto->sendQuote === true && $serviceOrder->approvalToken !== null) {
+            $response['approval_link'] = url("/api/service-order/approve/{$serviceOrder->approvalToken}");
+        }
+
+        return response()->json($response);
     }
 
     public function updateStatus(
@@ -113,7 +125,37 @@ class ServiceOrderController
         return response()->noContent();
     }
 
-    private function present($serviceOrder): array
+    public function removeService(string $id, string $serviceId, RemoveServiceOrderServiceUseCase $useCase)
+    {
+        $dto = new RemoveServiceOrderServiceDTO(
+            id: $id,
+            serviceId: $serviceId
+        );
+
+        $serviceOrder = $useCase->execute($dto);
+
+        return response()->json([
+            'service_order' => $this->present($serviceOrder),
+            'message' => 'Servico removido da ordem de servico com sucesso',
+        ]);
+    }
+
+    public function removeItem(string $id, string $itemId, RemoveServiceOrderItemUseCase $useCase)
+    {
+        $dto = new RemoveServiceOrderItemDTO(
+            id: $id,
+            itemId: $itemId
+        );
+
+        $serviceOrder = $useCase->execute($dto);
+
+        return response()->json([
+            'service_order' => $this->present($serviceOrder),
+            'message' => 'Item removido da ordem de servico com sucesso',
+        ]);
+    }
+
+    private function present(ServiceOrder $serviceOrder): array
     {
         return [
             'id' => $serviceOrder->id,
@@ -121,13 +163,14 @@ class ServiceOrderController
             'customer_document' => $serviceOrder->customerDocument,
             'vehicle_id' => $serviceOrder->vehicleId,
             'services' => $serviceOrder->services,
-            'parts' => $serviceOrder->parts,
+            'items' => $serviceOrder->items,
             'status' => $serviceOrder->status,
             'services_total' => $serviceOrder->servicesTotal,
-            'parts_total' => $serviceOrder->partsTotal,
+            'items_total' => $serviceOrder->itemsTotal,
             'total_budget' => $serviceOrder->totalBudget,
             'quote_sent_at' => $serviceOrder->quoteSentAt,
             'quote_approved_at' => $serviceOrder->quoteApprovedAt,
+            'approval_token' => $serviceOrder->approvalToken,
         ];
     }
 }

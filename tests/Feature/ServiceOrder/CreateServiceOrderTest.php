@@ -11,6 +11,7 @@ class CreateServiceOrderTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+    private string $vehicleId;
     private string $serviceId;
     private string $itemId;
 
@@ -41,6 +42,15 @@ class CreateServiceOrderTest extends TestCase
             ])
             ->json('id');
 
+        $this->vehicleId = $this->actingAs($this->user, 'api')
+            ->postJson('/api/vehicle', [
+                'brand' => 'Toyota',
+                'model' => 'Corolla',
+                'year'  => 2020,
+                'plate' => 'ABC1D23',
+            ])
+            ->json('id');
+
         // Adiciona estoque ao item para testes que envolvem baixa
         $this->actingAs($this->user, 'api')
             ->postJson("/api/item/{$this->itemId}/stock/entry", [
@@ -58,12 +68,12 @@ class CreateServiceOrderTest extends TestCase
     private function validPayload(array $overrides = []): array
     {
         return array_merge([
-            'vehicle_brand' => 'Toyota',
-            'vehicle_model' => 'Corolla',
-            'vehicle_year'  => 2020,
-            'vehicle_plate' => 'ABC1D23',
+            'vehicle_id'    => $this->vehicleId,
             'services'      => [
                 ['service_id' => $this->serviceId, 'quantity' => 1],
+            ],
+            'items'         => [
+                ['item_id' => $this->itemId, 'quantity' => 1],
             ],
             'send_quote'    => false,
         ], $overrides);
@@ -82,8 +92,8 @@ class CreateServiceOrderTest extends TestCase
             ->assertJsonStructure([
                 'service_order' => [
                     'id', 'customer_id', 'customer_document', 'vehicle_id',
-                    'services', 'parts', 'status',
-                    'services_total', 'parts_total', 'total_budget',
+                    'services', 'items', 'status',
+                    'services_total', 'items_total', 'total_budget',
                     'quote_sent_at', 'quote_approved_at',
                 ],
                 'message',
@@ -95,32 +105,34 @@ class CreateServiceOrderTest extends TestCase
             ]);
     }
 
-    public function test_creates_order_without_parts(): void
+    public function test_returns_422_when_items_are_missing(): void
     {
-        $response = $this->actingAs($this->user, 'api')
-            ->postJson('/api/service-order', $this->validPayload());
+        $payload = $this->validPayload();
+        unset($payload['items']);
 
-        $response->assertStatus(201)
-            ->assertJsonPath('service_order.parts', [])
-            ->assertJsonPath('service_order.parts_total', 0);
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $payload);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['items']);
     }
 
-    public function test_creates_order_with_parts(): void
+    public function test_creates_order_with_items(): void
     {
         $response = $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload([
-                'parts' => [
+                'items' => [
                     ['item_id' => $this->itemId, 'quantity' => 2],
                 ],
             ]));
 
         $response->assertStatus(201);
 
-        $parts = $response->json('service_order.parts');
-        $this->assertCount(1, $parts);
-        $this->assertSame($this->itemId, $parts[0]['item_id']);
-        $this->assertSame('Filtro de óleo', $parts[0]['name']);
-        $this->assertEquals(2, $parts[0]['quantity']);
+        $items = $response->json('service_order.items');
+        $this->assertCount(1, $items);
+        $this->assertSame($this->itemId, $items[0]['item_id']);
+        $this->assertSame('Filtro de óleo', $items[0]['name']);
+        $this->assertEquals(2, $items[0]['quantity']);
     }
 
     public function test_snapshots_service_data_from_catalog(): void
@@ -143,12 +155,12 @@ class CreateServiceOrderTest extends TestCase
         $response = $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload([
                 'services' => [['service_id' => $this->serviceId, 'quantity' => 2]],  // 2 × 150 = 300
-                'parts'    => [['item_id' => $this->itemId, 'quantity' => 3]],        // 3 × 35  = 105
+                'items'    => [['item_id' => $this->itemId, 'quantity' => 3]],        // 3 × 35  = 105
             ]));
 
         $response->assertStatus(201)
             ->assertJsonPath('service_order.services_total', 300)
-            ->assertJsonPath('service_order.parts_total', 105)
+            ->assertJsonPath('service_order.items_total', 105)
             ->assertJsonPath('service_order.total_budget', 405);
     }
 
@@ -194,6 +206,25 @@ class CreateServiceOrderTest extends TestCase
         ]);
     }
 
+    public function test_persists_services_lines_to_database(): void
+    {
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $this->validPayload([
+                'services' => [
+                    ['service_id' => $this->serviceId, 'quantity' => 2],
+                ],
+            ]));
+
+        $orderId = $response->json('service_order.id');
+
+        $this->assertDatabaseHas('service_order_services', [
+            'service_order_id' => $orderId,
+            'service_id' => $this->serviceId,
+            'quantity' => 2,
+            'price' => 150.0,
+        ]);
+    }
+
     public function test_persists_customer_to_database_when_new(): void
     {
         $this->actingAs($this->user, 'api')
@@ -204,17 +235,18 @@ class CreateServiceOrderTest extends TestCase
         ]);
     }
 
-    public function test_persists_vehicle_to_database_when_new(): void
+    public function test_persists_vehicle_reference_on_service_order(): void
     {
-        $this->actingAs($this->user, 'api')
+        $response = $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload());
 
-        $this->assertDatabaseHas('vehicles', [
-            'plate' => 'ABC1D23',
+        $this->assertDatabaseHas('service_orders', [
+            'id' => $response->json('service_order.id'),
+            'vehicle_id' => $this->vehicleId,
         ]);
     }
 
-    public function test_reuses_existing_vehicle_on_second_order(): void
+    public function test_does_not_create_new_vehicle_when_creating_order(): void
     {
         $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload());
@@ -239,15 +271,15 @@ class CreateServiceOrderTest extends TestCase
     // Validação de entrada (422)
     // -------------------------------------------------------------------------
 
-    public function test_returns_422_when_vehicle_brand_is_missing(): void
+    public function test_returns_422_when_vehicle_id_is_missing(): void
     {
         $payload = $this->validPayload();
-        unset($payload['vehicle_brand']);
+        unset($payload['vehicle_id']);
 
         $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $payload)
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['vehicle_brand']);
+            ->assertJsonValidationErrors(['vehicle_id']);
     }
 
     public function test_returns_422_when_services_array_is_empty(): void
@@ -278,14 +310,14 @@ class CreateServiceOrderTest extends TestCase
             ->assertJsonValidationErrors(['services.0.quantity']);
     }
 
-    public function test_returns_422_when_part_item_id_is_not_uuid(): void
+    public function test_returns_422_when_item_id_is_not_uuid(): void
     {
         $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload([
-                'parts' => [['item_id' => 'nao-e-uuid', 'quantity' => 1]],
+                'items' => [['item_id' => 'nao-e-uuid', 'quantity' => 1]],
             ]))
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['parts.0.item_id']);
+            ->assertJsonValidationErrors(['items.0.item_id']);
     }
 
     // -------------------------------------------------------------------------
@@ -301,9 +333,7 @@ class CreateServiceOrderTest extends TestCase
                 'services' => [['service_id' => $uuidInexistente, 'quantity' => 1]],
             ]))
             ->assertStatus(422)
-            ->assertJsonFragment([
-                'message' => "Servico '{$uuidInexistente}' nao encontrado.",
-            ]);
+            ->assertJsonValidationErrors(['services.0.service_id']);
     }
 
     public function test_returns_422_when_item_id_does_not_exist(): void
@@ -312,11 +342,9 @@ class CreateServiceOrderTest extends TestCase
 
         $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload([
-                'parts' => [['item_id' => $uuidInexistente, 'quantity' => 1]],
+                'items' => [['item_id' => $uuidInexistente, 'quantity' => 1]],
             ]))
             ->assertStatus(422)
-            ->assertJsonFragment([
-                'message' => "Peca '{$uuidInexistente}' nao encontrada.",
-            ]);
+            ->assertJsonValidationErrors(['items.0.item_id']);
     }
 }
