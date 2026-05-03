@@ -1,9 +1,7 @@
 # TechChallenge API
-
 API de autenticação construída com Laravel 13, JWT e MySQL, com ambiente de desenvolvimento via Docker Compose e documentação OpenAPI.
 
 ## Stack
-
 - PHP 8.4
 - Laravel 13
 - MySQL 8
@@ -11,18 +9,8 @@ API de autenticação construída com Laravel 13, JWT e MySQL, com ambiente de d
 - Docker Compose
 - Swagger UI para visualização da documentação
 
-## O que a API oferece
-
-Atualmente o projeto expõe endpoints de autenticação em `/api/auth` para:
-
-- registrar usuário
-- realizar login
-- obter usuário autenticado
-- renovar token
-- encerrar sessão
 
 ## Pré-requisitos
-
 Antes de iniciar, tenha instalado na máquina:
 
 - Docker
@@ -80,13 +68,11 @@ docker compose run --rm app-php composer install
 ```
 
 ### 5. Gere a chave da aplicação
-
 ```bash
 docker compose run --rm app-php php artisan key:generate
 ```
 
 ### 6. Rode as migrations
-
 ```bash
 docker compose run --rm app-php php artisan migrate
 ```
@@ -99,18 +85,6 @@ Para iniciar o ambiente:
 docker compose up -d
 ```
 
-Para acompanhar logs:
-
-```bash
-docker compose logs -f app-php
-```
-
-Para parar os serviços:
-
-```bash
-docker compose down
-```
-
 ## Documentação da API
 
 O contrato da API está no arquivo `openapi.yaml`.
@@ -120,79 +94,6 @@ Para visualizar a documentação no navegador, suba o serviço e acesse:
 ```text
 http://localhost:8082
 ```
-
-## Endpoints principais
-
-Base URL local:
-
-```text
-http://localhost:8080/api
-```
-
-Rotas disponíveis:
-
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/logout`
-- `POST /auth/refresh`
-- `GET /auth/me`
-
-## Fluxo de autenticação
-
-### Registrar usuário
-
-```bash
-curl -X POST http://localhost:8080/api/auth/register \
-	-H "Content-Type: application/json" \
-	-d '{
-		"name": "João Silva",
-		"email": "joao@example.com",
-		"password": "senha12345",
-		"password_confirmation": "senha12345"
-	}'
-```
-
-### Realizar login
-
-```bash
-curl -X POST http://localhost:8080/api/auth/login \
-	-H "Content-Type: application/json" \
-	-d '{
-		"email": "joao@example.com",
-		"password": "senha12345"
-	}'
-```
-
-Exemplo de resposta:
-
-```json
-{
-	"access_token": "seu-token-jwt",
-	"token_type": "bearer"
-}
-```
-
-### Consultar usuário autenticado
-
-```bash
-curl http://localhost:8080/api/auth/me \
-	-H "Authorization: Bearer seu-token-jwt"
-```
-
-### Renovar token
-
-```bash
-curl -X POST http://localhost:8080/api/auth/refresh \
-	-H "Authorization: Bearer seu-token-jwt"
-```
-
-### Logout
-
-```bash
-curl -X POST http://localhost:8080/api/auth/logout \
-	-H "Authorization: Bearer seu-token-jwt"
-```
-
 ## Testes e qualidade de código
 
 O projeto usa um `Makefile` para centralizar os comandos de teste, coverage e análise estática. Certifique-se de ter o `make` instalado na máquina.
@@ -210,6 +111,7 @@ O projeto usa um `Makefile` para centralizar os comandos de teste, coverage e an
 | `make up` | Sobe os containers de desenvolvimento em background |
 | `make down` | Para e remove os containers de desenvolvimento |
 | `make lint` | Formata o código com Laravel Pint |
+| `make seed-dev` | Popula o banco de dados com informações principais |
 
 ### Rodar os testes
 
