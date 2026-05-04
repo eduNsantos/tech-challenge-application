@@ -17,14 +17,14 @@ class UpdateVehicleUseCase
         $vehicle = $this->repository->findById($dto->id);
 
         if (!$vehicle) {
-            throw new \Exception('Veículo não encontrado');
+            throw new \DomainException('Veículo não encontrado');
         }
 
         if ($dto->plate !== null && $dto->plate->getValue() !== null) {
             $exists = $this->repository->findByPlate($dto->plate->getValue());
 
             if ($exists && $exists->id !== $vehicle->id) {
-                throw new \Exception('Placa já cadastrada para outro veículo');
+                throw new \DomainException('Placa já cadastrada para outro veículo');
             }
         }
 

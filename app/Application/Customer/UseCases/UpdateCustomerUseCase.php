@@ -15,7 +15,7 @@ class UpdateCustomerUseCase
     {
         $customer = $this->repository->findById($dto->id);
         if (!$customer) {
-            throw new \Exception('Cliente não encontrado');
+            throw new \DomainException('Cliente não encontrado');
         }
         $customer->updateData(
             $dto->name,
