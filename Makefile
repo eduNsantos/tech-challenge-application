@@ -85,6 +85,29 @@ scan: ## Roda o sonar-scanner (requer SONAR_TOKEN e SonarQube em pé)
 	fi
 	$(COMPOSE) run --rm sonar-scanner
 
+## ── ZAP DAST ─────────────────────────────────────────────────────────────────
+
+zap-scan: ## Roda o ZAP passive scan autenticado (requer ZAP_EMAIL e ZAP_PASSWORD)
+	@if [ -z "$$ZAP_EMAIL" ] || [ -z "$$ZAP_PASSWORD" ]; then \
+		echo "\033[31mErro: ZAP_EMAIL e ZAP_PASSWORD são obrigatórios.\033[0m"; \
+		echo "  Exemplo: ZAP_EMAIL=dev@example.com ZAP_PASSWORD=password make zap-scan"; \
+		exit 1; \
+	fi
+	@mkdir -p zap/reports
+	@chmod 777 zap/reports
+	@echo "Subindo API e aguardando healthcheck..."
+	$(COMPOSE) up -d --wait app-php db
+	@echo "API disponivel. Iniciando ZAP scan autenticado..."
+	$(COMPOSE) --profile zap run --rm \
+		-e ZAP_EMAIL="$$ZAP_EMAIL" \
+		-e ZAP_PASSWORD="$$ZAP_PASSWORD" \
+		-e ZAP_ACTIVE_SCAN="$$ZAP_ACTIVE_SCAN" \
+		zap
+	@echo "\033[32mRelatorio gerado em zap/reports/report.html\033[0m"
+
+zap-scan-full: ## Roda o ZAP scan completo com active scan (~3 GB RAM, 30+ min)
+	ZAP_ACTIVE_SCAN=true $(MAKE) zap-scan
+
 ## ── Atalhos combinados ───────────────────────────────────────────────────────
 
 ci: coverage scan ## Gera coverage e em seguida roda o scanner (pipeline CI)

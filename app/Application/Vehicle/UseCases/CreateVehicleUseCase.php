@@ -20,7 +20,7 @@ class CreateVehicleUseCase
         $existing = $this->repository->findByPlate($plate->getValue());
 
         if ($existing) {
-            throw new \Exception('Veículo já cadastrado');
+            throw new \DomainException('Veículo já cadastrado');
         }
 
         $vehicle = Vehicle::create(

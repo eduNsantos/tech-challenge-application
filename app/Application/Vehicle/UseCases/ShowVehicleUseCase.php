@@ -17,7 +17,7 @@ class ShowVehicleUseCase
         $vehicle = $this->repository->findById($dto->id);
 
         if (!$vehicle) {
-            throw new \Exception('Veículo não encontrado');
+            throw new \DomainException('Veículo não encontrado');
         }
 
         return $vehicle;
