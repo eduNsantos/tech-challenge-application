@@ -12,20 +12,7 @@ get {
 
 body:json {
   {
-    "name": "João Teste"
-    "email": "joao@teste.com",
-    "password": "senha12345"
-    "password_confirmation": "senha12345"
-  }
-}
-
-script:post-response {
-  try {
-    let body = res.getBody();
-    
-    bru.setVar('token', body.access_token);
-  } catch (e) {
-    console.log('Erro ao parsear JSON', e);
+    "name": "João Teste
   }
 }
 
