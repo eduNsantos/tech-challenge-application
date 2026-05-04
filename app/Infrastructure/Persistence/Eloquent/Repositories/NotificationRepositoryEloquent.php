@@ -4,6 +4,8 @@ namespace App\Infrastructure\Persistence\Eloquent\Repositories;
 
 use App\Domain\Notification\Interfaces\NotificationRepositoryInterface;
 use App\Domain\Notification\Entities\Notification as NotificationEntity;
+use App\Domain\Notification\ValueObjects\NotificationStatus;
+use App\Domain\Notification\ValueObjects\NotificationType;
 use App\Infrastructure\Persistence\Eloquent\Models\NotificationModel;
 
 class NotificationRepositoryEloquent implements NotificationRepositoryInterface
@@ -29,11 +31,12 @@ class NotificationRepositoryEloquent implements NotificationRepositoryInterface
         return new NotificationEntity(
             $model->id,
             $model->recipient_id,
-            $model->type,
+            NotificationType::from($model->type),
             $model->subject,
             $model->content,
-            $model->status,
-            $model->sent_at
+            NotificationStatus::from($model->status),
+            new \DateTimeImmutable($model->created_at),
+            $model->sent_at ? new \DateTimeImmutable($model->sent_at) : null
         );
     }
 
