@@ -17,11 +17,11 @@ class UpdateServiceUseCase
         $service = $this->repository->findById($dto->id);
 
         if (!$service) {
-            throw new \Exception('Serviço não encontrado');
+            throw new \DomainException('Serviço não encontrado');
         }
 
         if (is_null($dto->name) && is_null($dto->price)) {
-            throw new \Exception('Nenhum dado para atualizar');
+            throw new \DomainException('Nenhum dado para atualizar');
         }
 
 
@@ -29,7 +29,7 @@ class UpdateServiceUseCase
             $existing = $this->repository->findByName($dto->name);
 
             if ($existing && $existing->id !== $service->id) {
-                throw new \Exception('Já existe um serviço com esse nome');
+                throw new \DomainException('Já existe um serviço com esse nome');
             }
         }
 

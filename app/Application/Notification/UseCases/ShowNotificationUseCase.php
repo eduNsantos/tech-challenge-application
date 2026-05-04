@@ -17,7 +17,7 @@ class ShowNotificationUseCase
         $notification = $this->repository->findById($dto->id);
 
         if (!$notification) {
-            throw new \Exception('Notificação não encontrada');
+            throw new \DomainException('Notificação não encontrada');
         }
 
         return $notification;

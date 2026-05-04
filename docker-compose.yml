@@ -16,6 +16,12 @@ services:
     networks:
       - app_network
     command: "php artisan serve --host=0.0.0.0"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/up"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 15s
 
   db:
     image: mysql:8.0
@@ -64,6 +70,23 @@ services:
       - sonar
     networks:
       - app_network
+
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    profiles: [zap]
+    depends_on:
+      app-php:
+        condition: service_healthy
+    volumes:
+      - ./openapi.yaml:/zap/wrk/openapi.yaml:ro
+      - ./zap/reports:/zap/wrk/reports
+      - ./zap/entrypoint.sh:/zap/wrk/entrypoint.sh:ro
+    networks:
+      - app_network
+    environment:
+      - ZAP_EMAIL
+      - ZAP_PASSWORD
+    entrypoint: ["bash", "/zap/wrk/entrypoint.sh"]
 
 volumes:
   mysql_data:
