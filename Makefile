@@ -30,7 +30,16 @@ bootstrap: ## Setup completo do zero (env, build, deps, chaves e migrate)
 	done
 
 up: ## Sobe os containers de desenvolvimento (app, db, swagger, sonar)
+	@if [ ! -f .env ]; then cp .env.example .env; fi
 	$(COMPOSE) up -d
+	@if [ -z "$(JWT_SECRET)" ] || [ "$(JWT_SECRET)" = "generate_random" ]; then \
+		echo ""; \
+		echo "[jwt] JWT_SECRET ausente ou invalido. Aguardando container e gerando chave..."; \
+		sleep 5; \
+		$(COMPOSE) exec app-php php artisan jwt:secret --force; \
+		$(COMPOSE) up -d --force-recreate app-php; \
+		echo "[jwt] Chave gerada e container reiniciado."; \
+	fi
 
 down: ## Para e remove os containers de desenvolvimento
 	$(COMPOSE) down
