@@ -17,7 +17,7 @@ class ShowServiceUseCase
         $service = $this->repository->findById($dto->id);
 
         if (!$service) {
-            throw new \Exception('Serviço não encontrado');
+            throw new \DomainException('Serviço não encontrado');
         }
 
         return $service;

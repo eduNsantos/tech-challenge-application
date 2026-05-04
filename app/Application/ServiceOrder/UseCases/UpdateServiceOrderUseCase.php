@@ -28,7 +28,7 @@ class UpdateServiceOrderUseCase
         $serviceOrder = $this->serviceOrderRepository->findById($dto->id);
 
         if (!$serviceOrder) {
-            throw new \Exception('Ordem de servico nao encontrada');
+            throw new \DomainException('Ordem de servico nao encontrada');
         }
 
         $services = $dto->services !== null ? $this->resolveServices($dto->services) : null;

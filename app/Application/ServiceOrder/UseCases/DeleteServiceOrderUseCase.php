@@ -16,7 +16,7 @@ class DeleteServiceOrderUseCase
         $serviceOrder = $this->repository->findById($dto->id);
 
         if (!$serviceOrder) {
-            throw new \Exception('Ordem de servico nao encontrada');
+            throw new \DomainException('Ordem de servico nao encontrada');
         }
 
         $this->repository->delete($dto->id);

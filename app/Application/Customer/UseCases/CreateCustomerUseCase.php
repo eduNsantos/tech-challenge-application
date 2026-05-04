@@ -19,7 +19,7 @@ class CreateCustomerUseCase
         $document = new Document($dto->document);
         $existing = $this->repository->findByDocument($document->getValue());
         if ($existing) {
-            throw new \Exception('Cliente já cadastrado');
+            throw new \DomainException('Cliente já cadastrado');
         }
         $customer = Customer::create(
             $dto->name,
