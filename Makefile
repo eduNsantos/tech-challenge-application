@@ -1,4 +1,4 @@
-.PHONY: help test coverage scan all up down
+.PHONY: help test coverage scan all up down bootstrap
 
 -include .env
 export
@@ -12,6 +12,22 @@ help:
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
 ## ── Ambiente de desenvolvimento ──────────────────────────────────────────────
+
+bootstrap: ## Setup completo do zero (env, build, deps, chaves e migrate)
+	@if [ ! -f .env ]; then cp .env.example .env; fi
+	$(COMPOSE) up -d --build
+	$(COMPOSE) exec app-php composer install
+	$(COMPOSE) exec app-php php artisan key:generate --force
+	$(COMPOSE) exec app-php php artisan jwt:secret --force
+	@i=0; until $(COMPOSE) exec app-php php artisan migrate --force; do \
+		i=$$((i+1)); \
+		if [ $$i -ge 20 ]; then \
+			echo "Erro: banco indisponivel apos varias tentativas."; \
+			exit 1; \
+		fi; \
+		echo "Aguardando banco iniciar..."; \
+		sleep 3; \
+	done
 
 up: ## Sobe os containers de desenvolvimento (app, db, swagger, sonar)
 	$(COMPOSE) up -d

@@ -16,6 +16,25 @@ Antes de iniciar, tenha instalado na máquina:
 - Docker
 - Docker Compose
 
+## Início rápido (do zero)
+
+Se você quer rodar o projeto com o mínimo de passos, execute:
+
+```bash
+make bootstrap
+```
+
+Depois, acesse:
+
+- API: `http://localhost:8080`
+- Swagger: `http://localhost:8082`
+
+Para parar tudo:
+
+```bash
+docker compose down
+```
+
 ## Serviços disponíveis
 
 Ao subir o ambiente, os serviços ficam disponíveis em:
