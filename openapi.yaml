@@ -16,7 +16,7 @@ info:
        ```
        Authorization: Bearer {access_token}
        ```
-  version: 1.2.0
+  version: 1.3.0
   contact: {}
 
 servers:
@@ -39,6 +39,12 @@ tags:
       Operação principal do sistema — abre, acompanha e encerra o atendimento de um veículo.
       Fluxo de status: recebida → em_diagnostico → aguardando_aprovacao → em_execucao → finalizada → entregue.
       A aprovação do orçamento dispara a baixa automática de estoque das peças (requer autenticação)
+  - name: Serviços de Ordem
+    description: Controle de execução individual de serviços dentro de uma OS — iniciar e finalizar (requer autenticação)
+  - name: Clientes
+    description: Operações de gerenciamento de clientes (requer autenticação)
+  - name: Notificações
+    description: Consulta de notificações enviadas aos clientes (requer autenticação)
 
 paths:
 
@@ -62,6 +68,7 @@ paths:
               example:
                 name: João Silva
                 email: joao@example.com
+                document: "49150206818"
                 password: senha12345
                 password_confirmation: senha12345
       responses:
@@ -296,6 +303,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErroValidacao'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+
+    delete:
+      tags:
+        - Veículos
+      summary: Remover veículo
+      operationId: vehicle-delete
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '204':
+          description: Veículo removido com sucesso
         '401':
           $ref: '#/components/responses/NaoAutenticado'
         '404':
@@ -856,6 +880,29 @@ paths:
         '422':
           $ref: '#/components/responses/ErroValidacaoLaravel'
 
+    delete:
+      tags:
+        - Serviços
+      summary: Remover serviço
+      operationId: service-delete
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID do serviço em formato UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Serviço removido com sucesso
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
   # ── Ordens de Serviço ────────────────────────────────────────────────────────
 
   /service-order:
@@ -909,7 +956,7 @@ paths:
         - O veículo é referenciado por `vehicle_id` (UUID) e deve existir previamente.
         - Cada serviço em `services` deve referenciar um `service_id` válido; nome e
           preço são snapshots do catálogo no momento da criação.
-        - Cada peça em `parts` deve referenciar um `item_id` válido; nome e
+        - Cada item em `items` deve referenciar um `item_id` válido; nome e
           preço unitário são snapshots do almoxarifado no momento da criação.
 
         **Requer autenticação.**
@@ -927,7 +974,7 @@ paths:
               services:
                 - service_id: "550e8400-e29b-41d4-a716-446655440010"
                   quantity: 1
-              parts:
+              items:
                 - item_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                   quantity: 2
               send_quote: false
@@ -954,17 +1001,18 @@ paths:
                       name: Troca de óleo
                       quantity: 1
                       unit_price: 150.00
-                  parts:
+                  items:
                     - item_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                       name: Filtro de óleo
                       quantity: 2
                       unit_price: 35.00
                   status: recebida
                   services_total: 150.00
-                  parts_total: 70.00
+                  items_total: 70.00
                   total_budget: 220.00
                   quote_sent_at: null
                   quote_approved_at: null
+                  approval_token: null
                 message: Ordem de servico criada com sucesso
         '401':
           $ref: '#/components/responses/NaoAutenticado'
@@ -1109,6 +1157,390 @@ paths:
         '422':
           $ref: '#/components/responses/ErroNegocio'
 
+  /service-order/{id}/services/{serviceId}:
+    delete:
+      tags:
+        - Ordens de Serviço
+      summary: Remover serviço da ordem de serviço
+      operationId: service-order-remove-service
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+        - name: serviceId
+          in: path
+          required: true
+          description: ID do serviço a remover (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Serviço removido da OS com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service_order:
+                    $ref: '#/components/schemas/ServiceOrder'
+                  message:
+                    type: string
+                    example: Servico removido da ordem de servico com sucesso
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
+  /service-order/{id}/items/{itemId}:
+    delete:
+      tags:
+        - Ordens de Serviço
+      summary: Remover item da ordem de serviço
+      operationId: service-order-remove-item
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+        - name: itemId
+          in: path
+          required: true
+          description: ID do item a remover (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Item removido da OS com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service_order:
+                    $ref: '#/components/schemas/ServiceOrder'
+                  message:
+                    type: string
+                    example: Item removido da ordem de servico com sucesso
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
+  # ─── Serviços de Ordem ───────────────────────────────────────────────────────
+
+  /service-order-service/metrics/average-execution-time:
+    get:
+      tags:
+        - Serviços de Ordem
+      summary: Tempo médio de execução por serviço
+      description: |-
+        Retorna o tempo médio de execução agrupado por tipo de serviço.
+
+        **Requer autenticação.**
+      operationId: service-order-service-average-execution-time
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Métricas retornadas com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metrics:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AverageExecutionTimeMetric'
+                  message:
+                    type: string
+                    example: Tempo medio por servico obtido com sucesso
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+
+  /service-order-service/{id}/start:
+    patch:
+      tags:
+        - Serviços de Ordem
+      summary: Iniciar execução do serviço
+      description: |-
+        Registra o início da execução de um serviço dentro de uma OS.
+
+        **Requer autenticação.**
+      operationId: service-order-service-start
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: Serviço iniciado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service_order_service:
+                    $ref: '#/components/schemas/ServiceOrderService'
+                  message:
+                    type: string
+                    example: Servico iniciado com sucesso
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
+  /service-order-service/{id}/finish:
+    patch:
+      tags:
+        - Serviços de Ordem
+      summary: Finalizar execução do serviço
+      description: |-
+        Registra a conclusão da execução de um serviço dentro de uma OS.
+
+        **Requer autenticação.**
+      operationId: service-order-service-finish
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: Serviço finalizado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service_order_service:
+                    $ref: '#/components/schemas/ServiceOrderService'
+                  message:
+                    type: string
+                    example: Servico finalizado com sucesso
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
+  # ─── Clientes ────────────────────────────────────────────────────────────────
+
+  /customer:
+    get:
+      tags:
+        - Clientes
+      summary: Listar clientes
+      operationId: customer-list
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: perPage
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+      responses:
+        '200':
+          description: Lista retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+
+    post:
+      tags:
+        - Clientes
+      summary: Criar novo cliente
+      operationId: customer-create
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerRequest'
+            example:
+              name: João Silva
+              email: joao@example.com
+              document: "52998224725"
+              phone: "11999999999"
+      responses:
+        '200':
+          description: Cliente criado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer:
+                    $ref: '#/components/schemas/Customer'
+              example:
+                customer:
+                  id: "c1d2e3f4-a5b6-7890-cdef-012345678901"
+                  name: João Silva
+                  email: joao@example.com
+                  document: "52998224725"
+                  phone: "11999999999"
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+
+  /customer/{id}:
+    get:
+      tags:
+        - Clientes
+      summary: Obter detalhes do cliente
+      operationId: customer-show
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: Detalhes retornados com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer:
+                    $ref: '#/components/schemas/Customer'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+
+    put:
+      tags:
+        - Clientes
+      summary: Atualizar cliente
+      operationId: customer-update
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCustomerRequest'
+            example:
+              name: João Silva Atualizado
+              email: joao.novo@example.com
+              phone: "11988888888"
+      responses:
+        '200':
+          description: Cliente atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer:
+                    $ref: '#/components/schemas/Customer'
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+
+    delete:
+      tags:
+        - Clientes
+      summary: Remover cliente
+      operationId: customer-delete
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '204':
+          description: Cliente removido com sucesso
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+
+  # ─── Notificações ─────────────────────────────────────────────────────────────
+
+  /notification:
+    get:
+      tags:
+        - Notificações
+      summary: Listar notificações
+      operationId: notification-list
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: perPage
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+      responses:
+        '200':
+          description: Lista retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+
+  /notification/{id}:
+    get:
+      tags:
+        - Notificações
+      summary: Obter detalhes da notificação
+      operationId: notification-show
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: Notificação retornada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+
 components:
 
   securitySchemes:
@@ -1158,9 +1590,9 @@ components:
           description: Serviços incluídos na OS (snapshot do catálogo no momento da criação)
           items:
             $ref: '#/components/schemas/ServiceOrderItem'
-        parts:
+        items:
           type: array
-          description: Peças incluídas na OS (snapshot do almoxarifado no momento da criação)
+          description: Itens/peças incluídos na OS (snapshot do almoxarifado no momento da criação)
           items:
             $ref: '#/components/schemas/ServiceOrderPart'
         status:
@@ -1172,15 +1604,15 @@ components:
           format: float
           description: Soma total dos serviços (quantity × unit_price)
           example: 150.00
-        parts_total:
+        items_total:
           type: number
           format: float
-          description: Soma total das peças (quantity × unit_price)
+          description: Soma total dos itens/peças (quantity × unit_price)
           example: 70.00
         total_budget:
           type: number
           format: float
-          description: Orçamento total (services_total + parts_total)
+          description: Orçamento total (services_total + items_total)
           example: 220.00
         quote_sent_at:
           type: string
@@ -1193,6 +1625,11 @@ components:
           format: date-time
           nullable: true
           description: Data/hora em que o orçamento foi aprovado pelo cliente
+          example: null
+        approval_token:
+          type: string
+          nullable: true
+          description: Token de aprovação enviado ao cliente por e-mail (preenchido ao enviar orçamento)
           example: null
 
     ServiceOrderItem:
@@ -1270,9 +1707,9 @@ components:
                 format: float
                 minimum: 0.01
                 example: 1
-        parts:
+        items:
           type: array
-          description: Lista de peças a incluir (opcional)
+          description: Lista de itens/peças a incluir (opcional)
           items:
             type: object
             required: [item_id, quantity]
@@ -1319,8 +1756,9 @@ components:
                 format: float
                 minimum: 0.01
                 example: 2
-        parts:
+        items:
           type: array
+          description: Lista de itens/peças a atualizar na OS
           items:
             type: object
             required: [item_id, quantity]
@@ -1362,7 +1800,7 @@ components:
 
     RegistroRequest:
       type: object
-      required: [name, email, password, password_confirmation]
+      required: [name, email, document, password, password_confirmation]
       properties:
         name:
           type: string
@@ -1372,6 +1810,10 @@ components:
           type: string
           format: email
           example: joao@example.com
+        document:
+          type: string
+          description: CPF (11 dígitos) ou CNPJ (14 dígitos)
+          example: "49150206818"
         password:
           type: string
           format: password
@@ -1906,6 +2348,180 @@ components:
           type: string
           description: Mensagem de erro de regra de negócio
           example: "Servico '00000000-0000-0000-0000-000000000000' nao encontrado."
+
+    # ── Clientes ──────────────────────────────────────────────────────────────
+
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "c1d2e3f4-a5b6-7890-cdef-012345678901"
+        name:
+          type: string
+          example: João Silva
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: joao@example.com
+        document:
+          type: string
+          description: CPF (11 dígitos) ou CNPJ (14 dígitos)
+          example: "52998224725"
+        phone:
+          type: string
+          nullable: true
+          example: "11999999999"
+
+    CreateCustomerRequest:
+      type: object
+      required: [name, document]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          example: João Silva
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: joao@example.com
+        document:
+          type: string
+          description: CPF (11 dígitos) ou CNPJ (14 dígitos)
+          example: "52998224725"
+        phone:
+          type: string
+          nullable: true
+          example: "11999999999"
+
+    UpdateCustomerRequest:
+      type: object
+      description: Todos os campos são opcionais
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          example: João Silva Atualizado
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: joao.novo@example.com
+        document:
+          type: string
+          description: CPF (11 dígitos) ou CNPJ (14 dígitos)
+          example: "52998224725"
+        phone:
+          type: string
+          nullable: true
+          example: "11988888888"
+
+    # ── Notificações ─────────────────────────────────────────────────────────
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "n1o2t3i4-f5i6-7890-cati-on1234567890"
+        recipient_id:
+          type: string
+          format: uuid
+          description: ID do destinatário (Customer)
+          example: "c1d2e3f4-a5b6-7890-cdef-012345678901"
+        type:
+          type: string
+          description: Canal de envio da notificação
+          enum: [email, sms, push]
+          example: email
+        subject:
+          type: string
+          example: "Orçamento disponível para aprovação"
+        content:
+          type: string
+          example: "Seu orçamento está pronto. Clique aqui para aprovar."
+        status:
+          type: string
+          enum: [pending, sent, failed]
+          example: sent
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-04-08T14:30:00.000000Z'
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-04-08T14:31:00.000000Z'
+
+    # ── Serviços de Ordem ────────────────────────────────────────────────────
+
+    ServiceOrderService:
+      type: object
+      description: Registro de execução de um serviço vinculado a uma OS
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "s1o2s3e4-r5v6-7890-ice0-rder12345678"
+        service_order_id:
+          type: string
+          format: uuid
+          example: "b1c2d3e4-f5a6-7890-bcde-f01234567890"
+        service_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440010"
+        quantity:
+          type: number
+          format: float
+          example: 1
+        price:
+          type: number
+          format: float
+          example: 199.90
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        started_user_id:
+          type: integer
+          nullable: true
+          example: null
+        finished_user_id:
+          type: integer
+          nullable: true
+          example: null
+
+    AverageExecutionTimeMetric:
+      type: object
+      description: Tempo médio de execução agrupado por serviço
+      properties:
+        service_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440010"
+        service_name:
+          type: string
+          example: Troca de óleo
+        average_execution_time_seconds:
+          type: number
+          format: float
+          description: Tempo médio de execução em segundos
+          example: 3600.0
+        total_executions:
+          type: integer
+          example: 5
 
   responses:
     NaoAutenticado:
