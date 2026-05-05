@@ -949,10 +949,9 @@ paths:
         - Ordens de Serviço
       summary: Criar ordem de serviço
       description: |-
-        Cria uma nova ordem de serviço vinculada ao cliente autenticado.
+        Cria uma nova ordem de serviço vinculada a um cliente já cadastrado.
 
-        - O cliente é identificado pelo documento (`document`) do usuário autenticado.
-          Se ainda não existir um cadastro de cliente com esse documento, ele é criado automaticamente.
+        - O cliente é referenciado por `customer_id` (UUID) e deve existir previamente.
         - O veículo é referenciado por `vehicle_id` (UUID) e deve existir previamente.
         - Cada serviço em `services` deve referenciar um `service_id` válido; nome e
           preço são snapshots do catálogo no momento da criação.
@@ -970,6 +969,7 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateServiceOrderRequest'
             example:
+              customer_id: "c1d2e3f4-a5b6-7890-cdef-012345678901"
               vehicle_id: "d1e2f3a4-b5c6-7890-defa-123456789012"
               services:
                 - service_id: "550e8400-e29b-41d4-a716-446655440010"
@@ -994,7 +994,6 @@ paths:
                 service_order:
                   id: "b1c2d3e4-f5a6-7890-bcde-f01234567890"
                   customer_id: "c1d2e3f4-a5b6-7890-cdef-012345678901"
-                  customer_document: "52998224725"
                   vehicle_id: "d1e2f3a4-b5c6-7890-defa-123456789012"
                   services:
                     - service_id: "550e8400-e29b-41d4-a716-446655440010"
@@ -1577,10 +1576,6 @@ components:
           type: string
           format: uuid
           example: "c1d2e3f4-a5b6-7890-cdef-012345678901"
-        customer_document:
-          type: string
-          description: CPF (11 dígitos) ou CNPJ (14 dígitos) do cliente
-          example: "52998224725"
         vehicle_id:
           type: string
           format: uuid
@@ -1682,8 +1677,13 @@ components:
 
     CreateServiceOrderRequest:
       type: object
-      required: [vehicle_id, services]
+      required: [customer_id, vehicle_id, services]
       properties:
+        customer_id:
+          type: string
+          format: uuid
+          description: ID de um cliente previamente cadastrado
+          example: "c1d2e3f4-a5b6-7890-cdef-012345678901"
         vehicle_id:
           type: string
           format: uuid
@@ -1735,6 +1735,11 @@ components:
       type: object
       description: Todos os campos são opcionais
       properties:
+        customer_id:
+          type: string
+          format: uuid
+          description: ID de um cliente previamente cadastrado
+          example: "c1d2e3f4-a5b6-7890-cdef-012345678901"
         vehicle_id:
           type: string
           format: uuid

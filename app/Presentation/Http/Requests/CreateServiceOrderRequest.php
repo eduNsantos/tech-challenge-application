@@ -18,6 +18,7 @@ class CreateServiceOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'customer_id'         => 'required|uuid|exists:customers,id',
             'vehicle_id'          => 'required|uuid',
             'services'               => 'array|required|min:1',
             'services.*.service_id'  => 'required|uuid|exists:services,id',

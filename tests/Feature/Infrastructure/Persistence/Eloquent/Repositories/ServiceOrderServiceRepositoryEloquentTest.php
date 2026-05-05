@@ -68,7 +68,6 @@ class ServiceOrderServiceRepositoryEloquentTest extends TestCase
             'id' => $orderId,
             'customer_id' => $customerId,
             'vehicle_id' => $vehicleId,
-            'customer_document' => '52998224725',
             'status' => 'recebida',
             'services_total' => 0,
             'parts_total' => 0,

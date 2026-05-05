@@ -14,7 +14,6 @@ class ServiceOrderModel extends Model
         'id',
         'customer_id',
         'vehicle_id',
-        'customer_document',
         'status',
         'services_total',
         'parts_total',

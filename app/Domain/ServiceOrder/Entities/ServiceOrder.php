@@ -17,7 +17,6 @@ class ServiceOrder
         public string $id,
         public string $customerId,
         public string $vehicleId,
-        public string $customerDocument,
         public array $services,
         public array $items,
         public string $status,
@@ -34,7 +33,6 @@ class ServiceOrder
     public static function create(
         string $customerId,
         string $vehicleId,
-        string $customerDocument,
         array $services,
         array $items
     ): self {
@@ -45,7 +43,6 @@ class ServiceOrder
             id: Str::uuid()->toString(),
             customerId: $customerId,
             vehicleId: $vehicleId,
-            customerDocument: $customerDocument,
             services: $services,
             items: $items,
             status: self::STATUS_RECEBIDA,

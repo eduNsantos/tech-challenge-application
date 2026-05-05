@@ -19,7 +19,6 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
             'id' => $serviceOrder->id,
             'customer_id' => $serviceOrder->customerId,
             'vehicle_id' => $serviceOrder->vehicleId,
-            'customer_document' => $serviceOrder->customerDocument,
             'status' => $serviceOrder->status,
             'services_total' => $serviceOrder->servicesTotal,
             'parts_total' => $serviceOrder->itemsTotal,
@@ -88,7 +87,6 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
             id: $model->id,
             customerId: $model->customer_id,
             vehicleId: $model->vehicle_id,
-            customerDocument: $model->customer_document,
             services: $services,
             items: $items,
             status: $model->status,
@@ -125,6 +123,7 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
                 ?? DB::table('users')->value('id');
 
             ServiceOrderModel::where('id', $serviceOrder->id)->update([
+                'customer_id' => $serviceOrder->customerId,
                 'vehicle_id' => $serviceOrder->vehicleId,
                 'status' => $serviceOrder->status,
                 'services_total' => $serviceOrder->servicesTotal,

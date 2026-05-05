@@ -4,6 +4,8 @@ namespace Tests\Unit\Application\ServiceOrder\UseCases;
 
 use App\Application\ServiceOrder\DTOs\UpdateServiceOrderDTO;
 use App\Application\ServiceOrder\UseCases\UpdateServiceOrderUseCase;
+use App\Domain\Customer\Entities\Customer;
+use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Item\Entities\Item;
 use App\Domain\Item\Entities\StockMovement;
 use App\Domain\Item\Interfaces\ItemRepositoryInterface;
@@ -25,6 +27,7 @@ use PHPUnit\Framework\TestCase;
 class UpdateServiceOrderUseCaseTest extends TestCase
 {
     private ServiceOrderRepositoryInterface&MockInterface $serviceOrderRepository;
+    private CustomerRepositoryInterface&MockInterface $customerRepository;
     private ServiceRepositoryInterface&MockInterface $serviceRepository;
     private ItemRepositoryInterface&MockInterface $itemRepository;
     private StockMovementRepositoryInterface&MockInterface $stockMovementRepository;
@@ -36,6 +39,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
         parent::setUp();
 
         $this->serviceOrderRepository = Mockery::mock(ServiceOrderRepositoryInterface::class);
+        $this->customerRepository = Mockery::mock(CustomerRepositoryInterface::class);
         $this->serviceRepository = Mockery::mock(ServiceRepositoryInterface::class);
         $this->itemRepository = Mockery::mock(ItemRepositoryInterface::class);
         $this->stockMovementRepository = Mockery::mock(StockMovementRepositoryInterface::class);
@@ -43,6 +47,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
 
         $this->useCase = new UpdateServiceOrderUseCase(
             $this->serviceOrderRepository,
+            $this->customerRepository,
             $this->serviceRepository,
             $this->itemRepository,
             $this->stockMovementRepository,
@@ -61,7 +66,6 @@ class UpdateServiceOrderUseCaseTest extends TestCase
         return ServiceOrder::create(
             'cust-1',
             'veh-1',
-            '52998224725',
             [['service_id' => 'svc-1', 'name' => 'Old', 'quantity' => 1.0, 'unit_price' => 50.0]],
             [['item_id' => 'item-1', 'name' => 'Filtro', 'quantity' => 1.0, 'unit_price' => 20.0]]
         );
@@ -107,6 +111,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             services: [['service_id' => 'svc-2', 'quantity' => 2.0]],
             items: [['item_id' => 'item-2', 'quantity' => 3.0]],
             vehicleId: null,
+            customerId: null,
             status: null,
             sendQuote: null,
             approveQuote: null
@@ -132,6 +137,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             services: null,
             items: null,
             vehicleId: null,
+            customerId: null,
             status: null,
             sendQuote: null,
             approveQuote: true
@@ -150,7 +156,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Ordem de servico nao encontrada');
 
-        $this->useCase->execute(new UpdateServiceOrderDTO('os-404', null, null, null, null, null, null));
+        $this->useCase->execute(new UpdateServiceOrderDTO('os-404', null, null, null, null, null, null, null));
     }
 
     public function test_throws_when_service_not_found_during_update(): void
@@ -169,6 +175,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             services: [['service_id' => 'svc-x', 'quantity' => 1]],
             items: null,
             vehicleId: null,
+            customerId: null,
             status: null,
             sendQuote: null,
             approveQuote: null
@@ -191,6 +198,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             services: null,
             items: [['item_id' => 'item-x', 'quantity' => 1]],
             vehicleId: null,
+            customerId: null,
             status: null,
             sendQuote: null,
             approveQuote: null
@@ -212,6 +220,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             services: null,
             items: [['quantity' => 1]],
             vehicleId: null,
+            customerId: null,
             status: null,
             sendQuote: null,
             approveQuote: null
@@ -233,6 +242,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             services: null,
             items: null,
             vehicleId: null,
+            customerId: null,
             status: null,
             sendQuote: null,
             approveQuote: true
@@ -251,6 +261,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             services: null,
             items: null,
             vehicleId: null,
+            customerId: null,
             status: ServiceOrder::STATUS_EM_EXECUCAO,
             sendQuote: null,
             approveQuote: null
@@ -272,6 +283,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             services: null,
             items: null,
             vehicleId: 'veh-2',
+            customerId: null,
             status: null,
             sendQuote: null,
             approveQuote: null
@@ -296,6 +308,53 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             services: null,
             items: null,
             vehicleId: 'veh-x',
+            customerId: null,
+            status: null,
+            sendQuote: null,
+            approveQuote: null
+        ));
+    }
+
+    public function test_updates_customer_when_customer_id_is_provided(): void
+    {
+        $serviceOrder = $this->makeServiceOrder();
+        $customer = new Customer('cust-2', 'Cliente 2', 'cliente2@example.com', '11999990001', '12345678909');
+
+        $this->serviceOrderRepository->shouldReceive('findById')->once()->with('os-1')->andReturn($serviceOrder);
+        $this->customerRepository->shouldReceive('findById')->once()->with('cust-2')->andReturn($customer);
+        $this->serviceOrderRepository->shouldReceive('update')->once()->with($serviceOrder);
+
+        $result = $this->useCase->execute(new UpdateServiceOrderDTO(
+            id: 'os-1',
+            services: null,
+            items: null,
+            vehicleId: null,
+            customerId: 'cust-2',
+            status: null,
+            sendQuote: null,
+            approveQuote: null
+        ));
+
+        $this->assertSame('cust-2', $result->customerId);
+    }
+
+    public function test_throws_when_customer_not_found_during_update(): void
+    {
+        $serviceOrder = $this->makeServiceOrder();
+
+        $this->serviceOrderRepository->shouldReceive('findById')->once()->with('os-1')->andReturn($serviceOrder);
+        $this->customerRepository->shouldReceive('findById')->once()->with('cust-x')->andReturnNull();
+        $this->serviceOrderRepository->shouldNotReceive('update');
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage("Cliente 'cust-x' nao encontrado.");
+
+        $this->useCase->execute(new UpdateServiceOrderDTO(
+            id: 'os-1',
+            services: null,
+            items: null,
+            vehicleId: null,
+            customerId: 'cust-x',
             status: null,
             sendQuote: null,
             approveQuote: null

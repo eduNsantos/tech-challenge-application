@@ -21,6 +21,7 @@ class UpdateServiceOrderRequest extends FormRequest
     {
         return [
             'id' => 'required|uuid',
+            'customer_id' => 'sometimes|uuid|exists:customers,id',
             'vehicle_id' => 'sometimes|uuid',
             'services'              => 'sometimes|array|min:1',
             'services.*.service_id' => 'required_with:services|uuid',

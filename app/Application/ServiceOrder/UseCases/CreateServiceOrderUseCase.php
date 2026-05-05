@@ -5,9 +5,7 @@ namespace App\Application\ServiceOrder\UseCases;
 use App\Application\ServiceOrder\DTOs\CreateServiceOrderDTO;
 use App\Application\ServiceOrderItem\DTOs\CreateServiceOrderItemDTO;
 use App\Application\ServiceOrderService\DTOs\CreateServiceOrderServiceDTO;
-use App\Domain\Customer\Entities\Customer;
 use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
-use App\Domain\Customer\ValueObjects\Document;
 use App\Domain\Item\Interfaces\ItemRepositoryInterface;
 use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
@@ -30,29 +28,10 @@ class CreateServiceOrderUseCase
 
     public function execute(CreateServiceOrderDTO $dto): ServiceOrder
     {
-        /** @var \App\Models\User|null $user */
-        $user = $dto->user;
-
-        if ($user === null) {
-            throw new \Exception('Usuario autenticado nao encontrado');
-        }
-
-        if (empty($user->document)) {
-            throw new \Exception('Usuario autenticado sem documento vinculado');
-        }
-
-        $document = new Document($user->document);
-        $customer = $this->customerRepository->findByDocument($document->getValue());
+        $customer = $this->customerRepository->findById($dto->customerId);
 
         if (!$customer) {
-            $customer = Customer::create(
-                name: (string) $user->name,
-                email: (string) $user->email,
-                phone: 'Nao informado',
-                document: $document->getValue()
-            );
-
-            $this->customerRepository->save($customer);
+            throw new \DomainException("Cliente '{$dto->customerId}' nao encontrado.");
         }
 
         $services = $this->resolveServices($dto->services);
@@ -60,7 +39,6 @@ class CreateServiceOrderUseCase
 
         $serviceOrder = ServiceOrder::create(
             customerId: $customer->id,
-            customerDocument: $customer->document,
             vehicleId: $dto->vehicleId,
             services: $services,
             items: $items

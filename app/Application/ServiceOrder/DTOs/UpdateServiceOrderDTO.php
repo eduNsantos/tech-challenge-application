@@ -9,6 +9,7 @@ class UpdateServiceOrderDTO
         public ?array $services,
         public ?array $items,
         public ?string $vehicleId,
+        public ?string $customerId,
         public ?string $status,
         public ?bool $sendQuote,
         public ?bool $approveQuote

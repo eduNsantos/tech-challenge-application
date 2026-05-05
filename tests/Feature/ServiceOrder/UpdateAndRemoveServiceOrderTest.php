@@ -4,6 +4,8 @@ namespace Tests\Feature\ServiceOrder;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class UpdateAndRemoveServiceOrderTest extends TestCase
@@ -13,6 +15,8 @@ class UpdateAndRemoveServiceOrderTest extends TestCase
     private const VALID_CPF = '52998224725';
 
     private User $user;
+    private string $customerId;
+    private string $customer2Id;
     private string $serviceId;
     private string $service2Id;
     private string $itemId;
@@ -25,6 +29,32 @@ class UpdateAndRemoveServiceOrderTest extends TestCase
         parent::setUp();
 
         $this->user = User::factory()->create(['document' => self::VALID_CPF]);
+
+        $this->customerId = Str::uuid()->toString();
+        DB::table('customers')->insert([
+            'id' => $this->customerId,
+            'name' => 'Cliente Teste 1',
+            'email' => 'cliente1@example.com',
+            'phone' => '11999990000',
+            'document' => self::VALID_CPF,
+            'created_user_id' => $this->user->id,
+            'updated_user_id' => $this->user->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->customer2Id = Str::uuid()->toString();
+        DB::table('customers')->insert([
+            'id' => $this->customer2Id,
+            'name' => 'Cliente Teste 2',
+            'email' => 'cliente2@example.com',
+            'phone' => '11999990001',
+            'document' => '12345678909',
+            'created_user_id' => $this->user->id,
+            'updated_user_id' => $this->user->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         $this->serviceId = $this->actingAs($this->user, 'api')
             ->postJson('/api/service', [
@@ -99,6 +129,7 @@ class UpdateAndRemoveServiceOrderTest extends TestCase
     {
         $response = $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', [
+                'customer_id' => $this->customerId,
                 'vehicle_id' => $this->vehicleId,
                 'services' => [
                     ['service_id' => $this->serviceId, 'quantity' => 1],
@@ -181,6 +212,23 @@ class UpdateAndRemoveServiceOrderTest extends TestCase
         $this->assertDatabaseHas('service_orders', [
             'id' => $serviceOrderId,
             'vehicle_id' => $this->vehicle2Id,
+        ]);
+    }
+
+    public function test_updates_customer_when_customer_id_is_provided(): void
+    {
+        $serviceOrderId = $this->createServiceOrder();
+
+        $this->actingAs($this->user, 'api')
+            ->putJson("/api/service-order/{$serviceOrderId}", [
+                'customer_id' => $this->customer2Id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('service_order.customer_id', $this->customer2Id);
+
+        $this->assertDatabaseHas('service_orders', [
+            'id' => $serviceOrderId,
+            'customer_id' => $this->customer2Id,
         ]);
     }
 
