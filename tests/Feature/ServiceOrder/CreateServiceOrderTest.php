@@ -4,6 +4,8 @@ namespace Tests\Feature\ServiceOrder;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CreateServiceOrderTest extends TestCase
@@ -11,6 +13,7 @@ class CreateServiceOrderTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+    private string $customerId;
     private string $vehicleId;
     private string $serviceId;
     private string $itemId;
@@ -23,6 +26,19 @@ class CreateServiceOrderTest extends TestCase
         parent::setUp();
 
         $this->user = User::factory()->create(['document' => self::VALID_CPF]);
+
+        $this->customerId = Str::uuid()->toString();
+        DB::table('customers')->insert([
+            'id' => $this->customerId,
+            'name' => 'Cliente Teste',
+            'email' => 'cliente.teste@example.com',
+            'phone' => '11999990000',
+            'document' => self::VALID_CPF,
+            'created_user_id' => $this->user->id,
+            'updated_user_id' => $this->user->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         $this->serviceId = $this->actingAs($this->user, 'api')
             ->postJson('/api/service', [
@@ -68,6 +84,7 @@ class CreateServiceOrderTest extends TestCase
     private function validPayload(array $overrides = []): array
     {
         return array_merge([
+            'customer_id'   => $this->customerId,
             'vehicle_id'    => $this->vehicleId,
             'services'      => [
                 ['service_id' => $this->serviceId, 'quantity' => 1],
@@ -91,7 +108,7 @@ class CreateServiceOrderTest extends TestCase
         $response->assertStatus(201)
             ->assertJsonStructure([
                 'service_order' => [
-                    'id', 'customer_id', 'customer_document', 'vehicle_id',
+                    'id', 'customer_id', 'vehicle_id',
                     'services', 'items', 'status',
                     'services_total', 'items_total', 'total_budget',
                     'quote_sent_at', 'quote_approved_at',
@@ -99,9 +116,8 @@ class CreateServiceOrderTest extends TestCase
                 'message',
             ])
             ->assertJsonFragment([
-                'status'           => 'recebida',
-                'customer_document' => self::VALID_CPF,
-                'message'          => 'Ordem de servico criada com sucesso',
+                'status'  => 'recebida',
+                'message' => 'Ordem de servico criada com sucesso',
             ]);
     }
 
@@ -200,9 +216,9 @@ class CreateServiceOrderTest extends TestCase
         $id = $response->json('service_order.id');
 
         $this->assertDatabaseHas('service_orders', [
-            'id'                => $id,
-            'customer_document' => self::VALID_CPF,
-            'status'            => 'recebida',
+            'id' => $id,
+            'customer_id' => $this->customerId,
+            'status' => 'recebida',
         ]);
     }
 
@@ -225,14 +241,12 @@ class CreateServiceOrderTest extends TestCase
         ]);
     }
 
-    public function test_persists_customer_to_database_when_new(): void
+    public function test_does_not_create_new_customer_when_creating_order(): void
     {
         $this->actingAs($this->user, 'api')
             ->postJson('/api/service-order', $this->validPayload());
 
-        $this->assertDatabaseHas('customers', [
-            'document' => self::VALID_CPF,
-        ]);
+        $this->assertDatabaseCount('customers', 1);
     }
 
     public function test_persists_vehicle_reference_on_service_order(): void
@@ -280,6 +294,17 @@ class CreateServiceOrderTest extends TestCase
             ->postJson('/api/service-order', $payload)
             ->assertStatus(422)
             ->assertJsonValidationErrors(['vehicle_id']);
+    }
+
+    public function test_returns_422_when_customer_id_is_missing(): void
+    {
+        $payload = $this->validPayload();
+        unset($payload['customer_id']);
+
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['customer_id']);
     }
 
     public function test_returns_422_when_services_array_is_empty(): void

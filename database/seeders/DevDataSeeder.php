@@ -114,8 +114,8 @@ class DevDataSeeder extends Seeder
         $createOrder = app(CreateServiceOrderUseCase::class);
 
         $serviceOrder = $createOrder->execute(new CreateServiceOrderDTO(
-            user:      $user,
             vehicleId: $vehicle->id,
+            customerId: $customer->id,
             services:  [['service_id' => $service->id, 'quantity' => 1]],
             items:     [['item_id' => $item->id, 'quantity' => 2]],
             sendQuote: false,

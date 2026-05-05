@@ -5,6 +5,8 @@ namespace Tests\Feature\ServiceOrder;
 use App\Domain\Notification\Interfaces\NotificationServiceInterface;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -37,6 +39,7 @@ class ServiceOrderWorkflowTest extends TestCase
 
     private User $atendente;
     private User $mecanico;
+    private string $customerId;
     private string $vehicleId;
     private string $serviceId;
     private string $itemId;
@@ -61,6 +64,19 @@ class ServiceOrderWorkflowTest extends TestCase
             'email'    => self::MECANICO_EMAIL,
             'document' => self::MECANICO_CPF,
             'role'     => 'mecanico',
+        ]);
+
+        $this->customerId = Str::uuid()->toString();
+        DB::table('customers')->insert([
+            'id' => $this->customerId,
+            'name' => 'Cliente Workflow',
+            'email' => self::ATENDENTE_EMAIL,
+            'phone' => '11999990000',
+            'document' => self::ATENDENTE_CPF,
+            'created_user_id' => $this->atendente->id,
+            'updated_user_id' => $this->atendente->id,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         // Cadastra serviço e peça como atendente (pré-condição do workflow)
@@ -113,6 +129,7 @@ class ServiceOrderWorkflowTest extends TestCase
         // ─────────────────────────────────────────────────────────────────────
         $osResponse = $this->actingAs($this->atendente, 'api')
             ->postJson('/api/service-order', [
+                'customer_id'   => $this->customerId,
                 'vehicle_id'    => $this->vehicleId,
                 'services'      => [
                     ['service_id' => $this->serviceId, 'quantity' => 1],
@@ -178,7 +195,7 @@ class ServiceOrderWorkflowTest extends TestCase
         // NOTIFICAÇÃO 2 — Cliente notificado do orçamento
         // ─────────────────────────────────────────────────────────────────────
         $this->assertDatabaseHas('notifications', [
-            'recipient_id' => self::ATENDENTE_EMAIL, // cliente criado a partir do atendente
+            'recipient_id' => self::ATENDENTE_EMAIL,
             'subject'      => 'Orçamento da sua ordem de serviço disponível',
         ]);
 

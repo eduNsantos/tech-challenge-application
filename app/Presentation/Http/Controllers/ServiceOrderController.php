@@ -29,8 +29,8 @@ class ServiceOrderController
     public function store(CreateServiceOrderRequest $request, CreateServiceOrderUseCase $useCase)
     {
         $dto = new CreateServiceOrderDTO(
-            user: $request->user(),
             vehicleId: $request->input('vehicle_id'),
+            customerId: $request->input('customer_id'),
             services: $request->input('services', []),
             items: $request->input('items', []),
             sendQuote: $request->boolean('send_quote', true)
@@ -81,6 +81,7 @@ class ServiceOrderController
             services: $request->input('services'),
             items: $request->input('items', $request->input('parts')),
             vehicleId: $request->input('vehicle_id'),
+            customerId: $request->input('customer_id'),
             status: $request->input('status'),
             sendQuote: $request->has('send_quote') ? $request->boolean('send_quote') : null,
             approveQuote: $request->has('approve_quote') ? $request->boolean('approve_quote') : null,
@@ -160,7 +161,6 @@ class ServiceOrderController
         return [
             'id' => $serviceOrder->id,
             'customer_id' => $serviceOrder->customerId,
-            'customer_document' => $serviceOrder->customerDocument,
             'vehicle_id' => $serviceOrder->vehicleId,
             'services' => $serviceOrder->services,
             'items' => $serviceOrder->items,

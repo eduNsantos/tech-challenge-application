@@ -17,7 +17,6 @@ use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
 use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Mockery;
@@ -33,9 +32,6 @@ class CreateServiceOrderUseCaseTest extends TestCase
     private ServiceOrderItemInterface&MockInterface $serviceOrderItemRepository;
     private ServiceOrderServiceInterface&MockInterface $serviceOrderServiceRepository;
     private CreateServiceOrderUseCase $useCase;
-    private User $user;
-
-    private const VALID_CPF = '52998224725';
 
     protected function setUp(): void
     {
@@ -43,12 +39,6 @@ class CreateServiceOrderUseCaseTest extends TestCase
 
         Event::fake();
         DB::shouldReceive('transaction')->andReturnUsing(static fn ($callback) => $callback());
-
-        $this->user = new User([
-            'name' => 'Test User',
-            'email' => 'test@test.com',
-            'document' => self::VALID_CPF,
-        ]);
 
         $this->serviceOrderRepository = Mockery::mock(ServiceOrderRepositoryInterface::class);
         $this->customerRepository = Mockery::mock(CustomerRepositoryInterface::class);
@@ -76,8 +66,8 @@ class CreateServiceOrderUseCaseTest extends TestCase
     private function makeDTO(array $overrides = []): CreateServiceOrderDTO
     {
         return new CreateServiceOrderDTO(
-            user: $overrides['user'] ?? $this->user,
             vehicleId: $overrides['vehicleId'] ?? 'veh-1',
+            customerId: $overrides['customerId'] ?? 'cust-1',
             services: $overrides['services'] ?? [['service_id' => 'svc-1', 'quantity' => 1.0]],
             items: $overrides['items'] ?? [['item_id' => 'item-1', 'quantity' => 2.0]],
             sendQuote: $overrides['sendQuote'] ?? false,
@@ -86,7 +76,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
 
     private function makeCustomer(): Customer
     {
-        return new Customer('cust-1', 'Test User', 'test@test.com', 'Nao informado', self::VALID_CPF);
+        return new Customer('cust-1', 'Test User', 'test@test.com', '11999990000', '52998224725');
     }
 
     private function makeService(string $id = 'svc-1', string $name = 'Oil Change', float $price = 100.0): Service
@@ -111,7 +101,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
 
     public function test_creates_service_order_successfully(): void
     {
-        $this->customerRepository->shouldReceive('findByDocument')->once()->andReturn($this->makeCustomer());
+        $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
         $this->serviceRepository->shouldReceive('findById')->with('svc-1')->once()->andReturn($this->makeService());
         $this->itemRepository->shouldReceive('findById')->with('item-1')->once()->andReturn($this->makeItem());
 
@@ -126,25 +116,22 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->assertNotEmpty($result->id);
     }
 
-    public function test_creates_new_customer_when_not_found(): void
+    public function test_throws_when_customer_is_not_found(): void
     {
-        $this->customerRepository->shouldReceive('findByDocument')->once()->andReturnNull();
-        $this->customerRepository->shouldReceive('save')->once();
-        $this->serviceRepository->shouldReceive('findById')->once()->andReturn($this->makeService());
-        $this->itemRepository->shouldReceive('findById')->once()->andReturn($this->makeItem());
+        $this->customerRepository->shouldReceive('findById')->with('cust-missing')->once()->andReturnNull();
+        $this->serviceRepository->shouldNotReceive('findById');
+        $this->itemRepository->shouldNotReceive('findById');
+        $this->serviceOrderRepository->shouldNotReceive('save');
 
-        $this->serviceOrderRepository->shouldReceive('save')->once();
-        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once();
-        $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage("Cliente 'cust-missing' nao encontrado.");
 
-        $result = $this->useCase->execute($this->makeDTO());
-
-        $this->assertNotEmpty($result->customerId);
+        $this->useCase->execute($this->makeDTO(['customerId' => 'cust-missing']));
     }
 
     public function test_snapshots_service_name_and_price_from_catalog(): void
     {
-        $this->customerRepository->shouldReceive('findByDocument')->once()->andReturn($this->makeCustomer());
+        $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
         $this->serviceRepository->shouldReceive('findById')->with('svc-1')->once()->andReturn($this->makeService('svc-1', 'Alinhamento', 90.0));
         $this->itemRepository->shouldReceive('findById')->with('item-1')->once()->andReturn($this->makeItem());
 
@@ -160,7 +147,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
 
     public function test_snapshots_item_name_and_price_from_catalog(): void
     {
-        $this->customerRepository->shouldReceive('findByDocument')->once()->andReturn($this->makeCustomer());
+        $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
         $this->serviceRepository->shouldReceive('findById')->with('svc-1')->once()->andReturn($this->makeService());
         $this->itemRepository->shouldReceive('findById')->with('item-1')->once()->andReturn($this->makeItem('item-1', 50.0));
 
@@ -176,7 +163,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
 
     public function test_calculates_totals_correctly(): void
     {
-        $this->customerRepository->shouldReceive('findByDocument')->once()->andReturn($this->makeCustomer());
+        $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
         $this->serviceRepository->shouldReceive('findById')->with('svc-1')->once()->andReturn($this->makeService('svc-1', 'Oil', 200.0));
         $this->itemRepository->shouldReceive('findById')->with('item-1')->once()->andReturn($this->makeItem('item-1', 50.0));
 
@@ -196,7 +183,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
 
     public function test_does_not_send_quote_when_flag_is_false(): void
     {
-        $this->customerRepository->shouldReceive('findByDocument')->once()->andReturn($this->makeCustomer());
+        $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
         $this->serviceRepository->shouldReceive('findById')->once()->andReturn($this->makeService());
         $this->itemRepository->shouldReceive('findById')->once()->andReturn($this->makeItem());
 
@@ -212,7 +199,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
 
     public function test_sends_quote_when_flag_is_true(): void
     {
-        $this->customerRepository->shouldReceive('findByDocument')->once()->andReturn($this->makeCustomer());
+        $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
         $this->serviceRepository->shouldReceive('findById')->once()->andReturn($this->makeService());
         $this->itemRepository->shouldReceive('findById')->once()->andReturn($this->makeItem());
 
@@ -228,7 +215,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
 
     public function test_throws_domain_exception_when_service_not_found(): void
     {
-        $this->customerRepository->shouldReceive('findByDocument')->once()->andReturn($this->makeCustomer());
+        $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
         $this->serviceRepository->shouldReceive('findById')->with('svc-missing')->once()->andReturnNull();
         $this->serviceOrderRepository->shouldNotReceive('save');
 
@@ -242,7 +229,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
 
     public function test_throws_domain_exception_when_item_not_found(): void
     {
-        $this->customerRepository->shouldReceive('findByDocument')->once()->andReturn($this->makeCustomer());
+        $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
         $this->serviceRepository->shouldReceive('findById')->once()->andReturn($this->makeService());
         $this->itemRepository->shouldReceive('findById')->with('item-missing')->once()->andReturnNull();
         $this->serviceOrderRepository->shouldNotReceive('save');
@@ -255,18 +242,14 @@ class CreateServiceOrderUseCaseTest extends TestCase
         ]));
     }
 
-    public function test_throws_exception_when_user_has_no_document(): void
+    public function test_throws_when_customer_id_is_empty(): void
     {
-        $user = new User([
-            'name' => 'No Doc',
-            'email' => 'nodoc@test.com',
-            'document' => null,
-        ]);
+        $this->customerRepository->shouldReceive('findById')->with('')->once()->andReturnNull();
 
-        $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Usuario autenticado sem documento vinculado');
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage("Cliente '' nao encontrado.");
 
-        $this->useCase->execute($this->makeDTO(['user' => $user]));
+        $this->useCase->execute($this->makeDTO(['customerId' => '']));
     }
 
 }

@@ -3,6 +3,7 @@
 namespace App\Application\ServiceOrder\UseCases;
 
 use App\Application\ServiceOrder\DTOs\UpdateServiceOrderDTO;
+use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Item\Entities\StockMovement;
 use App\Domain\Item\Interfaces\ItemRepositoryInterface;
 use App\Domain\Item\Interfaces\StockMovementRepositoryInterface;
@@ -17,6 +18,7 @@ class UpdateServiceOrderUseCase
 {
     public function __construct(
         private ServiceOrderRepositoryInterface $serviceOrderRepository,
+        private CustomerRepositoryInterface $customerRepository,
         private ServiceRepositoryInterface $serviceRepository,
         private ItemRepositoryInterface $itemRepository,
         private StockMovementRepositoryInterface $stockMovementRepository,
@@ -44,6 +46,16 @@ class UpdateServiceOrderUseCase
             }
 
             $serviceOrder->vehicleId = $vehicle->id;
+        }
+
+        if ($dto->customerId !== null) {
+            $customer = $this->customerRepository->findById($dto->customerId);
+
+            if (!$customer) {
+                throw new \DomainException("Cliente '{$dto->customerId}' nao encontrado.");
+            }
+
+            $serviceOrder->customerId = $customer->id;
         }
 
         if ($dto->status !== null) {

@@ -56,7 +56,6 @@ class StartServiceOrderServiceUseCaseTest extends TestCase
             id: 'os-1',
             customerId: 'cust-1',
             vehicleId: 'veh-1',
-            customerDocument: '52998224725',
             services: [],
             items: [],
             status: $status,
