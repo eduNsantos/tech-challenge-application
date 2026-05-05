@@ -1052,11 +1052,20 @@ paths:
         - Ordens de Serviço
       summary: Atualizar ordem de serviço
       description: |-
-        Atualiza os dados de uma ordem de serviço existente. Todos os campos são opcionais.
+        Atualiza os dados de uma ordem de serviço existente. **Todos os campos são opcionais.**
 
-        - Para aprovar o orçamento e mover a OS para `em_execucao`, envie `approve_quote: true`.
-          Isso dispara a **baixa automática de estoque** de todas as peças listadas na OS.
-        - Para enviar o orçamento para aprovação, envie `send_quote: true`.
+        ### Campos disponíveis
+        | Campo | Tipo | Descrição |
+        |---|---|---|
+        | `customer_id` | uuid | Troca o cliente da OS |
+        | `vehicle_id` | uuid | Troca o veículo da OS |
+        | `services` | array | Substitui os serviços da OS (mínimo 1 item) |
+        | `items` / `parts` | array | Substitui as peças/itens da OS |
+        | `status` | string | Muda o status manualmente (ver valores permitidos) |
+        | `send_quote` | boolean | `true` → envia o orçamento (status → `aguardando_aprovacao`) e notifica o cliente |
+        | `approve_quote` | boolean | `true` → aprova o orçamento (status → `em_execucao`) e realiza baixa automática de estoque |
+
+        > **Nota:** `items` e `parts` são equivalentes. Se ambos forem enviados, `items` tem precedência.
 
         **Requer autenticação.**
       operationId: service-order-update
@@ -1070,12 +1079,49 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/UpdateServiceOrderRequest'
-            example:
-              vehicle_id: "d1e2f3a4-b5c6-7890-defa-123456789012"
-              services:
-                - service_id: "550e8400-e29b-41d4-a716-446655440010"
-                  quantity: 2
-              approve_quote: true
+            examples:
+              trocar_cliente_e_veiculo:
+                summary: Trocar cliente e veículo
+                value:
+                  customer_id: "c1d2e3f4-a5b6-7890-cdef-012345678901"
+                  vehicle_id: "d1e2f3a4-b5c6-7890-defa-123456789012"
+              atualizar_servicos_e_pecas:
+                summary: Atualizar serviços e peças
+                value:
+                  services:
+                    - service_id: "550e8400-e29b-41d4-a716-446655440010"
+                      quantity: 1
+                    - service_id: "660e8400-e29b-41d4-a716-446655440011"
+                      quantity: 2
+                  items:
+                    - item_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                      quantity: 3
+              enviar_orcamento:
+                summary: Enviar orçamento para aprovação
+                value:
+                  send_quote: true
+              aprovar_orcamento:
+                summary: Aprovar orçamento (baixa estoque)
+                value:
+                  approve_quote: true
+              mudar_status_manual:
+                summary: Mudar status manualmente
+                value:
+                  status: em_diagnostico
+              completo:
+                summary: Todos os campos (exemplo completo)
+                value:
+                  customer_id: "c1d2e3f4-a5b6-7890-cdef-012345678901"
+                  vehicle_id: "d1e2f3a4-b5c6-7890-defa-123456789012"
+                  services:
+                    - service_id: "550e8400-e29b-41d4-a716-446655440010"
+                      quantity: 1
+                  items:
+                    - item_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                      quantity: 2
+                  status: em_diagnostico
+                  send_quote: false
+                  approve_quote: false
       responses:
         '200':
           description: Ordem de serviço atualizada com sucesso
@@ -1733,20 +1779,21 @@ components:
 
     UpdateServiceOrderRequest:
       type: object
-      description: Todos os campos são opcionais
+      description: Todos os campos são opcionais. `items` e `parts` são equivalentes; se ambos forem enviados, `items` tem precedência.
       properties:
         customer_id:
           type: string
           format: uuid
-          description: ID de um cliente previamente cadastrado
+          description: Troca o cliente associado à OS. Deve existir na base.
           example: "c1d2e3f4-a5b6-7890-cdef-012345678901"
         vehicle_id:
           type: string
           format: uuid
-          description: ID de um veículo previamente cadastrado
+          description: Troca o veículo associado à OS. Deve existir na base.
           example: "d1e2f3a4-b5c6-7890-defa-123456789012"
         services:
           type: array
+          description: Substitui completamente os serviços da OS. Mínimo 1 item quando enviado.
           minItems: 1
           items:
             type: object
@@ -1763,7 +1810,23 @@ components:
                 example: 2
         items:
           type: array
-          description: Lista de itens/peças a atualizar na OS
+          description: Substitui completamente as peças/itens da OS. Equivalente a `parts`.
+          items:
+            type: object
+            required: [item_id, quantity]
+            properties:
+              item_id:
+                type: string
+                format: uuid
+                example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              quantity:
+                type: number
+                format: float
+                minimum: 0.01
+                example: 3
+        parts:
+          type: array
+          description: Alias de `items`. Substitui completamente as peças/itens da OS. Ignorado se `items` for enviado.
           items:
             type: object
             required: [item_id, quantity]
@@ -1779,17 +1842,27 @@ components:
                 example: 3
         status:
           type: string
+          description: |-
+            Altera o status da OS manualmente. Valores permitidos:
+            - `recebida` — OS aberta
+            - `em_diagnostico` — em diagnóstico
+            - `aguardando_aprovacao` — aguardando aprovação do cliente
+            - `em_execucao` — aprovado, em execução
+            - `finalizada` — serviço finalizado
+            - `entregue` — veículo entregue ao cliente
           enum: [recebida, em_diagnostico, aguardando_aprovacao, em_execucao, finalizada, entregue]
           example: em_diagnostico
         send_quote:
           type: boolean
-          description: Envia o orçamento para aprovação (status → aguardando_aprovacao)
+          description: >-
+            `true` → envia o orçamento para aprovação do cliente (status muda para `aguardando_aprovacao`)
+            e dispara notificação ao cliente.
           example: true
         approve_quote:
           type: boolean
-          description: >
-            Aprova o orçamento (status → em_execucao) e dispara a baixa
-            automática de estoque de todas as peças da OS.
+          description: >-
+            `true` → aprova o orçamento (status muda para `em_execucao`) e dispara
+            baixa automática de estoque de todas as peças listadas na OS.
           example: true
 
     UpdateServiceOrderStatusRequest:
