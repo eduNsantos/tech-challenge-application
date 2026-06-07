@@ -17,6 +17,7 @@ use App\Infrastructure\Persistence\Eloquent\Repositories\NotificationRepositoryE
 use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceOrderRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceOrderServiceRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceRepositoryEloquent;
+use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceOrderItemRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\StockMovementRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\VehicleRepositoryEloquent;
 use Illuminate\Support\ServiceProvider;
@@ -62,7 +63,7 @@ class RepositoryServiceProvider extends ServiceProvider
 
         $this->app->bind(
             ServiceOrderItemInterface::class,
-            'App\\Infrastructure\\Persistence\\Eloquent\\Repositories\\ServiceOrderItemRepositoryEloquent'
+            ServiceOrderItemRepositoryEloquent::class
         );
 
         $this->app->bind(
@@ -71,7 +72,6 @@ class RepositoryServiceProvider extends ServiceProvider
         );
     }
 
-    public function boot(): void {
-        // No boot logic needed for this provider
-    }
+    public function boot(): void {}
+
 }

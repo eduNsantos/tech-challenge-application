@@ -34,7 +34,7 @@ class UpdateServiceOrderStatusUseCaseTest extends TestCase
 
     private function makeServiceOrder(): ServiceOrder
     {
-        return ServiceOrder::create('cust-1', 'veh-1', '52998224725', [], []);
+        return ServiceOrder::create('cust-1', 'veh-1', [], []);
     }
 
     public function test_updates_status_and_dispatches_event(): void

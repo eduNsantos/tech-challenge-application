@@ -31,7 +31,7 @@ class ShowServiceOrderUseCaseTest extends TestCase
 
     private function makeServiceOrder(): ServiceOrder
     {
-        return ServiceOrder::create('cust-1', 'veh-1', '52998224725', [], []);
+        return ServiceOrder::create('cust-1', 'veh-1', [], []);
     }
 
     public function test_returns_service_order_when_found(): void
