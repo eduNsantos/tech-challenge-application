@@ -22,7 +22,7 @@ class SendServiceOrderStatusNotification
         $newStatus = $event->serviceOrder->status;
         $notification = new EntityNotification(
             Str::uuid()->toString(),
-            $serviceOrder->id,
+            $serviceOrder->customerId,
             NotificationType::EMAIL,
             'Status da ordem de servico alterado',            
             'O status da ordem de servico foi alterado para ' . $newStatus,
