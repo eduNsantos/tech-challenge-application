@@ -17,6 +17,9 @@ use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
 use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
+use App\Domain\Vehicle\Entities\Vehicle;
+use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
+use App\Domain\Vehicle\ValueObjects\Plate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Mockery;
@@ -31,6 +34,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
     private ItemRepositoryInterface&MockInterface $itemRepository;
     private ServiceOrderItemInterface&MockInterface $serviceOrderItemRepository;
     private ServiceOrderServiceInterface&MockInterface $serviceOrderServiceRepository;
+    private VehicleRepositoryInterface&MockInterface $vehicleRepository;
     private CreateServiceOrderUseCase $useCase;
 
     protected function setUp(): void
@@ -46,6 +50,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->itemRepository = Mockery::mock(ItemRepositoryInterface::class);
         $this->serviceOrderItemRepository = Mockery::mock(ServiceOrderItemInterface::class);
         $this->serviceOrderServiceRepository = Mockery::mock(ServiceOrderServiceInterface::class);
+        $this->vehicleRepository = Mockery::mock(VehicleRepositoryInterface::class);
 
         $this->useCase = new CreateServiceOrderUseCase(
             $this->serviceOrderRepository,
@@ -53,7 +58,8 @@ class CreateServiceOrderUseCaseTest extends TestCase
             $this->serviceRepository,
             $this->itemRepository,
             $this->serviceOrderItemRepository,
-            $this->serviceOrderServiceRepository
+            $this->serviceOrderServiceRepository,
+            $this->vehicleRepository
         );
     }
 
@@ -72,6 +78,11 @@ class CreateServiceOrderUseCaseTest extends TestCase
             items: $overrides['items'] ?? [['item_id' => 'item-1', 'quantity' => 2.0]],
             sendQuote: $overrides['sendQuote'] ?? false,
         );
+    }
+
+    private function makeVehicle(): Vehicle
+    {
+        return new Vehicle('veh-1', 'Toyota', 'Corolla', 2022, new Plate('ABC1D23'));
     }
 
     private function makeCustomer(): Customer
@@ -102,6 +113,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
     public function test_creates_service_order_successfully(): void
     {
         $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
+        $this->vehicleRepository->shouldReceive('findById')->with('veh-1')->once()->andReturn($this->makeVehicle());
         $this->serviceRepository->shouldReceive('findById')->with('svc-1')->once()->andReturn($this->makeService());
         $this->itemRepository->shouldReceive('findById')->with('item-1')->once()->andReturn($this->makeItem());
 
@@ -132,6 +144,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
     public function test_snapshots_service_name_and_price_from_catalog(): void
     {
         $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
+        $this->vehicleRepository->shouldReceive('findById')->with('veh-1')->once()->andReturn($this->makeVehicle());
         $this->serviceRepository->shouldReceive('findById')->with('svc-1')->once()->andReturn($this->makeService('svc-1', 'Alinhamento', 90.0));
         $this->itemRepository->shouldReceive('findById')->with('item-1')->once()->andReturn($this->makeItem());
 
@@ -148,6 +161,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
     public function test_snapshots_item_name_and_price_from_catalog(): void
     {
         $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
+        $this->vehicleRepository->shouldReceive('findById')->with('veh-1')->once()->andReturn($this->makeVehicle());
         $this->serviceRepository->shouldReceive('findById')->with('svc-1')->once()->andReturn($this->makeService());
         $this->itemRepository->shouldReceive('findById')->with('item-1')->once()->andReturn($this->makeItem('item-1', 50.0));
 
@@ -164,6 +178,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
     public function test_calculates_totals_correctly(): void
     {
         $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
+        $this->vehicleRepository->shouldReceive('findById')->with('veh-1')->once()->andReturn($this->makeVehicle());
         $this->serviceRepository->shouldReceive('findById')->with('svc-1')->once()->andReturn($this->makeService('svc-1', 'Oil', 200.0));
         $this->itemRepository->shouldReceive('findById')->with('item-1')->once()->andReturn($this->makeItem('item-1', 50.0));
 
@@ -184,6 +199,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
     public function test_does_not_send_quote_when_flag_is_false(): void
     {
         $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
+        $this->vehicleRepository->shouldReceive('findById')->with('veh-1')->once()->andReturn($this->makeVehicle());
         $this->serviceRepository->shouldReceive('findById')->once()->andReturn($this->makeService());
         $this->itemRepository->shouldReceive('findById')->once()->andReturn($this->makeItem());
 
@@ -200,6 +216,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
     public function test_sends_quote_when_flag_is_true(): void
     {
         $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
+        $this->vehicleRepository->shouldReceive('findById')->with('veh-1')->once()->andReturn($this->makeVehicle());
         $this->serviceRepository->shouldReceive('findById')->once()->andReturn($this->makeService());
         $this->itemRepository->shouldReceive('findById')->once()->andReturn($this->makeItem());
 
@@ -216,6 +233,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
     public function test_throws_domain_exception_when_service_not_found(): void
     {
         $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
+        $this->vehicleRepository->shouldReceive('findById')->with('veh-1')->once()->andReturn($this->makeVehicle());
         $this->serviceRepository->shouldReceive('findById')->with('svc-missing')->once()->andReturnNull();
         $this->serviceOrderRepository->shouldNotReceive('save');
 
@@ -230,6 +248,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
     public function test_throws_domain_exception_when_item_not_found(): void
     {
         $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
+        $this->vehicleRepository->shouldReceive('findById')->with('veh-1')->once()->andReturn($this->makeVehicle());
         $this->serviceRepository->shouldReceive('findById')->once()->andReturn($this->makeService());
         $this->itemRepository->shouldReceive('findById')->with('item-missing')->once()->andReturnNull();
         $this->serviceOrderRepository->shouldNotReceive('save');
