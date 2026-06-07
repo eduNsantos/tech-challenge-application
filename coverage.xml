@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1780867731">
-  <project timestamp="1780867731" name="Clover Coverage">
+<coverage generated="1780868080">
+  <project timestamp="1780868080" name="Clover Coverage">
     <package name="App\Application\Customer\DTOs">
       <file name="/var/www/html/app/Application/Customer/DTOs/CreateCustomerDTO.php">
         <class name="App\Application\Customer\DTOs\CreateCustomerDTO" namespace="App\Application\Customer\DTOs">
@@ -488,9 +488,9 @@
         <line num="32" type="stmt" count="8"/>
         <line num="34" type="stmt" count="8"/>
         <line num="36" type="stmt" count="8"/>
-        <line num="37" type="stmt" count="1"/>
-        <line num="38" type="stmt" count="7"/>
-        <line num="39" type="stmt" count="7"/>
+        <line num="37" type="stmt" count="6"/>
+        <line num="38" type="stmt" count="2"/>
+        <line num="39" type="stmt" count="2"/>
         <line num="41" type="stmt" count="8"/>
         <metrics loc="43" ncloc="43" classes="1" methods="2" coveredmethods="2" conditionals="0" coveredconditionals="0" statements="16" coveredstatements="16" elements="18" coveredelements="18"/>
       </file>
@@ -1473,11 +1473,11 @@
         <line num="44" type="stmt" count="10"/>
         <line num="46" type="method" name="getType" visibility="public" complexity="1" crap="1" count="8"/>
         <line num="47" type="stmt" count="8"/>
-        <line num="50" type="method" name="markAsSent" visibility="public" complexity="1" crap="1" count="4"/>
-        <line num="52" type="stmt" count="4"/>
-        <line num="53" type="stmt" count="4"/>
-        <line num="56" type="method" name="markAsFailed" visibility="public" complexity="1" crap="1" count="9"/>
-        <line num="58" type="stmt" count="9"/>
+        <line num="50" type="method" name="markAsSent" visibility="public" complexity="1" crap="1" count="9"/>
+        <line num="52" type="stmt" count="9"/>
+        <line num="53" type="stmt" count="9"/>
+        <line num="56" type="method" name="markAsFailed" visibility="public" complexity="1" crap="1" count="4"/>
+        <line num="58" type="stmt" count="4"/>
         <metrics loc="60" ncloc="56" classes="1" methods="11" coveredmethods="10" conditionals="0" coveredconditionals="0" statements="12" coveredstatements="11" elements="23" coveredelements="21"/>
       </file>
     </package>
@@ -1752,13 +1752,13 @@
         <class name="App\Infrastructure\Notifications\GenericNotification" namespace="App\Infrastructure\Notifications">
           <metrics complexity="4" methods="4" coveredmethods="3" conditionals="0" coveredconditionals="0" statements="9" coveredstatements="5" elements="13" coveredelements="8"/>
         </class>
-        <line num="11" type="method" name="__construct" visibility="public" complexity="1" crap="1" count="6"/>
-        <line num="13" type="method" name="toMail" visibility="public" complexity="1" crap="1" count="6"/>
-        <line num="15" type="stmt" count="6"/>
-        <line num="16" type="stmt" count="6"/>
-        <line num="17" type="stmt" count="6"/>
-        <line num="20" type="method" name="via" visibility="public" complexity="1" crap="1" count="6"/>
-        <line num="22" type="stmt" count="6"/>
+        <line num="11" type="method" name="__construct" visibility="public" complexity="1" crap="1" count="5"/>
+        <line num="13" type="method" name="toMail" visibility="public" complexity="1" crap="1" count="5"/>
+        <line num="15" type="stmt" count="5"/>
+        <line num="16" type="stmt" count="5"/>
+        <line num="17" type="stmt" count="5"/>
+        <line num="20" type="method" name="via" visibility="public" complexity="1" crap="1" count="5"/>
+        <line num="22" type="stmt" count="5"/>
         <line num="25" type="method" name="toArray" visibility="public" complexity="1" crap="2" count="0"/>
         <line num="27" type="stmt" count="0"/>
         <line num="28" type="stmt" count="0"/>
@@ -1770,20 +1770,25 @@
     <package name="App\Infrastructure\Notifications\Services">
       <file name="/var/www/html/app/Infrastructure/Notifications/Services/NotificationService.php">
         <class name="App\Infrastructure\Notifications\Services\NotificationService" namespace="App\Infrastructure\Notifications\Services">
-          <metrics complexity="6" methods="3" coveredmethods="2" conditionals="0" coveredconditionals="0" statements="8" coveredstatements="7" elements="11" coveredelements="9"/>
+          <metrics complexity="8" methods="4" coveredmethods="3" conditionals="0" coveredconditionals="0" statements="12" coveredstatements="11" elements="16" coveredelements="14"/>
         </class>
-        <line num="13" type="method" name="send" visibility="public" complexity="1" crap="1" count="6"/>
-        <line num="15" type="stmt" count="6"/>
-        <line num="16" type="stmt" count="6"/>
-        <line num="17" type="stmt" count="6"/>
-        <line num="18" type="stmt" count="6"/>
-        <line num="21" type="method" name="mapTypeToChannel" visibility="private" complexity="4" crap="4.59" count="6"/>
-        <line num="24" type="stmt" count="6"/>
-        <line num="25" type="stmt" count="0"/>
-        <line num="26" type="stmt" count="6"/>
-        <line num="30" type="method" name="getDestination" visibility="private" complexity="1" crap="1" count="6"/>
-        <line num="33" type="stmt" count="6"/>
-        <metrics loc="35" ncloc="33" classes="1" methods="3" coveredmethods="2" conditionals="0" coveredconditionals="0" statements="8" coveredstatements="7" elements="11" coveredelements="9"/>
+        <line num="14" type="method" name="__construct" visibility="public" complexity="1" crap="1" count="25"/>
+        <line num="16" type="stmt" count="25"/>
+        <line num="18" type="method" name="send" visibility="public" complexity="1" crap="1" count="6"/>
+        <line num="20" type="stmt" count="6"/>
+        <line num="21" type="stmt" count="6"/>
+        <line num="22" type="stmt" count="5"/>
+        <line num="23" type="stmt" count="5"/>
+        <line num="26" type="method" name="mapTypeToChannel" visibility="private" complexity="4" crap="4.59" count="6"/>
+        <line num="29" type="stmt" count="6"/>
+        <line num="30" type="stmt" count="0"/>
+        <line num="31" type="stmt" count="6"/>
+        <line num="35" type="method" name="getDestination" visibility="private" complexity="2" crap="2" count="6"/>
+        <line num="37" type="stmt" count="6"/>
+        <line num="39" type="stmt" count="6"/>
+        <line num="40" type="stmt" count="1"/>
+        <line num="43" type="stmt" count="5"/>
+        <metrics loc="45" ncloc="45" classes="1" methods="4" coveredmethods="3" conditionals="0" coveredconditionals="0" statements="12" coveredstatements="11" elements="16" coveredelements="14"/>
       </file>
     </package>
     <package name="App\Infrastructure\Persistence\Eloquent\Models">
@@ -1873,17 +1878,17 @@
         <line num="20" type="stmt" count="13"/>
         <line num="21" type="stmt" count="13"/>
         <line num="22" type="stmt" count="13"/>
-        <line num="25" type="method" name="findById" visibility="public" complexity="2" crap="2" count="25"/>
-        <line num="27" type="stmt" count="25"/>
-        <line num="29" type="stmt" count="25"/>
-        <line num="30" type="stmt" count="2"/>
-        <line num="33" type="stmt" count="23"/>
-        <line num="34" type="stmt" count="23"/>
-        <line num="35" type="stmt" count="23"/>
-        <line num="36" type="stmt" count="23"/>
-        <line num="37" type="stmt" count="23"/>
-        <line num="38" type="stmt" count="23"/>
-        <line num="39" type="stmt" count="23"/>
+        <line num="25" type="method" name="findById" visibility="public" complexity="2" crap="2" count="29"/>
+        <line num="27" type="stmt" count="29"/>
+        <line num="29" type="stmt" count="29"/>
+        <line num="30" type="stmt" count="3"/>
+        <line num="33" type="stmt" count="26"/>
+        <line num="34" type="stmt" count="26"/>
+        <line num="35" type="stmt" count="26"/>
+        <line num="36" type="stmt" count="26"/>
+        <line num="37" type="stmt" count="26"/>
+        <line num="38" type="stmt" count="26"/>
+        <line num="39" type="stmt" count="26"/>
         <line num="41" type="method" name="findByDocument" visibility="public" complexity="2" crap="2" count="6"/>
         <line num="43" type="stmt" count="6"/>
         <line num="45" type="stmt" count="6"/>
@@ -3344,6 +3349,6 @@
         <metrics loc="78" ncloc="78" classes="1" methods="2" coveredmethods="2" conditionals="0" coveredconditionals="0" statements="37" coveredstatements="37" elements="39" coveredelements="39"/>
       </file>
     </package>
-    <metrics files="162" loc="6025" ncloc="5912" classes="143" methods="352" coveredmethods="294" conditionals="0" coveredconditionals="0" statements="1974" coveredstatements="1791" elements="2326" coveredelements="2085"/>
+    <metrics files="162" loc="6035" ncloc="5924" classes="143" methods="353" coveredmethods="295" conditionals="0" coveredconditionals="0" statements="1978" coveredstatements="1795" elements="2331" coveredelements="2090"/>
   </project>
 </coverage>

@@ -276,7 +276,7 @@ Semana 1 — Ajustes de código
   ├── [x] Corrigir namespaces inconsistentes
   ├── [x] Endpoint de abertura de OS unificado
   ├── [x] Listagem de OS com ordenação correta + soft delete
-  ├── Notificação por e-mail na mudança de status
+  ├── [x] Notificação por e-mail na mudança de status
   └── Testes dos fluxos críticos
 
 Semana 2 — Kubernetes
