@@ -9,9 +9,12 @@ use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use Mockery;
 use Mockery\MockInterface;
 use Tests\TestCase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class CreateCustomerUseCaseTest extends TestCase
 {
+    use RefreshDatabase;
+    
     private CustomerRepositoryInterface&MockInterface $repository;
     private CreateCustomerUseCase $useCase;
 

@@ -47,8 +47,7 @@ class ApproveServiceOrderByTokenUseCaseTest extends TestCase
     {
         $so = ServiceOrder::create(
             'cust-1',
-            'veh-1',
-            '52998224725',
+            'veh-1',            
             [['service_id' => 'svc-1', 'name' => 'Alinhamento', 'quantity' => 1.0, 'unit_price' => 100.0]],
             [['item_id' => 'item-1', 'name' => 'Filtro', 'quantity' => 2.0, 'unit_price' => 20.0]]
         );
@@ -89,7 +88,7 @@ class ApproveServiceOrderByTokenUseCaseTest extends TestCase
     public function test_throws_when_service_order_is_not_awaiting_approval(): void
     {
         $serviceOrder = ServiceOrder::create(
-            'cust-1', 'veh-1', '52998224725',
+            'cust-1', 'veh-1',
             [['service_id' => 'svc-1', 'name' => 'Serviço', 'quantity' => 1.0, 'unit_price' => 50.0]],
             []
         );
@@ -136,7 +135,7 @@ class ApproveServiceOrderByTokenUseCaseTest extends TestCase
     public function test_approves_without_items_does_not_touch_stock(): void
     {
         $so = ServiceOrder::create(
-            'cust-1', 'veh-1', '52998224725',
+            'cust-1', 'veh-1',
             [['service_id' => 'svc-1', 'name' => 'Alinhamento', 'quantity' => 1.0, 'unit_price' => 100.0]],
             []
         );
