@@ -28,6 +28,9 @@ jobs:
         echo "APP_KEY=base64:tExTeS84Y2hhdmVfZmFrZV9wYXJhX29fY2lfZ2l0aHViCg==" >> .env
         echo "DB_CONNECTION=sqlite" >> .env
         echo "DB_DATABASE=:memory:" >> .env
+        echo "CACHE_STORE=array" >> .env
+        echo "SESSION_DRIVER=array" >> .env
+        echo "QUEUE_CONNECTION=sync" >> .env
 
     - name: Instalar dependências do Composer
       run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
