@@ -277,7 +277,7 @@ Semana 1 — Ajustes de código
   ├── [x] Endpoint de abertura de OS unificado
   ├── [x] Listagem de OS com ordenação correta + soft delete
   ├── [x] Notificação por e-mail na mudança de status
-  └── Testes dos fluxos críticos
+  └── [x] Testes dos fluxos críticos
 
 Semana 2 — Kubernetes
   ├── deployment.yaml + service.yaml
