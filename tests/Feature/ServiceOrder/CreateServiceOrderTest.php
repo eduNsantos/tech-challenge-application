@@ -121,16 +121,15 @@ class CreateServiceOrderTest extends TestCase
             ]);
     }
 
-    public function test_returns_422_when_items_are_missing(): void
+    public function test_creates_order_without_items(): void
     {
         $payload = $this->validPayload();
         unset($payload['items']);
 
-        $response = $this->actingAs($this->user, 'api')
-            ->postJson('/api/service-order', $payload);
-
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['items']);
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', $payload)
+            ->assertStatus(201)
+            ->assertJsonPath('service_order.items', []);
     }
 
     public function test_creates_order_with_items(): void
