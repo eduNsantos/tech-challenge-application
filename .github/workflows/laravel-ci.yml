@@ -18,16 +18,27 @@ jobs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.4'
-        extensions: mbstring, xml, ctype, iconv, mysql, bcmath, pdo_sqlite, sqlite3
+        # Adicionado pdo_mysql caso alguma migration chame métodos estritamente MySQL
+        extensions: mbstring, xml, ctype, iconv, mysql, pdo_mysql, bcmath, pdo_sqlite, sqlite3
         coverage: none
+
+    - name: Criar arquivo de ambiente temporário
+      run: |
+        echo "APP_ENV=testing" > .env
+        echo "APP_KEY=base64:tExTeS84Y2hhdmVfZmFrZV9wYXJhX29fY2lfZ2l0aHViCg==" >> .env
+        echo "DB_CONNECTION=sqlite" >> .env
+        echo "DB_DATABASE=:memory:" >> .env
 
     - name: Instalar dependências do Composer
       run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
-    - name: Executar os Testes Unitários
+    - name: Limpar caches antigos do Laravel
+      run: |
+        php artisan config:clear
+        php artisan cache:clear
+
+    - name: Executar os Testes Unitários e Feature
       env:
-        APP_ENV: testing
-        APP_KEY: base64:tExTeS84Y2hhdmVfZmFrZV9wYXJhX29fY2lfZ2l0aHViCg==
         DB_CONNECTION: sqlite
         DB_DATABASE: ':memory:'
-      run: php artisan test --env=testing
+      run: php artisan test
