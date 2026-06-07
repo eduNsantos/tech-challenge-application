@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1780867393">
-  <project timestamp="1780867393" name="Clover Coverage">
+<coverage generated="1780867731">
+  <project timestamp="1780867731" name="Clover Coverage">
     <package name="App\Application\Customer\DTOs">
       <file name="/var/www/html/app/Application/Customer/DTOs/CreateCustomerDTO.php">
         <class name="App\Application\Customer\DTOs\CreateCustomerDTO" namespace="App\Application\Customer\DTOs">
@@ -1825,15 +1825,15 @@
         <class name="App\Infrastructure\Persistence\Eloquent\Models\ServiceOrderModel" namespace="App\Infrastructure\Persistence\Eloquent\Models">
           <metrics complexity="4" methods="4" coveredmethods="2" conditionals="0" coveredconditionals="0" statements="4" coveredstatements="2" elements="8" coveredelements="4"/>
         </class>
-        <line num="36" type="method" name="customer" visibility="public" complexity="1" crap="1" count="1"/>
-        <line num="38" type="stmt" count="1"/>
-        <line num="41" type="method" name="vehicle" visibility="public" complexity="1" crap="1" count="1"/>
-        <line num="43" type="stmt" count="1"/>
-        <line num="46" type="method" name="services" visibility="public" complexity="1" crap="2" count="0"/>
-        <line num="48" type="stmt" count="0"/>
-        <line num="51" type="method" name="items" visibility="public" complexity="1" crap="2" count="0"/>
-        <line num="53" type="stmt" count="0"/>
-        <metrics loc="56" ncloc="56" classes="1" methods="4" coveredmethods="2" conditionals="0" coveredconditionals="0" statements="4" coveredstatements="2" elements="8" coveredelements="4"/>
+        <line num="39" type="method" name="customer" visibility="public" complexity="1" crap="1" count="1"/>
+        <line num="41" type="stmt" count="1"/>
+        <line num="44" type="method" name="vehicle" visibility="public" complexity="1" crap="1" count="1"/>
+        <line num="46" type="stmt" count="1"/>
+        <line num="49" type="method" name="services" visibility="public" complexity="1" crap="2" count="0"/>
+        <line num="51" type="stmt" count="0"/>
+        <line num="54" type="method" name="items" visibility="public" complexity="1" crap="2" count="0"/>
+        <line num="56" type="stmt" count="0"/>
+        <metrics loc="59" ncloc="59" classes="1" methods="4" coveredmethods="2" conditionals="0" coveredconditionals="0" statements="4" coveredstatements="2" elements="8" coveredelements="4"/>
       </file>
       <file name="/var/www/html/app/Infrastructure/Persistence/Eloquent/Models/ServiceOrderServiceModel.php">
         <class name="App\Infrastructure\Persistence\Eloquent\Models\ServiceOrderServiceModel" namespace="App\Infrastructure\Persistence\Eloquent\Models">
@@ -2057,7 +2057,7 @@
       </file>
       <file name="/var/www/html/app/Infrastructure/Persistence/Eloquent/Repositories/ServiceOrderRepositoryEloquent.php">
         <class name="App\Infrastructure\Persistence\Eloquent\Repositories\ServiceOrderRepositoryEloquent" namespace="App\Infrastructure\Persistence\Eloquent\Repositories">
-          <metrics complexity="13" methods="9" coveredmethods="3" conditionals="0" coveredconditionals="0" statements="127" coveredstatements="113" elements="136" coveredelements="116"/>
+          <metrics complexity="13" methods="9" coveredmethods="3" conditionals="0" coveredconditionals="0" statements="130" coveredstatements="113" elements="139" coveredelements="116"/>
         </class>
         <line num="16" type="method" name="save" visibility="public" complexity="1" crap="1" count="20"/>
         <line num="18" type="stmt" count="20"/>
@@ -2140,62 +2140,65 @@
         <line num="109" type="stmt" count="0"/>
         <line num="110" type="stmt" count="0"/>
         <line num="111" type="stmt" count="0"/>
-        <line num="112" type="stmt" count="0"/>
-        <line num="113" type="stmt" count="0"/>
-        <line num="114" type="stmt" count="0"/>
-        <line num="117" type="method" name="update" visibility="public" complexity="1" crap="1" count="8"/>
-        <line num="119" type="stmt" count="8"/>
-        <line num="120" type="stmt" count="8"/>
-        <line num="121" type="stmt" count="8"/>
-        <line num="122" type="stmt" count="8"/>
+        <line num="119" type="stmt" count="0"/>
+        <line num="120" type="stmt" count="0"/>
+        <line num="121" type="stmt" count="0"/>
+        <line num="122" type="stmt" count="0"/>
         <line num="123" type="stmt" count="0"/>
-        <line num="125" type="stmt" count="8"/>
-        <line num="126" type="stmt" count="8"/>
-        <line num="127" type="stmt" count="8"/>
-        <line num="128" type="stmt" count="8"/>
+        <line num="124" type="stmt" count="0"/>
+        <line num="127" type="method" name="update" visibility="public" complexity="1" crap="1" count="8"/>
         <line num="129" type="stmt" count="8"/>
         <line num="130" type="stmt" count="8"/>
         <line num="131" type="stmt" count="8"/>
         <line num="132" type="stmt" count="8"/>
-        <line num="133" type="stmt" count="8"/>
-        <line num="134" type="stmt" count="8"/>
+        <line num="133" type="stmt" count="0"/>
         <line num="135" type="stmt" count="8"/>
         <line num="136" type="stmt" count="8"/>
+        <line num="137" type="stmt" count="8"/>
         <line num="138" type="stmt" count="8"/>
         <line num="139" type="stmt" count="8"/>
         <line num="140" type="stmt" count="8"/>
-        <line num="143" type="method" name="syncServices" visibility="private" complexity="2" crap="2" count="8"/>
+        <line num="141" type="stmt" count="8"/>
+        <line num="142" type="stmt" count="8"/>
+        <line num="143" type="stmt" count="8"/>
+        <line num="144" type="stmt" count="8"/>
         <line num="145" type="stmt" count="8"/>
         <line num="146" type="stmt" count="8"/>
-        <line num="147" type="stmt" count="8"/>
+        <line num="148" type="stmt" count="8"/>
         <line num="149" type="stmt" count="8"/>
-        <line num="150" type="stmt" count="7"/>
-        <line num="151" type="stmt" count="7"/>
-        <line num="152" type="stmt" count="7"/>
-        <line num="153" type="stmt" count="7"/>
-        <line num="154" type="stmt" count="7"/>
-        <line num="155" type="stmt" count="7"/>
-        <line num="156" type="stmt" count="7"/>
-        <line num="160" type="method" name="syncItems" visibility="private" complexity="2" crap="2" count="8"/>
-        <line num="162" type="stmt" count="8"/>
-        <line num="163" type="stmt" count="8"/>
-        <line num="164" type="stmt" count="8"/>
-        <line num="166" type="stmt" count="8"/>
-        <line num="167" type="stmt" count="7"/>
-        <line num="168" type="stmt" count="7"/>
-        <line num="169" type="stmt" count="7"/>
-        <line num="170" type="stmt" count="7"/>
-        <line num="171" type="stmt" count="7"/>
-        <line num="172" type="stmt" count="7"/>
-        <line num="173" type="stmt" count="7"/>
-        <line num="177" type="method" name="delete" visibility="public" complexity="1" crap="2" count="0"/>
-        <line num="179" type="stmt" count="0"/>
-        <line num="182" type="method" name="findByApprovalToken" visibility="public" complexity="2" crap="6" count="0"/>
-        <line num="184" type="stmt" count="0"/>
-        <line num="186" type="stmt" count="0"/>
-        <line num="187" type="stmt" count="0"/>
-        <line num="190" type="stmt" count="0"/>
-        <metrics loc="193" ncloc="193" classes="1" methods="9" coveredmethods="3" conditionals="0" coveredconditionals="0" statements="127" coveredstatements="113" elements="136" coveredelements="116"/>
+        <line num="150" type="stmt" count="8"/>
+        <line num="153" type="method" name="syncServices" visibility="private" complexity="2" crap="2" count="8"/>
+        <line num="155" type="stmt" count="8"/>
+        <line num="156" type="stmt" count="8"/>
+        <line num="157" type="stmt" count="8"/>
+        <line num="159" type="stmt" count="8"/>
+        <line num="160" type="stmt" count="7"/>
+        <line num="161" type="stmt" count="7"/>
+        <line num="162" type="stmt" count="7"/>
+        <line num="163" type="stmt" count="7"/>
+        <line num="164" type="stmt" count="7"/>
+        <line num="165" type="stmt" count="7"/>
+        <line num="166" type="stmt" count="7"/>
+        <line num="170" type="method" name="syncItems" visibility="private" complexity="2" crap="2" count="8"/>
+        <line num="172" type="stmt" count="8"/>
+        <line num="173" type="stmt" count="8"/>
+        <line num="174" type="stmt" count="8"/>
+        <line num="176" type="stmt" count="8"/>
+        <line num="177" type="stmt" count="7"/>
+        <line num="178" type="stmt" count="7"/>
+        <line num="179" type="stmt" count="7"/>
+        <line num="180" type="stmt" count="7"/>
+        <line num="181" type="stmt" count="7"/>
+        <line num="182" type="stmt" count="7"/>
+        <line num="183" type="stmt" count="7"/>
+        <line num="187" type="method" name="delete" visibility="public" complexity="1" crap="2" count="0"/>
+        <line num="189" type="stmt" count="0"/>
+        <line num="192" type="method" name="findByApprovalToken" visibility="public" complexity="2" crap="6" count="0"/>
+        <line num="194" type="stmt" count="0"/>
+        <line num="196" type="stmt" count="0"/>
+        <line num="197" type="stmt" count="0"/>
+        <line num="200" type="stmt" count="0"/>
+        <metrics loc="203" ncloc="203" classes="1" methods="9" coveredmethods="3" conditionals="0" coveredconditionals="0" statements="130" coveredstatements="113" elements="139" coveredelements="116"/>
       </file>
       <file name="/var/www/html/app/Infrastructure/Persistence/Eloquent/Repositories/ServiceOrderServiceRepositoryEloquent.php">
         <class name="App\Infrastructure\Persistence\Eloquent\Repositories\ServiceOrderServiceRepositoryEloquent" namespace="App\Infrastructure\Persistence\Eloquent\Repositories">
@@ -3341,6 +3344,6 @@
         <metrics loc="78" ncloc="78" classes="1" methods="2" coveredmethods="2" conditionals="0" coveredconditionals="0" statements="37" coveredstatements="37" elements="39" coveredelements="39"/>
       </file>
     </package>
-    <metrics files="162" loc="6012" ncloc="5899" classes="143" methods="352" coveredmethods="294" conditionals="0" coveredconditionals="0" statements="1971" coveredstatements="1791" elements="2323" coveredelements="2085"/>
+    <metrics files="162" loc="6025" ncloc="5912" classes="143" methods="352" coveredmethods="294" conditionals="0" coveredconditionals="0" statements="1974" coveredstatements="1791" elements="2326" coveredelements="2085"/>
   </project>
 </coverage>

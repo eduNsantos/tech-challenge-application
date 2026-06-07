@@ -911,7 +911,15 @@ paths:
         - Ordens de Serviço
       summary: Listar ordens de serviço
       description: |-
-        Retorna a lista de ordens de serviço paginada.
+        Retorna a lista paginada de ordens de serviço **ativas** (exclui `finalizada` e `entregue`).
+
+        Ordenação fixa:
+        1. `em_execucao`
+        2. `aguardando_aprovacao`
+        3. `em_diagnostico`
+        4. `recebida`
+
+        Dentro de cada grupo, as mais antigas aparecem primeiro (`created_at ASC`).
 
         **Requer autenticação.**
       operationId: service-order-list

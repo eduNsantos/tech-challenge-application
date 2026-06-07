@@ -3,9 +3,12 @@
 namespace App\Infrastructure\Persistence\Eloquent\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ServiceOrderModel extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'service_orders';
     protected $keyType = 'string';
     public $incrementing = false;
