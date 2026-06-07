@@ -39,10 +39,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('service_orders', function (Blueprint $table) {
-            $table->dropIndex('service_orders_customer_document_index'); 
-            $table->dropColumn('customer_document');
-        });
         Schema::dropIfExists('service_orders');
     }
 };
