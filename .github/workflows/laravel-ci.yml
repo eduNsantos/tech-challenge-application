@@ -1,0 +1,42 @@
+name: Laravel CI
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  laravel-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Baixar o código do repositório
+      uses: actions/checkout@v4
+
+    - name: Configurar o ambiente PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.4'
+        extensions: mbstring, xml, ctype, iconv, mysql, bcmath
+        coverage: none
+
+    - name: Copiar arquivo de ambiente do Laravel
+      run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+
+    - name: Instalar dependências do Composer
+      run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: Gerar chave da aplicação
+      run: php artisan key:generate
+
+    - name: Criar banco de dados SQLite para testes
+      run: |
+        mkdir -p database
+        touch database/database.sqlite
+
+    - name: Executar os Testes Unitários
+      env:
+        DB_CONNECTION: sqlite
+        DB_DATABASE: database/database.sqlite
+      run: php artisan test
