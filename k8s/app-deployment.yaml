@@ -29,7 +29,8 @@ spec:
               echo "MySQL disponivel."
       containers:
         - name: app
-          image: edunsantos/postech-app:latest
+          image: techchallenge-1-app-php:v2
+          imagePullPolicy: Never
           command:
             - php
             - artisan
