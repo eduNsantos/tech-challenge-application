@@ -107,9 +107,19 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
     public function paginate(int $page, int $perPage): array
     {
         return ServiceOrderModel::with(['customer', 'vehicle', 'services', 'services.service', 'items', 'items.item'])
+            ->whereNotIn('status', ['finalizada', 'entregue'])
+            ->orderByRaw("
+                CASE status
+                    WHEN 'em_execucao'           THEN 1
+                    WHEN 'aguardando_aprovacao'  THEN 2
+                    WHEN 'em_diagnostico'        THEN 3
+                    WHEN 'recebida'              THEN 4
+                    ELSE 5
+                END
+            ")
+            ->orderBy('created_at', 'asc')
             ->skip(($page - 1) * $perPage)
             ->take($perPage)
-            ->orderByDesc('created_at')
             ->get()
             ->toArray();
     }

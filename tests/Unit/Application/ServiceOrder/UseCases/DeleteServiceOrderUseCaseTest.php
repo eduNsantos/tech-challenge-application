@@ -31,7 +31,7 @@ class DeleteServiceOrderUseCaseTest extends TestCase
 
     public function test_deletes_existing_service_order(): void
     {
-        $serviceOrder = ServiceOrder::create('cust-1', 'veh-1', '52998224725', [], []);
+        $serviceOrder = ServiceOrder::create('cust-1', 'veh-1', [], []);
 
         $this->repository->shouldReceive('findById')->once()->with('os-1')->andReturn($serviceOrder);
         $this->repository->shouldReceive('delete')->once()->with('os-1');
