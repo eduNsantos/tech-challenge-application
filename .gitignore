@@ -24,3 +24,5 @@ Homestead.yaml
 Thumbs.db
 .github
 /zap/reports
+# Kubernetes secrets com valores reais
+k8s/secret.yaml
