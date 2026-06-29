@@ -56,7 +56,13 @@ class VehicleController
 
         $vehicle = $useCase->execute($dto);
 
-        return response()->json($vehicle);
+        return response()->json([
+            'id'    => $vehicle->id,
+            'brand' => $vehicle->brand,
+            'model' => $vehicle->model,
+            'year'  => $vehicle->year,
+            'plate' => $vehicle->plate->getValue(),
+        ]);
     }
 
     public function update(UpdateVehicleRequest $request, UpdateVehicleUseCase $useCase)
