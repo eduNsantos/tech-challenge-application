@@ -13,6 +13,7 @@ use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrder\Events\ServiceOrderCreated;
 use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
 use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
+use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 
 class CreateServiceOrderUseCase
@@ -23,7 +24,8 @@ class CreateServiceOrderUseCase
         private ServiceRepositoryInterface $serviceRepository,
         private ItemRepositoryInterface $itemRepository,
         private ServiceOrderItemInterface $serviceOrderItemRepository,
-        private ServiceOrderServiceInterface $serviceOrderServiceRepository
+        private ServiceOrderServiceInterface $serviceOrderServiceRepository,
+        private VehicleRepositoryInterface $vehicleRepository
     ) {}
 
     public function execute(CreateServiceOrderDTO $dto): ServiceOrder
@@ -32,6 +34,12 @@ class CreateServiceOrderUseCase
 
         if (!$customer) {
             throw new \DomainException("Cliente '{$dto->customerId}' nao encontrado.");
+        }
+
+        $vehicle = $this->vehicleRepository->findById($dto->vehicleId);
+
+        if (!$vehicle) {
+            throw new \DomainException("Veiculo '{$dto->vehicleId}' nao encontrado.");
         }
 
         $services = $this->resolveServices($dto->services);
