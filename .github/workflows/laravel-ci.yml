@@ -49,7 +49,7 @@ jobs:
     # 6. Executa o deploy de teste
     - name: Deploy and Test Laravel App
       run: |
-        kubectl create namespace postech-app
+        kubectl create namespace postech
         kubectl apply -f k8s/app-deployment.yaml
         
         # Corrigido para o nome real do deployment e adicionado o namespace correspondente
