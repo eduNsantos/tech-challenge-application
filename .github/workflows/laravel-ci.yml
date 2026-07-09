@@ -44,12 +44,12 @@ jobs:
     # 5. Valida a sintaxe dos manifestos (Ajuste o caminho se não usar a pasta k8s/)
     - name: Validate K8s Manifests
       run: |
-        kubectl apply --dry-run=client -f app-deployment.yaml
+        kubectl apply --dry-run=client -f k8s/app-deployment.yaml
 
     # 6. Executa o deploy de teste
     - name: Deploy and Test Laravel App
       run: |
-        kubectl apply -f app-deployment.yaml
+        kubectl apply -f k8s/app-deployment.yaml
         
         # Corrigido para o nome real do deployment e adicionado o namespace correspondente
         kubectl rollout status deployment/postech-app -n postech --timeout=90s
