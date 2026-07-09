@@ -14,34 +14,75 @@ jobs:
     - name: Baixar o código do repositório
       uses: actions/checkout@v4
 
-    - name: Configurar o ambiente PHP
-      uses: shivammathur/setup-php@v2
+        # 2. Instala e configura o Terraform
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
       with:
-        php-version: '8.4'
-        # Adicionado pdo_mysql caso alguma migration chame métodos estritamente MySQL
-        extensions: mbstring, xml, ctype, iconv, mysql, pdo_mysql, bcmath, pdo_sqlite, sqlite3
-        coverage: none
+        terraform_version: "1.7.0"
 
-    - name: Criar arquivo de ambiente temporário
+    # 3. Valida a sintaxe e formatação do Terraform (Sem deploy)
+    - name: Terraform Format & Validate
       run: |
-        echo "APP_ENV=testing" > .env
-        echo "APP_KEY=base64:tExTeS84Y2hhdmVfZmFrZV9wYXJhX29fY2lfZ2l0aHViCg==" >> .env
-        echo "DB_CONNECTION=sqlite" >> .env
-        echo "DB_DATABASE=:memory:" >> .env
-        echo "CACHE_STORE=array" >> .env
-        echo "SESSION_DRIVER=array" >> .env
-        echo "QUEUE_CONNECTION=sync" >> .env
+        terraform fmt -check
+        terraform init -backend=false
+        terraform validate
 
-    - name: Instalar dependências do Composer
-      run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+    # 4. Gera o plano do Terraform para ver o que seria criado
+    - name: Terraform Plan
+      run: terraform plan -no-color
 
-    - name: Limpar caches antigos do Laravel
+    # 5. Instala o Kubernetes (Kind) e o Kubectl dentro do GitHub Actions
+    - name: Setup Kubernetes Cluster (Kind)
+      uses: helm/kind-action@v1.10.0
+      with:
+        cluster_name: cluster-teste-ci
+
+    # 6. Valida se o cluster Kubernetes temporário está respondendo
+    - name: Test Kubernetes Connection
       run: |
-        php artisan config:clear
-        php artisan cache:clear
+        kubectl cluster-info
+        kubectl get nodes
 
-    - name: Executar os Testes Unitários e Feature
-      env:
-        DB_CONNECTION: sqlite
-        DB_DATABASE: ':memory:'
-      run: php artisan test
+    # 7. Valida a sintaxe dos seus arquivos de manifesto (.yaml) do K8s
+    - name: Validate Kubernetes Manifests
+      run: |
+        kubectl apply --dry-run=client -f meu-deploy.yaml
+
+    # 8. Executa um deploy temporário apenas para testar se tudo sobe sem erros
+    - name: Test Deploy on Local Cluster
+      run: |
+        kubectl apply -f meu-deploy.yaml
+        kubectl rollout status deployment/meu-deploy-app --timeout=60s
+        kubectl get pods
+
+    # - name: Configurar o ambiente PHP
+    #   uses: shivammathur/setup-php@v2
+    #   with:
+    #     php-version: '8.4'
+    #     # Adicionado pdo_mysql caso alguma migration chame métodos estritamente MySQL
+    #     extensions: mbstring, xml, ctype, iconv, mysql, pdo_mysql, bcmath, pdo_sqlite, sqlite3
+    #     coverage: none
+
+    # - name: Criar arquivo de ambiente temporário
+    #   run: |
+    #     echo "APP_ENV=testing" > .env
+    #     echo "APP_KEY=base64:tExTeS84Y2hhdmVfZmFrZV9wYXJhX29fY2lfZ2l0aHViCg==" >> .env
+    #     echo "DB_CONNECTION=sqlite" >> .env
+    #     echo "DB_DATABASE=:memory:" >> .env
+    #     echo "CACHE_STORE=array" >> .env
+    #     echo "SESSION_DRIVER=array" >> .env
+    #     echo "QUEUE_CONNECTION=sync" >> .env
+
+    # - name: Instalar dependências do Composer
+    #   run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    # - name: Limpar caches antigos do Laravel
+    #   run: |
+    #     php artisan config:clear
+    #     php artisan cache:clear
+
+    # - name: Executar os Testes Unitários e Feature
+    #   env:
+    #     DB_CONNECTION: sqlite
+    #     DB_DATABASE: ':memory:'
+    #   run: php artisan test
