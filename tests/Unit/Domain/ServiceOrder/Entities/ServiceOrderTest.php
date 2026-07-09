@@ -18,7 +18,7 @@ class ServiceOrderTest extends TestCase
     {
         return ServiceOrder::create(
             'cust-1',
-            'veh-1',            
+            'veh-1',
             [['service_id' => 'svc-1', 'name' => 'Alinhamento', 'quantity' => 2.0, 'unit_price' => 100.0]],
             [['item_id' => 'item-1', 'name' => 'Filtro', 'quantity' => 3.0, 'unit_price' => 20.0]]
         );

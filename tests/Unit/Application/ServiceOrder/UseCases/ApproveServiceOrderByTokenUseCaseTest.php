@@ -47,7 +47,7 @@ class ApproveServiceOrderByTokenUseCaseTest extends TestCase
     {
         $so = ServiceOrder::create(
             'cust-1',
-            'veh-1',            
+            'veh-1',
             [['service_id' => 'svc-1', 'name' => 'Alinhamento', 'quantity' => 1.0, 'unit_price' => 100.0]],
             [['item_id' => 'item-1', 'name' => 'Filtro', 'quantity' => 2.0, 'unit_price' => 20.0]]
         );

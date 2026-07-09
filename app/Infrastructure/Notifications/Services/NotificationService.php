@@ -2,14 +2,19 @@
 
 namespace App\Infrastructure\Notifications\Services;
 
-use App\Domain\Notification\Interfaces\NotificationServiceInterface;
+use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Notification\Entities\Notification as NotificationEntity;
+use App\Domain\Notification\Interfaces\NotificationServiceInterface;
 use App\Domain\Notification\ValueObjects\NotificationType;
 use Illuminate\Support\Facades\Notification;
 use App\Infrastructure\Notifications\GenericNotification;
 
 class NotificationService implements NotificationServiceInterface
 {
+    public function __construct(
+        private CustomerRepositoryInterface $customerRepository
+    ) {}
+
     public function send(NotificationEntity $notification): void
     {
         $channel = $this->mapTypeToChannel($notification->getType());
@@ -22,14 +27,19 @@ class NotificationService implements NotificationServiceInterface
     {
         return match($type) {
             NotificationType::EMAIL => 'mail',
-            NotificationType::SMS => 'vonage', // ou o driver que você usar
-            NotificationType::PUSH => 'fcm',
+            NotificationType::SMS   => 'vonage',
+            NotificationType::PUSH  => 'fcm',
         };
     }
 
     private function getDestination(NotificationEntity $notification): string
     {
-        // Aqui você buscaria o e-mail/telefone do Customer baseado no recipientId
-        return $notification->getRecipientId(); 
+        $customer = $this->customerRepository->findById($notification->getRecipientId());
+
+        if (!$customer) {
+            throw new \DomainException("Cliente '{$notification->getRecipientId()}' nao encontrado para envio de notificacao.");
+        }
+
+        return $customer->email;
     }
 }

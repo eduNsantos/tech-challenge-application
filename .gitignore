@@ -23,3 +23,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /zap/reports
+# Kubernetes secrets com valores reais
+k8s/secret.yaml
