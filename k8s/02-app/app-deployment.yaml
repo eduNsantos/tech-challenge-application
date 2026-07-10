@@ -29,7 +29,7 @@ spec:
               echo "MySQL disponivel."
       containers:
         - name: app
-          image: techchallenge-1-app-php:v2
+          image: techchallenge:latest
           imagePullPolicy: Never
           command:
             - php

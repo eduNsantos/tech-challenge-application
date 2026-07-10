@@ -25,7 +25,7 @@ spec:
               echo "MySQL disponivel."
       containers:
         - name: migrate
-          image: techchallenge-1-app-php:v2
+          image: techchallenge:latest
           imagePullPolicy: Never
           command:
             - php
