@@ -49,16 +49,25 @@ jobs:
     # 6. Executa o deploy de teste
     - name: Deploy and Test Laravel App
       run: |        
+        # 1. Garante que o namespace existe
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
+        
+        # [NOVO] Alenta as verificações do MySQL para dar tempo dele fazer o boot no CI
+        # Aumenta o delay inicial para 60 segundos e o limite de falhas para 10 tentativas
+        sed -i 's/initialDelaySeconds: 15/initialDelaySeconds: 45/g' k8s/*mysql*.yaml || true
+        sed -i 's/initialDelaySeconds: 30/initialDelaySeconds: 60/g' k8s/*mysql*.yaml || true
+        sed -i 's/failureThreshold: 3/failureThreshold: 10/g' k8s/*mysql*.yaml || true
+
+        # 2. Aplica todos os recursos (Banco, App, Configs, etc.)
         kubectl apply -f k8s/
         
-        echo "Aguardando o MySQL..."
-        # Se falhar, o script continua para podermos ver o erro com os comandos abaixo
-        kubectl rollout status deployment/mysql -n postech --timeout=60s || true
+        # 3. Aguarda o banco de dados MySQL ficar 100% pronto (Aumentado para 180s)
+        echo "Aguardando o MySQL iniciar totalmente e passar nos Probes..."
+        kubectl rollout status deployment/mysql -n postech --timeout=180s
         
-        echo "=== DETALHES DOS PODS ==="
+        # 4. Aguarda o Laravel iniciar
+        echo "Aguardando o Laravel iniciar..."
+        kubectl rollout status deployment/postech-app -n postech --timeout=180s
+        
+        # 5. Mostra o status final caso precise conferir
         kubectl get pods -n postech
-        
-        echo "=== MOTIVO DO ERRO NO MYSQL ==="
-        kubectl describe deployment mysql -n postech
-        kubectl describe pvc -n postech
