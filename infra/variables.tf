@@ -23,7 +23,7 @@ variable "vpc_cidr" {
 variable "cluster_version" {
   description = "Versao do Kubernetes no EKS"
   type        = string
-  default     = "1.30"
+  default     = "1.33"
 }
 
 variable "node_instance_types" {
@@ -77,7 +77,7 @@ variable "rds_instance_class" {
 variable "rds_engine_version" {
   description = "Versao do engine MySQL no RDS"
   type        = string
-  default     = "8.0.36"
+  default     = "8.0.46"
 }
 
 variable "rds_allocated_storage" {

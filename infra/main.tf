@@ -38,32 +38,32 @@ module "vpc" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.0"
+  version = "~> 21.0"
 
-  cluster_name    = local.name
-  cluster_version = var.cluster_version
+  name               = local.name
+  kubernetes_version = var.cluster_version
 
-  cluster_endpoint_public_access           = true
+  endpoint_public_access                   = true
   enable_cluster_creator_admin_permissions = true
+  enabled_log_types                        = []
+  create_cloudwatch_log_group              = false
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
-  eks_managed_node_group_defaults = {
-    instance_types = var.node_instance_types
-    disk_size      = 30
-  }
-
   eks_managed_node_groups = {
     default = {
-      min_size      = var.node_group_min_size
-      max_size      = var.node_group_max_size
-      desired_size  = var.node_group_desired_size
-      capacity_type = "ON_DEMAND"
+      ami_type       = "AL2023_x86_64_STANDARD"
+      instance_types                 = var.node_instance_types
+      disk_size                      = 30
+      min_size                       = var.node_group_min_size
+      max_size                       = var.node_group_max_size
+      desired_size                   = var.node_group_desired_size
+      capacity_type                  = "ON_DEMAND"
     }
   }
 
-  cluster_addons = {
+  addons = {
     coredns            = {}
     kube-proxy         = {}
     vpc-cni            = {}
@@ -171,45 +171,6 @@ resource "kubernetes_manifest" "openapi_config" {
   depends_on = [kubernetes_manifest.namespace]
 }
 
-resource "kubernetes_secret_v1" "mysql_secret" {
-  count = var.deploy_base_resources && var.deploy_k8s_mysql ? 1 : 0
-
-  metadata {
-    name      = "mysql-secret"
-    namespace = "postech"
-  }
-
-  type = "Opaque"
-
-  data = {
-    DB_PASSWORD = var.mysql_password
-  }
-
-  depends_on = [kubernetes_manifest.namespace]
-}
-
-resource "kubernetes_manifest" "mysql_pvc" {
-  count      = var.deploy_base_resources && var.deploy_k8s_mysql ? 1 : 0
-  manifest   = yamldecode(file("${path.module}/../k8s/02-app/mysql-pvc.yaml"))
-  depends_on = [kubernetes_manifest.namespace]
-}
-
-resource "kubernetes_manifest" "mysql_deployment" {
-  count    = var.deploy_base_resources && var.deploy_k8s_mysql ? 1 : 0
-  manifest = yamldecode(file("${path.module}/../k8s/02-app/mysql-deployment.yaml"))
-
-  depends_on = [
-    kubernetes_manifest.app_config,
-    kubernetes_secret_v1.mysql_secret,
-    kubernetes_manifest.mysql_pvc,
-  ]
-}
-
-resource "kubernetes_manifest" "mysql_service" {
-  count      = var.deploy_base_resources && var.deploy_k8s_mysql ? 1 : 0
-  manifest   = yamldecode(file("${path.module}/../k8s/02-app/mysql-service.yaml"))
-  depends_on = [kubernetes_manifest.mysql_deployment]
-}
 
 resource "helm_release" "metrics_server" {
   count      = var.deploy_base_resources ? 1 : 0
