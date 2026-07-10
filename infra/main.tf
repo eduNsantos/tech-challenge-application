@@ -73,40 +73,151 @@ module "eks" {
   tags = local.common_tags
 }
 
-resource "null_resource" "deploy_k8s_manifests" {
-  count = var.apply_k8s_manifests ? 1 : 0
+resource "aws_db_subnet_group" "mysql" {
+  count = var.create_rds_mysql ? 1 : 0
 
-  triggers = {
-    cluster_name = module.eks.cluster_name
-    manifests_sha = sha1(join("", [
-      for file in fileset("${path.module}/../k8s", "**/*.yaml") : filesha1("${path.module}/../k8s/${file}")
-    ]))
+  name       = "${local.name}-mysql-subnets"
+  subnet_ids = module.vpc.private_subnets
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name}-mysql-subnets"
+  })
+}
+
+resource "aws_security_group" "rds_mysql" {
+  count = var.create_rds_mysql ? 1 : 0
+
+  name        = "${local.name}-rds-mysql"
+  description = "Allow MySQL access from EKS nodes"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    description     = "MySQL from EKS nodes"
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [module.eks.node_security_group_id]
   }
 
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-c"]
-    command     = <<-EOT
-      set -euo pipefail
-
-      aws eks update-kubeconfig \
-        --name ${module.eks.cluster_name} \
-        --region ${var.aws_region}
-
-      kubectl apply -f ${path.module}/../k8s/00-namespaces/
-      kubectl apply -f ${path.module}/../k8s/01-config/
-
-      kubectl apply -f ${path.module}/../k8s/02-app/mysql-pvc.yaml
-      kubectl apply -f ${path.module}/../k8s/02-app/mysql-deployment.yaml
-      kubectl apply -f ${path.module}/../k8s/02-app/mysql-service.yaml
-
-      kubectl apply -f ${path.module}/../k8s/02-app/app-deployment.yaml
-      kubectl apply -f ${path.module}/../k8s/02-app/app-service.yaml
-      kubectl apply -f ${path.module}/../k8s/02-app/app-hpa.yaml
-
-      kubectl apply -f ${path.module}/../k8s/02-app/swagger-deployment.yaml
-      kubectl apply -f ${path.module}/../k8s/02-app/swagger-service.yaml
-    EOT
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name}-rds-mysql"
+  })
+}
+
+resource "aws_db_instance" "mysql" {
+  count = var.create_rds_mysql ? 1 : 0
+
+  identifier        = "${local.name}-mysql"
+  engine            = "mysql"
+  engine_version    = var.rds_engine_version
+  instance_class    = var.rds_instance_class
+  allocated_storage = var.rds_allocated_storage
+  storage_type      = "gp3"
+  storage_encrypted = true
+
+  db_name  = var.rds_db_name
+  username = var.rds_username
+  password = var.mysql_password
+  port     = 3306
+
+  db_subnet_group_name   = aws_db_subnet_group.mysql[0].name
+  vpc_security_group_ids = [aws_security_group.rds_mysql[0].id]
+
+  publicly_accessible     = false
+  multi_az                = false
+  backup_retention_period = var.rds_backup_retention_days
+  deletion_protection     = var.rds_deletion_protection
+  skip_final_snapshot     = var.rds_skip_final_snapshot
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name}-mysql"
+  })
+}
+
+data "aws_eks_cluster" "this" {
+  count      = var.deploy_base_resources ? 1 : 0
+  name       = module.eks.cluster_name
+  depends_on = [module.eks]
+}
+
+data "aws_eks_cluster_auth" "this" {
+  count      = var.deploy_base_resources ? 1 : 0
+  name       = module.eks.cluster_name
+  depends_on = [module.eks]
+}
+
+resource "kubernetes_manifest" "namespace" {
+  count      = var.deploy_base_resources ? 1 : 0
+  manifest   = yamldecode(file("${path.module}/../k8s/00-namespaces/namespace.yaml"))
+  depends_on = [module.eks]
+}
+
+resource "kubernetes_manifest" "app_config" {
+  count      = var.deploy_base_resources ? 1 : 0
+  manifest   = yamldecode(file("${path.module}/../k8s/01-config/configmap.yaml"))
+  depends_on = [kubernetes_manifest.namespace]
+}
+
+resource "kubernetes_manifest" "openapi_config" {
+  count      = var.deploy_base_resources ? 1 : 0
+  manifest   = yamldecode(file("${path.module}/../k8s/01-config/openapi-configmap.yaml"))
+  depends_on = [kubernetes_manifest.namespace]
+}
+
+resource "kubernetes_secret_v1" "mysql_secret" {
+  count = var.deploy_base_resources && var.deploy_k8s_mysql ? 1 : 0
+
+  metadata {
+    name      = "mysql-secret"
+    namespace = "postech"
+  }
+
+  type = "Opaque"
+
+  data = {
+    DB_PASSWORD = var.mysql_password
+  }
+
+  depends_on = [kubernetes_manifest.namespace]
+}
+
+resource "kubernetes_manifest" "mysql_pvc" {
+  count      = var.deploy_base_resources && var.deploy_k8s_mysql ? 1 : 0
+  manifest   = yamldecode(file("${path.module}/../k8s/02-app/mysql-pvc.yaml"))
+  depends_on = [kubernetes_manifest.namespace]
+}
+
+resource "kubernetes_manifest" "mysql_deployment" {
+  count    = var.deploy_base_resources && var.deploy_k8s_mysql ? 1 : 0
+  manifest = yamldecode(file("${path.module}/../k8s/02-app/mysql-deployment.yaml"))
+
+  depends_on = [
+    kubernetes_manifest.app_config,
+    kubernetes_secret_v1.mysql_secret,
+    kubernetes_manifest.mysql_pvc,
+  ]
+}
+
+resource "kubernetes_manifest" "mysql_service" {
+  count      = var.deploy_base_resources && var.deploy_k8s_mysql ? 1 : 0
+  manifest   = yamldecode(file("${path.module}/../k8s/02-app/mysql-service.yaml"))
+  depends_on = [kubernetes_manifest.mysql_deployment]
+}
+
+resource "helm_release" "metrics_server" {
+  count      = var.deploy_base_resources ? 1 : 0
+  name       = "metrics-server"
+  repository = "https://kubernetes-sigs.github.io/metrics-server/"
+  chart      = "metrics-server"
+  version    = var.metrics_server_chart_version
+  namespace  = "kube-system"
 
   depends_on = [module.eks]
 }

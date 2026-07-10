@@ -50,10 +50,82 @@ variable "node_group_desired_size" {
   default     = 1
 }
 
-variable "apply_k8s_manifests" {
-  description = "Aplica os manifests em k8s/ automaticamente apos criar o cluster"
+variable "deploy_base_resources" {
+  description = "Se true, aplica namespace, banco de dados e metrics-server no cluster existente"
   type        = bool
   default     = false
+}
+
+variable "deploy_k8s_mysql" {
+  description = "Se true, aplica MySQL dentro do Kubernetes"
+  type        = bool
+  default     = false
+}
+
+variable "create_rds_mysql" {
+  description = "Se true, cria instancia MySQL no Amazon RDS"
+  type        = bool
+  default     = true
+}
+
+variable "rds_instance_class" {
+  description = "Classe da instancia RDS MySQL"
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "rds_engine_version" {
+  description = "Versao do engine MySQL no RDS"
+  type        = string
+  default     = "8.0.36"
+}
+
+variable "rds_allocated_storage" {
+  description = "Tamanho inicial do storage do RDS (GiB)"
+  type        = number
+  default     = 20
+}
+
+variable "rds_backup_retention_days" {
+  description = "Retencao de backup automatico em dias"
+  type        = number
+  default     = 7
+}
+
+variable "rds_skip_final_snapshot" {
+  description = "Pula snapshot final ao destruir o RDS"
+  type        = bool
+  default     = true
+}
+
+variable "rds_deletion_protection" {
+  description = "Protecao contra exclusao da instancia RDS"
+  type        = bool
+  default     = false
+}
+
+variable "rds_db_name" {
+  description = "Nome do banco inicial no RDS"
+  type        = string
+  default     = "techchallenge"
+}
+
+variable "rds_username" {
+  description = "Usuario administrador do MySQL no RDS"
+  type        = string
+  default     = "techchallenge"
+}
+
+variable "mysql_password" {
+  description = "Senha do usuario do banco MySQL"
+  type        = string
+  sensitive   = true
+}
+
+variable "metrics_server_chart_version" {
+  description = "Versao do chart do metrics-server"
+  type        = string
+  default     = "3.12.2"
 }
 
 variable "tags" {
