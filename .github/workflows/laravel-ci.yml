@@ -48,8 +48,7 @@ jobs:
 
     # 6. Executa o deploy de teste
     - name: Deploy and Test Laravel App
-      run: |
-        # 1. Garante que o namespace existe
+      run: |        
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
         
         # 2. Aplica todos os recursos (Banco, App, Configs, etc.)
