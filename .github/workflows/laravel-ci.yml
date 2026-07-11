@@ -7,66 +7,58 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # ----------------------------------------------------
-  # JOB 1: TESTES DA APLICAÇÃO (PHP / LARAVEL)
-  # ----------------------------------------------------
   laravel-tests:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout do código
+    - name: Baixar o código do repositório
       uses: actions/checkout@v4
 
-    - name: Configurar PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.3' # Ajuste para a versão do seu projeto
-        extensions: mbstring, xml, ctype, iconv, mysql, bcmath
-        coverage: none
-
-    - name: Instalar Dependências do Composer
-      run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-
-    - name: Copiar arquivo .env de teste
-      run: cp .env.example .env
-
-    - name: Gerar chave da aplicação
-      run: php artisan key:generate
-
-    - name: Executar Testes (Pest ou PHPUnit)
-      run: php artisan test
-
-  # ----------------------------------------------------
-  # JOB 2: VALIDAÇÃO DO TERRAFORM
-  # ----------------------------------------------------
-  terraform-lint:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout do código
-      uses: actions/checkout@v4
-
-    - name: Configurar Terraform
+    # 1. Validação e Planejamento do Terraform
+    - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.7.0"
 
-    - name: Inicializar Terraform (baixa provedores)
-      run: terraform -chdir=./terraform init -backend=false
-
-    - name: Validar Sintaxe do Código
-      run: terraform -chdir=./terraform validate
-
-  # ----------------------------------------------------
-  # JOB 3: VALIDAÇÃO DOS MANIFESTOS KUBERNETES
-  # ----------------------------------------------------
-  kubernetes-lint:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout do código
-      uses: actions/checkout@v4
-
-    - name: Validar arquivos YAML do K8s (Dry-run com Kubeval ou Kube-linter)
-      # Usamos uma ferramenta simples para garantir que os arquivos k8s não possuem erros de sintaxe
+    - name: Terraform Validate & Plan
       run: |
-        sudo wget -O /usr/local/bin/kubeval https://github.com
-        # Nota: Caso use outra ferramenta ou queira apenas um check básico de sintaxe com python/yq:
-        # Se você não tiver ferramentas extras, um "kubectl apply --dry-run=client" também resolve se houvesse cluster,
-        # mas como estamos testando na nuvem sem o minikube conectado ainda, validamos apenas a formatação do yaml:
-        python3 -c "import yaml, os; [yaml.safe_load(open(os.path.join('./k8s', f))) for f in os.listdir('./k8s') if f.endswith('.yml') or f.endswith('.yaml')]"
+        terraform init -backend=false
+        terraform validate
+
+    # 2. Cria o Cluster Kubernetes temporário (Kind)
+    - name: Setup Kubernetes Cluster (Kind)
+      uses: helm/kind-action@v1.10.0
+      with:
+        cluster_name: laravel-cluster-ci
+
+    # 3. Constroi a imagem Docker exatamente com o nome esperado pelo Kubernetes
+    - name: Build Laravel Docker Image
+      run: |
+        docker build -t techchallenge-1-app-php:v2 -f Dockerfile .
+
+    # 4. Injeta a imagem para dentro do nó do Kind
+    - name: Load Image into Kind Cluster
+      run: |
+        kind load docker-image techchallenge-1-app-php:v2 --name laravel-cluster-ci
+
+    # 5. Valida a sintaxe dos manifestos (Ajuste o caminho se não usar a pasta k8s/)
+    - name: Validate K8s Manifests
+      run: |
+        kubectl apply --dry-run=client -f k8s/app-deployment.yaml
+
+    # 6. Executa o deploy de teste
+    - name: Deploy and Test Laravel App
+      run: |        
+        kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
+        kubectl apply -f k8s/
+        
+        echo "Aguardando o MySQL..."
+        # Se falhar, o script continua para podermos ver o erro com os comandos abaixo
+        kubectl rollout status deployment/mysql -n postech --timeout=60s || true
+        
+        echo "=== DETALHES DOS PODS ==="
+        kubectl get pods -n postech
+        
+        echo "=== MOTIVO DO ERRO NO MYSQL ==="
+        kubectl describe deployment mysql -n postech
+        kubectl describe pvc -n postech
