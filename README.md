@@ -68,7 +68,7 @@ JWT_SECRET=
 
 Se quiser evitar inconsistência no MySQL, mantenha `DB_PASSWORD` preenchido com o mesmo valor usado no container.
 
-Para gerar o JWT_SEFCRET precisa ter ao menos 256 bytes. Para facilitar utilize este comando e copie o output:
+Para gerar o JWT_SECRET precisa ter ao menos 256 bytes. Para facilitar utilize este comando e copie o output:
 
 ```
 docker compose run --rm app-php php artisan jwt:secret
@@ -165,3 +165,163 @@ make ci
 - O container `app-php` publica a aplicação na porta `8080` usando `php artisan serve`.
 - O Swagger UI lê diretamente o arquivo `openapi.yaml` do projeto.
 - O banco MySQL é exposto localmente na porta `3308`.
+
+## Ambiente Kubernetes (Minikube + Terraform)
+
+Além do Docker Compose (fluxo padrão do dia a dia), o projeto tem um segundo ambiente que roda a aplicação inteira dentro de um cluster Kubernetes local, via **Minikube**. É o ambiente usado sempre que você mexe em algo que impacta o deploy em si (Deployments, Services, HPA, ConfigMaps, Secrets).
+
+Todo o provisionamento — desde o namespace até o Job de migration — é feito por um único diretório `infra/` no Terraform, usando o provider `kubernetes` (e `helm`, só para o metrics-server). Não existem `kubectl apply` soltos nem `local-exec` chamando o cluster por fora: cada manifest é um resource do Terraform, e o state fica todo em `infra/`.
+
+### Papel de cada peça
+
+| Peça | Papel |
+|---|---|
+| **Minikube** | Cria o cluster Kubernetes de um nó rodando localmente (por padrão, como um container Docker via seu próprio driver). |
+| **Terraform** (`infra/`) | Orquestra **toda** a stack dentro do cluster: namespace, ConfigMaps, Secrets, MySQL (Deployment + Service + PV/PVC), Job de migration, Deployment/Service/HPA da aplicação, Deployment/Service do Swagger, e o `metrics-server` via Helm (necessário para o HPA). Cada peça é um resource nativo (`kubernetes_namespace_v1`, `kubernetes_deployment_v1`, `kubernetes_secret_v1` etc.) — nada é aplicado via shell. |
+| **GitHub Actions** | `build-ghcr.yml` builda e publica a imagem no GHCR. `deploy-minikube.yml` roda `terraform apply` em um runner self-hosted com o Minikube já em pé, passando os segredos como variáveis do Terraform (`TF_VAR_*`). |
+
+### Docker Compose vs Minikube — quando usar cada um
+
+| | Docker Compose | Minikube + Kubernetes |
+|---|---|---|
+| Uso principal | Dia a dia, desenvolvimento | Validar o comportamento em Kubernetes (Deployments, HPA, Services) |
+| Orquestração | `docker-compose.yml` | Resources Terraform (`kubernetes_*`) |
+| Banco | Container `db` | Deployment MySQL dentro do cluster |
+| Acesso externo | Portas mapeadas direto | Services + `minikube tunnel` |
+| Escala | Manual | HPA (autoscaling automático) |
+
+### Pré-requisitos
+
+- Docker
+- [Minikube](https://minikube.sigs.k8s.io/docs/start/)
+- `kubectl`
+- Terraform >= 1.6
+- Um Personal Access Token do GitHub (classic) com escopo `read:packages`, para puxar a imagem do GHCR
+
+### Passo a passo
+
+**1. Suba o cluster**
+
+Via Makefile: `make minikube-start`
+
+Ou manualmente:
+```bash
+minikube start
+kubectl config use-context minikube
+```
+
+**2. Configure as variáveis sensíveis**
+
+`app_key`, `db_password` e `jwt_secret` **não precisam ser gerados de novo** — são os mesmos valores que já estão no seu `.env` (gerados no fluxo de Docker Compose acima, via `make bootstrap` ou os passos manuais 2 e 5). Reaproveitar evita, por exemplo, que o JWT emitido pela API do Compose seja invalidado ao rodar no Kubernetes com uma chave diferente:
+
+```bash
+grep -E '^(APP_KEY|DB_PASSWORD|JWT_SECRET)=' .env
+```
+
+Crie `infra/terraform.tfvars` com esses valores (está no `.gitignore` — nunca commitar com dados reais):
+
+```hcl
+app_key       = "base64:COPIE_DO_SEU_.ENV"
+db_password   = "COPIE_DO_SEU_.ENV"
+jwt_secret    = "COPIE_DO_SEU_.ENV"
+
+ghcr_username = "SEU_USUARIO_GITHUB"
+ghcr_token    = "SEU_TOKEN_COM_read:packages"
+
+# Opcionais — já têm default em variables.tf, só defina se quiser sobrescrever:
+# ghcr_email    = "SEU_EMAIL"
+# mail_username = "SEU_EMAIL_SMTP"
+# mail_password = "SUA_SENHA_DE_APP"
+```
+
+**3. Aplique com Terraform**
+
+Via `Makefile` (recomendado — já valida se `terraform.tfvars` existe):
+
+```bash
+make infra-init
+make infra-apply
+# ou os dois passos de uma vez, incluindo o minikube start: make k8s-up
+```
+
+Ou manualmente:
+
+```bash
+cd infra
+terraform init
+terraform apply
+cd ..
+```
+
+Isso cria o namespace, ConfigMaps, Secrets, MySQL, roda o Job de migration e sobe a aplicação e o Swagger — nessa ordem, controlada pelas dependências entre os resources.
+
+### Acessando a documentação (Swagger)
+
+Como o Service da app e o do Swagger são `LoadBalancer`, no Minikube eles só
+recebem IP externo enquanto o túnel estiver ativo. Em um terminal separado,
+deixe rodando:
+
+```bash
+make k8s-tunnel
+```
+
+Em outro terminal, com o túnel ativo, obtenha as URLs:
+
+```bash
+make k8s-urls
+```
+
+Isso imprime:
+
+```bash
+App:     http://127.0.0.1:xxxxx
+Swagger: http://127.0.0.1:xxxxx
+```
+
+Abra a URL do **Swagger** no navegador para acessar a documentação interativa
+da API (`openapi.yaml` da raiz do projeto).
+
+**Para desligar tudo:**
+
+Via Makefile: `make k8s-down`
+
+Ou manualmente:
+```bash
+cd infra && terraform destroy && cd ..
+minikube stop
+```
+
+### Atualizando a aplicação (nova imagem)
+
+Como a tag da imagem (`image_tag`) faz parte do nome do Deployment e do Job de migration, basta rodar `terraform apply` de novo com uma tag nova para que o Terraform detecte a mudança, recrie o Job de migration e faça o rollout do Deployment automaticamente — sem precisar de `kubectl rollout restart` manual:
+
+```bash
+make infra-apply IMAGE_TAG=sha-abc1234
+```
+
+### Referência rápida (make)
+
+| Comando | Descrição |
+|---|---|
+| `make minikube-start` | Sobe o cluster Minikube e seleciona o context |
+| `make infra-init` | `terraform init` em `infra/` (valida se `terraform.tfvars` existe) |
+| `make infra-plan` | `terraform plan` (aceita `IMAGE_TAG=<tag>`) |
+| `make infra-apply` | `terraform apply` (aceita `IMAGE_TAG=<tag>`) |
+| `make infra-destroy` | Remove toda a stack provisionada pelo Terraform |
+| `make infra-reset` | Limpeza forçada (namespace + PV + dados do MySQL no host) — usar quando o cluster ficar num estado inconsistente com o Terraform |
+| `make k8s-up` | `minikube-start` + `infra-init` + `infra-apply` em sequência |
+| `make k8s-down` | `infra-destroy` + `minikube-stop` |
+| `make k8s-status` | Mostra pods e services do namespace |
+| `make k8s-urls` | Exibe as URLs de acesso (requer `minikube tunnel` rodando) |
+| `make k8s-tunnel` | Abre o túnel do Minikube (`minikube tunnel`, roda em foreground) |
+
+### Problemas comuns
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| `ImagePullBackOff` — `manifest unknown` | Imagem ainda não publicada no GHCR com essa tag, ou nome de imagem não bate com o seu fork | Conferir `gh api /users/<usuario>/packages/container/tech-challenge/versions --jq '.[].metadata.container.tags'` |
+| `ImagePullBackOff` — `denied` | `ghcr-secret` com token sem escopo `read:packages`, ou credencial errada | Corrigir `ghcr_token`/`ghcr_username` em `terraform.tfvars` e rodar `make infra-apply` de novo |
+| Pod/Job travado no `wait-for-mysql` | Service `mysql` não resolve, ou o pod do MySQL não subiu | `kubectl get pods -n postech -l app=mysql` e `kubectl logs -n postech <pod> -c wait-for-mysql` |
+| `curl` no `EXTERNAL-IP` não conecta | `minikube tunnel` não está rodando (ou fechou) | Rodar `minikube tunnel` em um terminal dedicado, sem fechar |
+| Job de migration antigo "sujando" o namespace | `ttl_seconds_after_finished` ainda não expirou | É automático — o Kubernetes remove o Job passados 300s do término. Se precisar antes: `kubectl delete job -n postech <nome>` |
+| `terraform apply` não recria o Job/Deployment | `image_tag` não mudou entre um apply e outro | `make infra-apply IMAGE_TAG=<nova-tag>` a cada build |

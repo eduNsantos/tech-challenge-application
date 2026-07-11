@@ -1,4 +1,4 @@
-FROM php:8.4-fpm
+FROM php:8.4-cli
 
 RUN apt-get update && apt-get install -y \
     git \
@@ -10,13 +10,18 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     zip \
     unzip \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip opcache
+&& docker-php-ext-configure gd --with-freetype --with-jpeg \
+&& docker-php-ext-install -j$(nproc) pdo_mysql mbstring exif pcntl bcmath gd zip opcache \
+&& pecl install pcov \
+&& docker-php-ext-enable pcov \
+&& rm -rf /var/lib/apt/lists/*
 
-RUN pecl install pcov
-
-RUN docker-php-ext-enable pcov
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 
 WORKDIR /var/www/html
+
 COPY . .
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-RUN composer install
+
+RUN composer install --no-interaction --prefer-dist --no-progress
+
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]

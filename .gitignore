@@ -25,3 +25,15 @@ Thumbs.db
 /zap/reports
 # Kubernetes secrets com valores reais
 k8s/secret.yaml
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/crash.log
+infra/override.tf
+infra/override.tf.json
+infra/*_override.tf
+infra/*_override.tf.json
+infra/terraform.tfvars
+infra/terraform.tfvars.json

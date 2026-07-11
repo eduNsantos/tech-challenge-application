@@ -12,7 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('service_orders', function (Blueprint $table) {
-            $table->dropIndex('service_orders_customer_document_index');
             $table->dropColumn('customer_document');
         });
     }

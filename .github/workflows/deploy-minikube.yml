@@ -1,0 +1,62 @@
+name: Deploy to local Minikube
+
+on:
+  workflow_run:
+    workflows: ["Build and Publish Docker image (GHCR)"]
+    types: [completed]
+    branches: [main, minikube]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  NAMESPACE: postech
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Check minikube status
+        run: |
+          minikube status
+          kubectl config use-context minikube
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Resolve image tag
+        id: image
+        run: |
+          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          echo "tag=sha-${SHA:0:7}" >> "$GITHUB_OUTPUT"
+      - name: make infra-init
+        run: make infra-init
+
+      - name: Terraform apply (auto-approve)
+        env:
+          TF_VAR_app_key: ${{ secrets.APP_KEY }}
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+          TF_VAR_mail_username: ${{ secrets.MAIL_USERNAME }}
+          TF_VAR_mail_password: ${{ secrets.MAIL_PASSWORD }}
+          TF_VAR_ghcr_username: ${{ secrets.GHCR_USERNAME }}
+          TF_VAR_ghcr_token: ${{ secrets.GHCR_TOKEN }}
+          TF_VAR_ghcr_email: ${{ secrets.GHCR_EMAIL }}
+        run: |
+          cd infra
+          terraform apply -auto-approve -var="image_tag=${{ steps.image.outputs.tag }}"
+
+      - name: Show access URLs
+        working-directory: infra/
+        run: |
+          echo "App:     $(minikube service postech-app -n $NAMESPACE --url)"
+          echo "Swagger: $(minikube service swagger-ui -n $NAMESPACE --url)"
