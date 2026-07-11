@@ -12,6 +12,9 @@ on:
     branches:
       - main
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Laravel CI"]
+    types: [completed]    
 
 permissions:
   contents: read
