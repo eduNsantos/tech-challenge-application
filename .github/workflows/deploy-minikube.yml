@@ -11,8 +11,6 @@ permissions:
   contents: read
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
   NAMESPACE: postech
 
 jobs:
@@ -25,95 +23,40 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      # --- Infra de cluster (metrics-server) via Terraform ---
-      # Pressupõe que o minikube já está rodando na máquina do runner
-      # (minikube start feito previamente/fora deste workflow).
-      - name: Terraform init
-        working-directory: terraform
-        run: terraform init
-
-      - name: Terraform apply
-        working-directory: terraform
-        run: terraform apply -auto-approve
-
       - name: Check minikube status
         run: |
           minikube status
           kubectl config use-context minikube
 
-      # --- Namespace e configuração base ---
-      - name: Apply namespace
-        run: kubectl apply -f k8s/00-namespaces/namespace.yaml
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
 
-      - name: Apply configmaps
+      - name: Resolve image tag
+        id: image
         run: |
-          kubectl apply -f k8s/01-config/configmap.yaml
-          kubectl apply -f k8s/01-config/openapi-configmap.yaml
+          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          echo "tag=sha-${SHA:0:7}" >> "$GITHUB_OUTPUT"
+      - name: make infra-init
+        run: make infra-init
 
-      # Segredos gerados em runtime, nunca commitados -- mesmo padrão do
-      # deploy-k8s-app.yml (EKS). Os secrets abaixo já devem existir no
-      # repositório (Settings > Secrets and variables > Actions).
-      - name: Ensure app secret
+      - name: Terraform apply (auto-approve)
+        env:
+          TF_VAR_app_key: ${{ secrets.APP_KEY }}
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+          TF_VAR_mail_username: ${{ secrets.MAIL_USERNAME }}
+          TF_VAR_mail_password: ${{ secrets.MAIL_PASSWORD }}
+          TF_VAR_ghcr_username: ${{ secrets.GHCR_USERNAME }}
+          TF_VAR_ghcr_token: ${{ secrets.GHCR_TOKEN }}
+          TF_VAR_ghcr_email: ${{ secrets.GHCR_EMAIL }}
         run: |
-          kubectl create secret generic app-secret \
-            -n "$NAMESPACE" \
-            --from-literal=APP_KEY="${{ secrets.APP_KEY }}" \
-            --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
-            --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-            --from-literal=MAIL_USERNAME="${{ secrets.MAIL_USERNAME }}" \
-            --from-literal=MAIL_PASSWORD="${{ secrets.MAIL_PASSWORD }}" \
-            --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Ensure GHCR pull secret
-        run: |
-          kubectl create secret docker-registry ghcr-secret \
-            -n "$NAMESPACE" \
-            --docker-server=ghcr.io \
-            --docker-username="${{ secrets.GHCR_USERNAME }}" \
-            --docker-password="${{ secrets.GHCR_TOKEN }}" \
-            --docker-email="${{ secrets.GHCR_EMAIL }}" \
-            --dry-run=client -o yaml | kubectl apply -f -
-
-      # --- MySQL (substitui o RDS usado no ambiente EKS) ---
-      - name: Apply mysql storage, deployment and service
-        run: |
-          kubectl apply -f k8s/02-database/mysql-pv.yaml
-          kubectl apply -f k8s/02-database/mysql-pvc.yaml
-          kubectl apply -f k8s/02-database/mysql-deployment.yaml
-          kubectl apply -f k8s/02-database/mysql-service.yaml
-
-      - name: Wait for mysql rollout
-        run: kubectl rollout status deployment/mysql -n "$NAMESPACE" --timeout=180s
-
-      # --- Migrations (Job é imutável: apaga o anterior antes de recriar) ---
-      - name: Recreate migration job
-        run: |
-          kubectl delete job app-migrate -n "$NAMESPACE" --ignore-not-found
-          kubectl apply -f k8s/02-app/migrate-job.yaml
-          kubectl wait --for=condition=complete job/app-migrate -n "$NAMESPACE" --timeout=240s
-
-      # --- Aplicação ---
-      - name: Apply app manifests
-        run: |
-          kubectl apply -f k8s/02-app/app-deployment.yaml
-          kubectl apply -f k8s/02-app/app-service.yaml
-          kubectl apply -f k8s/02-app/app-hpa.yaml
-          kubectl apply -f k8s/02-app/swagger-deployment.yaml
-          kubectl apply -f k8s/02-app/swagger-service.yaml
-
-      # A tag usada é a de branch (ex.: "main"), gerada automaticamente pelo
-      # build-ghcr.yml via docker/metadata-action (type=ref,event=branch).
-      # Como a tag não muda a cada push, um "apply" sozinho não dispara novo
-      # rollout -- por isso o restart forçado abaixo.
-      - name: Force rollout with latest image
-        run: kubectl rollout restart deployment/postech-app -n "$NAMESPACE"
-
-      - name: Wait for rollout
-        run: |
-          kubectl rollout status deployment/postech-app -n "$NAMESPACE" --timeout=300s
-          kubectl rollout status deployment/swagger-ui -n "$NAMESPACE" --timeout=300s
+          cd infra
+          terraform apply -auto-approve -var="image_tag=${{ steps.image.outputs.tag }}"
 
       - name: Show access URLs
+        working-directory: infra/
         run: |
           echo "App:     $(minikube service postech-app -n $NAMESPACE --url)"
           echo "Swagger: $(minikube service swagger-ui -n $NAMESPACE --url)"

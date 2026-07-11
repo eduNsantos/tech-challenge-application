@@ -22,15 +22,19 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+.github
 /zap/reports
 # Kubernetes secrets com valores reais
 k8s/secret.yaml
 
-# Terraform local artifacts
+# Terraform
 infra/.terraform/
-**/.terraform/*
-*.tfstate
-*.tfstate.*
-.terraform.tfstate.lock.info
-crash.log
-crash.*.log
+infra/*.tfstate
+infra/*.tfstate.*
+infra/crash.log
+infra/override.tf
+infra/override.tf.json
+infra/*_override.tf
+infra/*_override.tf.json
+infra/terraform.tfvars
+infra/terraform.tfvars.json

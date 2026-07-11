@@ -1,4 +1,3 @@
-
 resource "helm_release" "metrics_server" {
   count = var.deploy_metrics_server ? 1 : 0
 
