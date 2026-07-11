@@ -1,16 +1,6 @@
 name: Build and Publish Docker image (GHCR)
 
 on:
-  push:
-    branches:
-      - main
-      - terraform
-      - minikube
-    tags:
-      - "v*"
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
   workflow_run:
     workflows: ["Laravel CI"]
