@@ -1,7 +1,6 @@
 name: Build and Publish Docker image (GHCR)
 
 on:
-  workflow_dispatch:
   workflow_run:
     workflows: ["Laravel CI"]
     types: [completed]    
