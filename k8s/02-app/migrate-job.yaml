@@ -27,8 +27,8 @@ spec:
               echo "MySQL disponivel."
       containers:
         - name: migrate
-          image: ghcr.io/edunsantos/tech-challenge:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/viniciussalvarenga/tech-challenge:latest
+          imagePullPolicy: Always
           command:
             - php
             - artisan
