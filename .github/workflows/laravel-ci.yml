@@ -64,7 +64,7 @@ jobs:
         
         echo "=== EXECUTANDO TESTES DENTRO DO CONTAINER APP ==="
         # FILTRO CORRIGIDO: Busca apenas os pods que pertencem ao deployment da aplicação (evita pods de migrate/jobs)
-        APP_POD=$(kubectl get pods -n postech -l app=laravel -o jsonpath='{.items[0].metadata.name}')
+        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items[0].metadata.name}')
         
         echo "Rodando testes no Pod da Aplicação: $APP_POD"
         kubectl exec -n postech $APP_POD -c app -- php artisan test
