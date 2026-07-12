@@ -46,27 +46,42 @@ jobs:
       run: |
         kubectl apply --dry-run=client -f k8s/app-deployment.yaml
 
-    # 6. Executa o deploy de teste                
+    # 6. Executa o deploy de teste                    
     - name: Deploy and Test Laravel App
       run: |        
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
         kubectl apply -f k8s/
         
         echo "Aguardando o MySQL iniciar..."
-        kubectl rollout status deployment/mysql -n postech --timeout=60s || true
+        kubectl rollout status deployment/mysql -n postech --timeout=45s || true
 
         echo "Aguardando o container do Laravel (postech-app) ficar disponível..."
-        # Espera o seu deployment postech-app ficar 100% pronto (passando pelo initContainer e Probes)
-        kubectl rollout status deployment/postech-app -n postech --timeout=90s
+        # O '|| true' impede que o pipeline aborte aqui se der timeout, permitindo ver os logs abaixo
+        kubectl rollout status deployment/postech-app -n postech --timeout=45s || true
         
-        echo "=== STATUS ATUAL DOS PODS ==="
+        echo "=== STATUS DETALHADO DOS PODS ==="
         kubectl get pods -n postech
         
-        echo "=== EXECUTANDO TESTES DENTRO DO CONTAINER APP ==="
-        # Busca o primeiro Pod usando a label correta que vimos no seu YAML
-        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items[0].metadata.name}')
+        echo "=== EVENTOS DO KUBERNETES (Ver erros de imagem ou Probes) ==="
+        kubectl get events -n postech --sort-by='.metadata.creationTimestamp' | tail -n 20
         
-        echo "Rodando testes no Pod da Aplicação: $APP_POD"
+        echo "=== COLETANDO NOME DO POD DO APP ==="
+        # Pega o primeiro pod do postech-app, mesmo que esteja falhando ou iniciando
+        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items[0].metadata.name}' || echo "")
+        
+        if [ -n "$APP_POD" ]; then
+          echo "=== LOGS DO INIT CONTAINER (wait-for-mysql) ==="
+          kubectl logs -n postech $APP_POD -c wait-for-mysql --tail=20 || true
+          
+          echo "=== LOGS DO CONTAINER PRINCIPAL (app) ==="
+          kubectl logs -n postech $APP_POD -c app --tail=30 || true
+        else
+          echo "Nenhum Pod encontrado com a label app=postech-app"
+        fi
+
+        echo "=== FORÇANDO EXECUÇÃO DO TESTE ==="
+        # Tentativa final de rodar o teste caso o app apenas tenha demorado um pouco mais
         kubectl exec -n postech $APP_POD -c app -- php artisan test
+
 
 
