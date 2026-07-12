@@ -46,13 +46,12 @@ jobs:
       run: |
         kubectl apply --dry-run=client -f k8s/app-deployment.yaml
 
-    # 6. Executa o deploy de teste            
+    # 6. Executa o deploy de teste                
     - name: Deploy and Test Laravel App
       run: |        
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
         
         echo "=== REMOVENDO O INIT CONTAINER DO YAML NO CI ==="
-        # Remove a trava do initContainers do arquivo temporariamente antes do deploy
         yq eval 'del(.spec.template.spec.initContainers)' -i k8s/app-deployment.yaml
         
         echo "Aplicando manifestos corrigidos..."
@@ -68,11 +67,11 @@ jobs:
         APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items[0].metadata.name}')
         echo "Pod detectado: $APP_POD"
         
-        echo "=== LOGS REAIS DO CONTAINER LARAVEL ==="
-        kubectl logs -n postech $APP_POD -c app --tail=30 || true
-        
         echo "=== EXECUTANDO OS TESTES DO LARAVEL ==="
-        kubectl exec -n postech $APP_POD -c app -- php artisan test
+        # Força o PHPUnit a ler o arquivo phpunit.xml padrão. Se ele não existir, o '--configuration' ajuda a mapear
+        kubectl exec -n postech $APP_POD -c app -- php artisan test --configuration=phpunit.xml || \
+        kubectl exec -n postech $APP_POD -c app -- ./vendor/bin/phpunit
+
 
 
 
