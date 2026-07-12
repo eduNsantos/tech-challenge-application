@@ -64,5 +64,5 @@ jobs:
         kubectl describe pvc -n postech
         echo "=== EXECUTANDO TESTES DENTRO DO POD ==="
         # Busca o nome do pod do Laravel e roda o teste dentro dele
-        APP_POD=$(kubectl get pods -n postech -l app=laravel -o jsonpath="{.items[0].metadata.name}")
+        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath="{.items[0].metadata.name}")
         kubectl exec -n postech $APP_POD -- php artisan test
