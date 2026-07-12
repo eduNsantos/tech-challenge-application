@@ -62,4 +62,7 @@ jobs:
         echo "=== MOTIVO DO ERRO NO MYSQL ==="
         kubectl describe deployment mysql -n postech
         kubectl describe pvc -n postech
-        php artisan test
+        echo "=== EXECUTANDO TESTES DENTRO DO POD ==="
+        # Busca o nome do pod do Laravel e roda o teste dentro dele
+        APP_POD=$(kubectl get pods -n postech -l app=laravel -o jsonpath="{.items[0].metadata.name}")
+        kubectl exec -n postech $APP_POD -- php artisan test
