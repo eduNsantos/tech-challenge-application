@@ -45,7 +45,7 @@ jobs:
     - name: Validate K8s Manifests
       run: |
         kubectl apply --dry-run=client -f k8s/app-deployment.yaml
-
+    
     # 6. Executa o deploy de teste
     - name: Deploy and Test Laravel App
       run: |        
@@ -64,12 +64,13 @@ jobs:
         kubectl get pods -n postech
         
         echo "=== COLETANDO NOME DO POD DO LARAVEL ==="
-        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items.metadata.name}')
+        # CORREÇÃO: Força o jsonpath a pegar estritamente o nome do primeiro item [0] retornado
+        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items[0].metadata.name}')
         echo "Pod detectado: $APP_POD"
         
         echo "=== EXECUTANDO OS TESTES DO LARAVEL ==="
-        # Executa o PHPUnit ignorando a necessidade de um arquivo XML e apontando para a pasta de testes
-        kubectl exec -n postech $APP_POD -c app -- ./vendor/bin/phpunit --no-configuration tests/
+        kubectl exec -n postech "$APP_POD" -c app -- ./vendor/bin/phpunit --no-configuration tests/
+
 
 
 
