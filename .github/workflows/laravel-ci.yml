@@ -48,7 +48,8 @@ jobs:
 
     # 6. Executa o deploy de teste
     - name: Deploy and Test Laravel App
-      run: |        
+      run: |
+        php artisan test       
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
         kubectl apply -f k8s/
         
