@@ -46,7 +46,7 @@ jobs:
       run: |
         kubectl apply --dry-run=client -f k8s/app-deployment.yaml
 
-    # 6. Executa o deploy de teste                
+    # 6. Executa o deploy de teste
     - name: Deploy and Test Laravel App
       run: |        
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
@@ -64,13 +64,13 @@ jobs:
         kubectl get pods -n postech
         
         echo "=== COLETANDO NOME DO POD DO LARAVEL ==="
-        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items[0].metadata.name}')
+        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items.metadata.name}')
         echo "Pod detectado: $APP_POD"
         
         echo "=== EXECUTANDO OS TESTES DO LARAVEL ==="
-        # Força o PHPUnit a ler o arquivo phpunit.xml padrão. Se ele não existir, o '--configuration' ajuda a mapear
-        kubectl exec -n postech $APP_POD -c app -- php artisan test --configuration=phpunit.xml || \
-        kubectl exec -n postech $APP_POD -c app -- ./vendor/bin/phpunit
+        # Executa o PHPUnit ignorando a necessidade de um arquivo XML e apontando para a pasta de testes
+        kubectl exec -n postech $APP_POD -c app -- ./vendor/bin/phpunit --no-configuration tests/
+
 
 
 
