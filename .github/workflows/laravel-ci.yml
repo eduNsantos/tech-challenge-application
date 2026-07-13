@@ -14,16 +14,16 @@ jobs:
     - name: Baixar o código do repositório
       uses: actions/checkout@v4
 
-
-    - name: Terraform Validate & Plan
-      run: |
-        terraform init -backend=false
-        terraform validate
     # 1. Validação e Planejamento do Terraform
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
         terraform_version: "1.7.0"
+
+    - name: Terraform Validate & Plan
+      run: |
+        terraform init -backend=false
+        terraform validate
 
     # 2. Cria o Cluster Kubernetes temporário (Kind)
     - name: Setup Kubernetes Cluster (Kind)
