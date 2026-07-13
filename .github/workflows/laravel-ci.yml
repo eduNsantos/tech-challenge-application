@@ -22,7 +22,7 @@ jobs:
 
     - name: Terraform Validate & Plan
       run: |
-        terraform init -backend=false
+        terraform init -backend=false -child-modules
         terraform validate
 
     # 2. Cria o Cluster Kubernetes temporário (Kind)
