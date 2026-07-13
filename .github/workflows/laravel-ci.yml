@@ -87,16 +87,20 @@ jobs:
         kubectl cp tests/ postech/$APP_POD:/var/www/html/tests -c app
         
         echo "=== PREPARANDO BANCO E EXECUTANDO OS TESTES ==="
+        # 1. Executa as migrações usando o host do banco correto
         kubectl exec -n postech "$APP_POD" -c app -- env \
           DB_CONNECTION=mysql \
           DB_HOST=mysql \
           DB_PORT=3306 \
           php artisan migrate --force
           
+        # 2. Executa os testes injetando uma APP_KEY e JWT_SECRET temporárias para o ambiente do CI
         kubectl exec -n postech "$APP_POD" -c app -- env \
           DB_CONNECTION=mysql \
           DB_HOST=mysql \
           DB_PORT=3306 \
+          APP_KEY=base64:uP3b6bU7fW4Z6f6D7z4vR9M1S2T3U4V5W6X7Y8Z9A0B= \
+          JWT_SECRET=uP3b6bU7fW4Z6f6D7z4vR9M1S2T3U4V5W6X7Y8Z9A0B= \
           ./vendor/bin/phpunit --no-configuration tests/
 
 
