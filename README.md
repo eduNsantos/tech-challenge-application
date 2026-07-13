@@ -313,15 +313,4 @@ make infra-apply IMAGE_TAG=sha-abc1234
 | `make k8s-down` | `infra-destroy` + `minikube-stop` |
 | `make k8s-status` | Mostra pods e services do namespace |
 | `make k8s-urls` | Exibe as URLs de acesso (requer `minikube tunnel` rodando) |
-| `make k8s-tunnel` | Abre o túnel do Minikube (`minikube tunnel`, roda em foreground) |
-
-### Problemas comuns
-
-| Sintoma | Causa provável | Solução |
-|---|---|---|
-| `ImagePullBackOff` — `manifest unknown` | Imagem ainda não publicada no GHCR com essa tag, ou nome de imagem não bate com o seu fork | Conferir `gh api /users/<usuario>/packages/container/tech-challenge/versions --jq '.[].metadata.container.tags'` |
-| `ImagePullBackOff` — `denied` | `ghcr-secret` com token sem escopo `read:packages`, ou credencial errada | Corrigir `ghcr_token`/`ghcr_username` em `terraform.tfvars` e rodar `make infra-apply` de novo |
-| Pod/Job travado no `wait-for-mysql` | Service `mysql` não resolve, ou o pod do MySQL não subiu | `kubectl get pods -n postech -l app=mysql` e `kubectl logs -n postech <pod> -c wait-for-mysql` |
-| `curl` no `EXTERNAL-IP` não conecta | `minikube tunnel` não está rodando (ou fechou) | Rodar `minikube tunnel` em um terminal dedicado, sem fechar |
-| Job de migration antigo "sujando" o namespace | `ttl_seconds_after_finished` ainda não expirou | É automático — o Kubernetes remove o Job passados 300s do término. Se precisar antes: `kubectl delete job -n postech <nome>` |
-| `terraform apply` não recria o Job/Deployment | `image_tag` não mudou entre um apply e outro | `make infra-apply IMAGE_TAG=<nova-tag>` a cada build |
+| `make k8s-tunnel` | Abre o túnel do Minikube (`minikube tunnel`, roda em foreground)

@@ -9,7 +9,7 @@ spec:
     kind: Deployment
     name: postech-app
   minReplicas: 2
-  maxReplicas: 10
+  maxReplicas: 4
   metrics:
     - type: Resource
       resource:
@@ -17,12 +17,7 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
-    - type: Resource
-      resource:
-        name: memory
-        target:
-          type: Utilization
-          averageUtilization: 80
+
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 60
