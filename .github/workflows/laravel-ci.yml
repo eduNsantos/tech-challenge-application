@@ -14,16 +14,16 @@ jobs:
     - name: Baixar o código do repositório
       uses: actions/checkout@v4
 
-    # 1. Validação e Planejamento do Terraform
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: "1.7.0"
 
     - name: Terraform Validate & Plan
       run: |
         terraform init -backend=false
         terraform validate
+    # 1. Validação e Planejamento do Terraform
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.7.0"
 
     # 2. Cria o Cluster Kubernetes temporário (Kind)
     - name: Setup Kubernetes Cluster (Kind)
@@ -60,10 +60,14 @@ jobs:
         yq eval 'del(.spec.template.spec.containers[0].readinessProbe)' -i "$MYSQL_FILE"
 
         # Remove o init container do Laravel para gerenciarmos a espera de forma direta
-        yq eval 'del(.spec.template.spec.initContainers)' -i k8s/app-deployment.yaml
+        yq eval 'del(.spec.template.spec.initContainers)' -i k8s/02-app/app-deployment.yaml
 
         echo "Aplicando todos os manifestos no Kubernetes..."
-        kubectl apply -f k8s/
+        kubectl apply -f k8s/00-namespaces/
+        kubectl apply -f k8s/01-config/
+        kubectl apply -f k8s/02-app/
+        kubectl apply -f k8s/03-database/
+
 
         echo "=== AGUARDANDO O SOCKET DO MYSQL ABRIR ==="
         # Aguarda dinamicamente o pod do MySQL ser criado e iniciar o processo do container

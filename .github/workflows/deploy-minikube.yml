@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: ["Build and Publish Docker image (GHCR)"]
     types: [completed]
-    branches: [main, minikube]
+    branches: [main, minikube, feat-ci-cd-eduardo]
   workflow_dispatch: {}
 
 permissions:
