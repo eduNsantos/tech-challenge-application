@@ -99,8 +99,8 @@ jobs:
           DB_CONNECTION=mysql \
           DB_HOST=mysql \
           DB_PORT=3306 \
-          APP_KEY={{ secret.JWT_SECRET }} \
-          JWT_SECRET={{ secret.APP_KEY }} \
+          APP_KEY={{ secrets.JWT_SECRET }} \
+          JWT_SECRET={{ secrets.APP_KEY }} \
           ./vendor/bin/phpunit --no-configuration tests/
 
 
