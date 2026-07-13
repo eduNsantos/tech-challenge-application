@@ -49,7 +49,7 @@ jobs:
     # 6. Executa o deploy de teste
     - name: Deploy and Test Laravel App
       run: |
-        CI_IMAGE=techchallenge-1-app-php:v2
+        export CI_IMAGE=techchallenge-1-app-php:v2
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
 
         echo "=== OTIMIZANDO MANIFESTOS PARA O AMBIENTE DE CI ==="
