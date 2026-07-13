@@ -3,7 +3,7 @@ name: Build and Publish Docker image (GHCR)
 on:
   workflow_run:
     workflows: ["Laravel CI"]
-    types: [completed]    
+    types: [completed]
 
 permissions:
   contents: read

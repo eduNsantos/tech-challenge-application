@@ -2,7 +2,7 @@ name: Laravel CI
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [ "main", "develop", "feat-ci-cd-eduardo" ]
   pull_request:
     branches: [ "main" ]
 
@@ -48,17 +48,17 @@ jobs:
 
     # 6. Executa o deploy de teste
     - name: Deploy and Test Laravel App
-      run: |        
+      run: |
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
         kubectl apply -f k8s/
-        
+
         echo "Aguardando o MySQL..."
         # Se falhar, o script continua para podermos ver o erro com os comandos abaixo
         kubectl rollout status deployment/mysql -n postech --timeout=60s || true
-        
+
         echo "=== DETALHES DOS PODS ==="
         kubectl get pods -n postech
-        
+
         echo "=== MOTIVO DO ERRO NO MYSQL ==="
         kubectl describe deployment mysql -n postech
         kubectl describe pvc -n postech
