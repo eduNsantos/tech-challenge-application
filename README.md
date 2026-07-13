@@ -1,6 +1,30 @@
 # TechChallenge API
 API de autenticação construída com Laravel 13, JWT e MySQL, com ambiente de desenvolvimento via Docker Compose e documentação OpenAPI.
 
+## Descrição da solução e objetivos da fase 2
+
+Esta entrega consolida uma API Laravel com autenticação JWT e duas estratégias de execução:
+
+- Ambiente local com Docker Compose para desenvolvimento e testes rápidos.
+- Ambiente Kubernetes (Minikube) provisionado via Terraform para validar deploy, escalabilidade e operação em cluster.
+
+Objetivos principais desta fase:
+
+- Padronizar build e publicação de imagem Docker para o GHCR.
+- Automatizar deploy e infraestrutura Kubernetes usando Terraform.
+- Garantir rastreabilidade de mudanças por tags de imagem e pipeline CI/CD.
+- Manter documentação executável para setup local e execução em cluster.
+
+## Guia rápido desta documentação
+
+- Execução local: veja a seção `Início rápido (do zero)` e `Configuração do ambiente`.
+- Deploy em Kubernetes: veja a seção `Ambiente Kubernetes (Minikube + Terraform)`.
+- Provisionamento com Terraform: veja a seção `Passo a passo` dentro de `Ambiente Kubernetes (Minikube + Terraform)`.
+
+## Desenho da arquitetura proposta
+
+![Arquitetura proposta da solução](docs/Fase2/workflow.png)
+
 ## Stack
 - PHP 8.4
 - Laravel 13
