@@ -38,8 +38,8 @@ jobs:
         run: |
           SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
           echo "tag=sha-${SHA:0:7}" >> "$GITHUB_OUTPUT"
-      - name: make infra-init
-        run: make infra-init
+      - name: Terraform init
+        run: terraform -chdir=infra init
 
       - name: Terraform apply (auto-approve)
         env:
