@@ -52,8 +52,12 @@ jobs:
           TF_VAR_ghcr_token: ${{ secrets.GHCR_TOKEN }}
           TF_VAR_ghcr_email: ${{ secrets.GHCR_EMAIL }}
         run: |
+          IMAGE_REPO="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
           cd infra
-          terraform apply -auto-approve -var="image_tag=${{ steps.image.outputs.tag }}"
+          terraform apply -auto-approve \
+            -var="image_tag=${{ steps.image.outputs.tag }}" \
+            -var="image_repository=${IMAGE_REPO}" \
+            -var="deploy_metrics_server=false"
 
       - name: Show access URLs
         working-directory: infra/
