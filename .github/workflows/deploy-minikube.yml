@@ -35,9 +35,7 @@ jobs:
 
       - name: Resolve image tag
         id: image
-        run: |
-          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
-          echo "tag=sha-${SHA:0:7}" >> "$GITHUB_OUTPUT"
+        run: echo "tag=latest" >> "$GITHUB_OUTPUT"
       - name: Terraform init
         run: terraform -chdir=infra init
 
