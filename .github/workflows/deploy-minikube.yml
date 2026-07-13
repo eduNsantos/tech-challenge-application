@@ -12,6 +12,7 @@ permissions:
 
 env:
   NAMESPACE: postech
+  TF_STATE_FILE: /home/eduardo/actions-runner/terraform-state/techchallenge-minikube.tfstate
 
 jobs:
   deploy:
@@ -37,7 +38,28 @@ jobs:
         id: image
         run: echo "tag=latest" >> "$GITHUB_OUTPUT"
       - name: Terraform init
-        run: terraform -chdir=infra init
+        run: |
+          mkdir -p "$(dirname "$TF_STATE_FILE")"
+          terraform -chdir=infra init
+
+      - name: Terraform import existing base resources
+        run: |
+          set -euo pipefail
+          cd infra
+
+          touch "$TF_STATE_FILE"
+
+          if kubectl get namespace "$NAMESPACE" >/dev/null 2>&1; then
+            if ! terraform state list -state="$TF_STATE_FILE" | grep -q '^kubernetes_namespace_v1.postech$'; then
+              terraform import -state="$TF_STATE_FILE" kubernetes_namespace_v1.postech "$NAMESPACE" || true
+            fi
+          fi
+
+          if kubectl get pv mysql-pv >/dev/null 2>&1; then
+            if ! terraform state list -state="$TF_STATE_FILE" | grep -q '^kubernetes_persistent_volume_v1.mysql$'; then
+              terraform import -state="$TF_STATE_FILE" kubernetes_persistent_volume_v1.mysql mysql-pv || true
+            fi
+          fi
 
       - name: Terraform apply (auto-approve)
         env:
@@ -53,6 +75,7 @@ jobs:
           IMAGE_REPO="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
           cd infra
           terraform apply -auto-approve \
+            -state="$TF_STATE_FILE" \
             -var="image_tag=${{ steps.image.outputs.tag }}" \
             -var="image_repository=${IMAGE_REPO}" \
             -var="deploy_metrics_server=false"
