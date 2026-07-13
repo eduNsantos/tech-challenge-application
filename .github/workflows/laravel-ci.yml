@@ -51,13 +51,12 @@ jobs:
       run: |        
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
         
-        echo "=== CORRIGINDO PROBES DO MYSQL NO CI === "
-        # Busca automaticamente o arquivo do MySQL na pasta k8s, seja .yml ou .yaml
+        echo "=== CORRIGINDO PROBES DO MYSQL NO CI ==="
         MYSQL_FILE=$(ls k8s/mysql* 2>/dev/null | head -n 1)
         echo "Arquivo do MySQL encontrado: $MYSQL_FILE"
         
-        yq eval '.spec.template.spec.containers[0].livenessProbe.exec.command += ["-u", "root", "-proot"]' -i "$MYSQL_FILE"
-        yq eval '.spec.template.spec.containers[0].readinessProbe.exec.command += ["-u", "root", "-proot"]' -i "$MYSQL_FILE"
+        yq eval '.spec.template.spec.containers.livenessProbe.exec.command += ["-u", "root", "-proot"]' -i "$MYSQL_FILE"
+        yq eval '.spec.template.spec.containers.readinessProbe.exec.command += ["-u", "root", "-proot"]' -i "$MYSQL_FILE"
 
         echo "=== REMOVENDO O INIT CONTAINER DO LARAVEL NO CI ==="
         yq eval 'del(.spec.template.spec.initContainers)' -i k8s/app-deployment.yaml
@@ -65,14 +64,18 @@ jobs:
         echo "Aplicando todos os manifestos no Kubernetes..."
         kubectl apply -f k8s/
         
-        echo "Aguardando 45 segundos para estabilização completa dos serviços..."
-        sleep 45
+        echo "=== AGUARDANDO O MYSQL FICAR PRONTO ==="
+        # Aguarda dinamicamente o MySQL estar 100% pronto para receber conexões antes de avançar
+        kubectl wait --namespace postech --for=condition=ready pod -l app=mysql --timeout=90s
+        
+        echo "=== AGUARDANDO O LARAVEL FICAR PRONTO ==="
+        kubectl wait --namespace postech --for=condition=ready pod -l app=postech-app --timeout=90s
         
         echo "=== STATUS ATUAL DOS PODS ==="
         kubectl get pods -n postech
         
         echo "=== COLETANDO NOME DO POD DO LARAVEL ==="
-        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items[0].metadata.name}')
+        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items.metadata.name}')
         echo "Pod detectado: $APP_POD"
         
         echo "=== COPIANDO PASTA DE TESTES PARA O POD ==="
@@ -90,6 +93,7 @@ jobs:
           DB_HOST=mysql \
           DB_PORT=3306 \
           ./vendor/bin/phpunit --no-configuration tests/
+
 
 
 
