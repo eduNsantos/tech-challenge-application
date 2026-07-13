@@ -49,6 +49,7 @@ jobs:
     # 6. Executa o deploy de teste
     - name: Deploy and Test Laravel App
       run: |
+        CI_IMAGE=techchallenge-1-app-php:v2
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
 
         echo "=== OTIMIZANDO MANIFESTOS PARA O AMBIENTE DE CI ==="
@@ -61,6 +62,14 @@ jobs:
 
         # Remove o init container do Laravel para gerenciarmos a espera de forma direta
         yq eval 'del(.spec.template.spec.initContainers)' -i k8s/02-app/app-deployment.yaml
+
+        # Forca os manifestos a usar a imagem carregada no Kind, sem pull externo
+        yq eval '.spec.template.spec.imagePullSecrets = []' -i k8s/02-app/app-deployment.yaml
+        yq eval '.spec.template.spec.containers[0].image = env(CI_IMAGE)' -i k8s/02-app/app-deployment.yaml
+        yq eval '.spec.template.spec.containers[0].imagePullPolicy = "IfNotPresent"' -i k8s/02-app/app-deployment.yaml
+        yq eval '.spec.template.spec.imagePullSecrets = []' -i k8s/02-app/migrate-job.yaml
+        yq eval '.spec.template.spec.containers[0].image = env(CI_IMAGE)' -i k8s/02-app/migrate-job.yaml
+        yq eval '.spec.template.spec.containers[0].imagePullPolicy = "IfNotPresent"' -i k8s/02-app/migrate-job.yaml
 
         echo "Aplicando todos os manifestos no Kubernetes..."
         kubectl apply -f k8s/00-namespaces/
