@@ -46,15 +46,18 @@ jobs:
       run: |
         kubectl apply --dry-run=client -f k8s/app-deployment.yaml
     
-    # 6. Executa o deploy de teste
+    # 6. Executa o deploy de teste    
     - name: Deploy and Test Laravel App
       run: |        
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
         
-        echo "=== CORRIGINDO PROBES DO MYSQL NO CI ==="
-        # Ajusta as Probes do MySQL para autenticarem com a senha root, evitando reinícios infinitos no CI
-        yq eval '.spec.template.spec.containers[0].livenessProbe.exec.command += ["-u", "root", "-proot"]' -i k8s/mysql-deployment.yml
-        yq eval '.spec.template.spec.containers[0].readinessProbe.exec.command += ["-u", "root", "-proot"]' -i k8s/mysql-deployment.yml
+        echo "=== CORRIGINDO PROBES DO MYSQL NO CI === "
+        # Busca automaticamente o arquivo do MySQL na pasta k8s, seja .yml ou .yaml
+        MYSQL_FILE=$(ls k8s/mysql* 2>/dev/null | head -n 1)
+        echo "Arquivo do MySQL encontrado: $MYSQL_FILE"
+        
+        yq eval '.spec.template.spec.containers[0].livenessProbe.exec.command += ["-u", "root", "-proot"]' -i "$MYSQL_FILE"
+        yq eval '.spec.template.spec.containers[0].readinessProbe.exec.command += ["-u", "root", "-proot"]' -i "$MYSQL_FILE"
 
         echo "=== REMOVENDO O INIT CONTAINER DO LARAVEL NO CI ==="
         yq eval 'del(.spec.template.spec.initContainers)' -i k8s/app-deployment.yaml
@@ -62,21 +65,20 @@ jobs:
         echo "Aplicando todos os manifestos no Kubernetes..."
         kubectl apply -f k8s/
         
-        echo "Aguardando 45 segundos para estabilização completa dos serviços estáveis..."
+        echo "Aguardando 45 segundos para estabilização completa dos serviços..."
         sleep 45
         
         echo "=== STATUS ATUAL DOS PODS ==="
         kubectl get pods -n postech
         
         echo "=== COLETANDO NOME DO POD DO LARAVEL ==="
-        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items.metadata.name}')
+        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items[0].metadata.name}')
         echo "Pod detectado: $APP_POD"
         
         echo "=== COPIANDO PASTA DE TESTES PARA O POD ==="
         kubectl cp tests/ postech/$APP_POD:/var/www/html/tests -c app
         
         echo "=== PREPARANDO BANCO E EXECUTANDO OS TESTES ==="
-        # Executa as migrações para criar as tabelas no MySQL e depois roda os testes compartilhando o mesmo env
         kubectl exec -n postech "$APP_POD" -c app -- env \
           DB_CONNECTION=mysql \
           DB_HOST=mysql \
@@ -88,6 +90,7 @@ jobs:
           DB_HOST=mysql \
           DB_PORT=3306 \
           ./vendor/bin/phpunit --no-configuration tests/
+
 
 
 
