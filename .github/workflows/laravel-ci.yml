@@ -46,7 +46,7 @@ jobs:
       run: |
         kubectl apply --dry-run=client -f k8s/app-deployment.yaml
     
-    # 6. Executa o deploy de teste    
+    # 6. Executa o deploy de teste
     - name: Deploy and Test Laravel App
       run: |        
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
@@ -55,8 +55,9 @@ jobs:
         MYSQL_FILE=$(ls k8s/mysql* 2>/dev/null | head -n 1)
         echo "Arquivo do MySQL encontrado: $MYSQL_FILE"
         
-        yq eval '.spec.template.spec.containers.livenessProbe.exec.command += ["-u", "root", "-proot"]' -i "$MYSQL_FILE"
-        yq eval '.spec.template.spec.containers.readinessProbe.exec.command += ["-u", "root", "-proot"]' -i "$MYSQL_FILE"
+        # CORREÇÃO: Adicionado o índice [0] para indicar o primeiro container da lista
+        yq eval '.spec.template.spec.containers[0].livenessProbe.exec.command += ["-u", "root", "-proot"]' -i "$MYSQL_FILE"
+        yq eval '.spec.template.spec.containers[0].readinessProbe.exec.command += ["-u", "root", "-proot"]' -i "$MYSQL_FILE"
 
         echo "=== REMOVENDO O INIT CONTAINER DO LARAVEL NO CI ==="
         yq eval 'del(.spec.template.spec.initContainers)' -i k8s/app-deployment.yaml
@@ -65,7 +66,6 @@ jobs:
         kubectl apply -f k8s/
         
         echo "=== AGUARDANDO O MYSQL FICAR PRONTO ==="
-        # Aguarda dinamicamente o MySQL estar 100% pronto para receber conexões antes de avançar
         kubectl wait --namespace postech --for=condition=ready pod -l app=mysql --timeout=90s
         
         echo "=== AGUARDANDO O LARAVEL FICAR PRONTO ==="
@@ -75,7 +75,7 @@ jobs:
         kubectl get pods -n postech
         
         echo "=== COLETANDO NOME DO POD DO LARAVEL ==="
-        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items.metadata.name}')
+        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items[0].metadata.name}')
         echo "Pod detectado: $APP_POD"
         
         echo "=== COPIANDO PASTA DE TESTES PARA O POD ==="
@@ -93,6 +93,7 @@ jobs:
           DB_HOST=mysql \
           DB_PORT=3306 \
           ./vendor/bin/phpunit --no-configuration tests/
+
 
 
 
