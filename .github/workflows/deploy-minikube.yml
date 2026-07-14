@@ -81,7 +81,14 @@ jobs:
             -var="deploy_metrics_server=false"
 
       - name: Show access URLs
-        working-directory: infra/
         run: |
-          echo "App:     $(minikube service postech-app -n $NAMESPACE --url)"
-          echo "Swagger: $(minikube service swagger-ui -n $NAMESPACE --url)"
+          set -euo pipefail
+          for svc in postech-app swagger-ui; do
+            ip=$(kubectl get svc "$svc" -n "$NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+            port=$(kubectl get svc "$svc" -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].port}')
+            if [ -z "$ip" ]; then
+              echo "⚠️  $svc: EXTERNAL-IP ainda pendente (precisa de 'minikube tunnel' ativo no runner)."
+            else
+              echo "$svc: http://$ip:$port"
+            fi
+          done
