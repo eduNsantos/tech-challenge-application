@@ -15,6 +15,9 @@ resource "kubernetes_deployment_v1" "app" {
     template {
       metadata {
         labels = { app = "postech-app" }
+        annotations = {
+          "postech.dev/rollout-id" = var.rollout_id
+        }
       }
 
       spec {

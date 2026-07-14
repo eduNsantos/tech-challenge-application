@@ -1,6 +1,6 @@
 resource "kubernetes_job_v1" "migrate" {
   metadata {
-    name      = "app-migrate-${var.image_tag}"
+    name      = var.rollout_id != "" ? "app-migrate-${var.image_tag}-${var.rollout_id}" : "app-migrate-${var.image_tag}"
     namespace = kubernetes_namespace_v1.postech.metadata[0].name
     labels = {
       app       = "postech-app"

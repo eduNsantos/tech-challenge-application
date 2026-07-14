@@ -40,6 +40,12 @@ variable "image_tag" {
   default     = "latest"
 }
 
+variable "rollout_id" {
+  description = "Identificador de rollout para forcar atualizacao de app/migrate mesmo com image_tag fixa (ex.: latest)."
+  type        = string
+  default     = ""
+}
+
 variable "mysql_root_password" {
   description = "Senha root do MySQL"
   type        = string
