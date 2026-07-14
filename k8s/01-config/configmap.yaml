@@ -6,7 +6,7 @@ metadata:
 data:
   APP_NAME: "POS Tech"
   APP_ENV: "production"
-  APP_DEBUG: "false"
+  APP_DEBUG: "true"
   APP_URL: "http://localhost"
   APP_LOCALE: "pt_BR"
   APP_FALLBACK_LOCALE: "en"
