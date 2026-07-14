@@ -12,6 +12,7 @@ permissions:
 
 env:
   NAMESPACE: postech
+  TF_STATE_FILE: /home/eduardo/actions-runner/terraform-state/techchallenge-minikube.tfstate
 
 jobs:
   deploy:
@@ -35,11 +36,30 @@ jobs:
 
       - name: Resolve image tag
         id: image
+        run: echo "tag=latest" >> "$GITHUB_OUTPUT"
+      - name: Terraform init
         run: |
-          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
-          echo "tag=sha-${SHA:0:7}" >> "$GITHUB_OUTPUT"
-      - name: make infra-init
-        run: make infra-init
+          mkdir -p "$(dirname "$TF_STATE_FILE")"
+          terraform -chdir=infra init
+
+      - name: Terraform import existing base resources
+        run: |
+          set -euo pipefail
+          cd infra
+
+          touch "$TF_STATE_FILE"
+
+          if kubectl get namespace "$NAMESPACE" >/dev/null 2>&1; then
+            if ! terraform state list -state="$TF_STATE_FILE" | grep -q '^kubernetes_namespace_v1.postech$'; then
+              terraform import -state="$TF_STATE_FILE" kubernetes_namespace_v1.postech "$NAMESPACE" || true
+            fi
+          fi
+
+          if kubectl get pv mysql-pv >/dev/null 2>&1; then
+            if ! terraform state list -state="$TF_STATE_FILE" | grep -q '^kubernetes_persistent_volume_v1.mysql$'; then
+              terraform import -state="$TF_STATE_FILE" kubernetes_persistent_volume_v1.mysql mysql-pv || true
+            fi
+          fi
 
       - name: Terraform apply (auto-approve)
         env:
@@ -52,11 +72,25 @@ jobs:
           TF_VAR_ghcr_token: ${{ secrets.GHCR_TOKEN }}
           TF_VAR_ghcr_email: ${{ secrets.GHCR_EMAIL }}
         run: |
+          IMAGE_REPO="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          ROLLOUT_ID="${{ github.run_id }}-${{ github.run_attempt }}"
           cd infra
-          terraform apply -auto-approve -var="image_tag=${{ steps.image.outputs.tag }}"
+          terraform apply -auto-approve \
+            -state="$TF_STATE_FILE" \
+            -var="image_tag=${{ steps.image.outputs.tag }}" \
+            -var="image_repository=${IMAGE_REPO}" \
+            -var="rollout_id=${ROLLOUT_ID}" \
+            -var="deploy_metrics_server=false"
 
       - name: Show access URLs
-        working-directory: infra/
         run: |
-          echo "App:     $(minikube service postech-app -n $NAMESPACE --url)"
-          echo "Swagger: $(minikube service swagger-ui -n $NAMESPACE --url)"
+          set -euo pipefail
+          for svc in postech-app swagger-ui; do
+            ip=$(kubectl get svc "$svc" -n "$NAMESPACE" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+            port=$(kubectl get svc "$svc" -n "$NAMESPACE" -o jsonpath='{.spec.ports[0].port}')
+            if [ -z "$ip" ]; then
+              echo "⚠️  $svc: EXTERNAL-IP ainda pendente (precisa de 'minikube tunnel' ativo no runner)."
+            else
+              echo "$svc: http://$ip:$port"
+            fi
+          done

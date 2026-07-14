@@ -1,6 +1,30 @@
 # TechChallenge API
 API de autenticação construída com Laravel 13, JWT e MySQL, com ambiente de desenvolvimento via Docker Compose e documentação OpenAPI.
 
+## Descrição da solução e objetivos da fase 2
+
+Esta entrega consolida uma API Laravel com autenticação JWT e duas estratégias de execução:
+
+- Ambiente local com Docker Compose para desenvolvimento e testes rápidos.
+- Ambiente Kubernetes (Minikube) provisionado via Terraform para validar deploy, escalabilidade e operação em cluster.
+
+Objetivos principais desta fase:
+
+- Padronizar build e publicação de imagem Docker para o GHCR.
+- Automatizar deploy e infraestrutura Kubernetes usando Terraform.
+- Garantir rastreabilidade de mudanças por tags de imagem e pipeline CI/CD.
+- Manter documentação executável para setup local e execução em cluster.
+
+## Guia rápido desta documentação
+
+- Execução local: veja a seção `Início rápido (do zero)` e `Configuração do ambiente`.
+- Deploy em Kubernetes: veja a seção `Ambiente Kubernetes (Minikube + Terraform)`.
+- Provisionamento com Terraform: veja a seção `Passo a passo` dentro de `Ambiente Kubernetes (Minikube + Terraform)`.
+
+## Desenho da arquitetura proposta
+
+![Arquitetura proposta da solução](docs/Fase2/workflow.png)
+
 ## Stack
 - PHP 8.4
 - Laravel 13
@@ -313,15 +337,4 @@ make infra-apply IMAGE_TAG=sha-abc1234
 | `make k8s-down` | `infra-destroy` + `minikube-stop` |
 | `make k8s-status` | Mostra pods e services do namespace |
 | `make k8s-urls` | Exibe as URLs de acesso (requer `minikube tunnel` rodando) |
-| `make k8s-tunnel` | Abre o túnel do Minikube (`minikube tunnel`, roda em foreground) |
-
-### Problemas comuns
-
-| Sintoma | Causa provável | Solução |
-|---|---|---|
-| `ImagePullBackOff` — `manifest unknown` | Imagem ainda não publicada no GHCR com essa tag, ou nome de imagem não bate com o seu fork | Conferir `gh api /users/<usuario>/packages/container/tech-challenge/versions --jq '.[].metadata.container.tags'` |
-| `ImagePullBackOff` — `denied` | `ghcr-secret` com token sem escopo `read:packages`, ou credencial errada | Corrigir `ghcr_token`/`ghcr_username` em `terraform.tfvars` e rodar `make infra-apply` de novo |
-| Pod/Job travado no `wait-for-mysql` | Service `mysql` não resolve, ou o pod do MySQL não subiu | `kubectl get pods -n postech -l app=mysql` e `kubectl logs -n postech <pod> -c wait-for-mysql` |
-| `curl` no `EXTERNAL-IP` não conecta | `minikube tunnel` não está rodando (ou fechou) | Rodar `minikube tunnel` em um terminal dedicado, sem fechar |
-| Job de migration antigo "sujando" o namespace | `ttl_seconds_after_finished` ainda não expirou | É automático — o Kubernetes remove o Job passados 300s do término. Se precisar antes: `kubectl delete job -n postech <nome>` |
-| `terraform apply` não recria o Job/Deployment | `image_tag` não mudou entre um apply e outro | `make infra-apply IMAGE_TAG=<nova-tag>` a cada build |
+| `make k8s-tunnel` | Abre o túnel do Minikube (`minikube tunnel`, roda em foreground)

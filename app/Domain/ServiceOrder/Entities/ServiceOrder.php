@@ -90,6 +90,12 @@ class ServiceOrder
         $this->approvalToken = null;
     }
 
+    public function rejectQuote(): void
+    {
+        $this->status = self::STATUS_EM_DIAGNOSTICO;
+        $this->approvalToken = null;
+    }
+
     public static function allowedStatuses(): array
     {
         return [

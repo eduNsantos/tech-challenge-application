@@ -34,10 +34,16 @@ class NotificationService implements NotificationServiceInterface
 
     private function getDestination(NotificationEntity $notification): string
     {
-        $customer = $this->customerRepository->findById($notification->getRecipientId());
+        $recipientId = $notification->getRecipientId();
+
+        if (filter_var($recipientId, FILTER_VALIDATE_EMAIL) !== false) {
+            return $recipientId;
+        }
+
+        $customer = $this->customerRepository->findById($recipientId);
 
         if (!$customer) {
-            throw new \DomainException("Cliente '{$notification->getRecipientId()}' nao encontrado para envio de notificacao.");
+            throw new \DomainException("Cliente '{$recipientId}' nao encontrado para envio de notificacao.");
         }
 
         return $customer->email;

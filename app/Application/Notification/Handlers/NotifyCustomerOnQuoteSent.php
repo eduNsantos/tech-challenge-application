@@ -29,13 +29,14 @@ class NotifyCustomerOnQuoteSent
         }
 
         $approvalLink = url("/api/service-order/approve/{$serviceOrder->approvalToken}");
+        $rejectLink = url("/api/service-order/reject/{$serviceOrder->approvalToken}");
 
         $notification = new EntityNotification(
             Str::uuid()->toString(),
             $customer->email,
             NotificationType::EMAIL,
             'Orçamento da sua ordem de serviço disponível',
-            "Olá {$customer->name}, o orçamento da sua ordem de serviço foi gerado. Total: R$ {$serviceOrder->totalBudget}.\n\nClique no link abaixo para aprovar:\n{$approvalLink}",
+            "Olá {$customer->name}, o orçamento da sua ordem de serviço foi gerado. Total: R$ {$serviceOrder->totalBudget}.\n\nClique em um dos links abaixo para decidir:\nAprovar: {$approvalLink}\nRecusar: {$rejectLink}",
             NotificationStatus::PENDING,
             new \DateTimeImmutable()
         );
