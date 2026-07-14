@@ -1210,6 +1210,142 @@ paths:
         '422':
           $ref: '#/components/responses/ErroNegocio'
 
+  /service-order/approve/{token}:
+    get:
+      tags:
+        - Ordens de Serviço
+      summary: Aprovar orçamento da ordem de serviço
+      description: |-
+        Aprova o orçamento vinculado ao token enviado por e-mail.
+
+        Ao aprovar, a OS entra em `em_execucao` e a baixa de estoque das peças é realizada automaticamente.
+
+        **Requer autenticação.**
+      operationId: service-order-approve-by-token
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ApprovalToken'
+      responses:
+        '200':
+          description: Orçamento aprovado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  service_order_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                  quote_approved_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+              example:
+                message: Orçamento aprovado com sucesso. A ordem de serviço está em execução.
+                service_order_id: "b1c2d3e4-f5a6-7890-bcde-f01234567890"
+                status: em_execucao
+                quote_approved_at: "2026-07-13T23:24:48Z"
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
+  /service-order/reject/{token}:
+    get:
+      tags:
+        - Ordens de Serviço
+      summary: Recusar orçamento da ordem de serviço
+      description: |-
+        Recusa o orçamento vinculado ao token enviado por e-mail.
+
+        Ao recusar, a OS retorna para `em_diagnostico`.
+
+        **Requer autenticação.**
+      operationId: service-order-reject-by-token
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ApprovalToken'
+      responses:
+        '200':
+          description: Orçamento recusado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  service_order_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+              example:
+                message: Orcamento recusado com sucesso. A ordem de servico retornou para diagnostico.
+                service_order_id: "b1c2d3e4-f5a6-7890-bcde-f01234567890"
+                status: em_diagnostico
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
+  /service-order/approval/{token}:
+    post:
+      tags:
+        - Ordens de Serviço
+      summary: Processar decisão de aprovação do orçamento
+      description: |-
+        Endpoint alternativo para confirmar ou recusar o orçamento usando um corpo JSON com a decisão.
+
+        **Requer autenticação.**
+      operationId: service-order-handle-approval
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ApprovalToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HandleServiceOrderApprovalRequest'
+            example:
+              decision: approve
+      responses:
+        '200':
+          description: Decisão processada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  service_order_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                  quote_approved_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+              example:
+                message: Aprovacao processada com sucesso.
+                service_order_id: "b1c2d3e4-f5a6-7890-bcde-f01234567890"
+                status: em_execucao
+                quote_approved_at: "2026-07-13T23:24:48Z"
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
   /service-order/{id}/services/{serviceId}:
     delete:
       tags:
@@ -1614,6 +1750,15 @@ components:
         format: uuid
         example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
+    ApprovalToken:
+      name: token
+      in: path
+      required: true
+      description: Token de aprovação enviado ao cliente por e-mail
+      schema:
+        type: string
+        example: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+
   schemas:
 
     # ── Ordens de Serviço ─────────────────────────────────────────────────────
@@ -1881,6 +2026,16 @@ components:
           type: string
           enum: [recebida, em_diagnostico, aguardando_aprovacao, em_execucao, finalizada, entregue]
           example: finalizada
+
+    HandleServiceOrderApprovalRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject]
+          description: Decide se o orçamento será aprovado ou recusado.
+          example: approve
 
     # ── Auth ──────────────────────────────────────────────────────────────────
 
