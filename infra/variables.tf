@@ -46,21 +46,35 @@ variable "rollout_id" {
   default     = ""
 }
 
-variable "mysql_root_password" {
-  description = "Senha root do MySQL"
-  type        = string
-  sensitive   = true
-  default     = "root"
-}
-
 variable "app_key" {
   description = "APP_KEY do Laravel (gerado via 'php artisan key:generate --show')"
   type        = string
   sensitive   = true
 }
 
+variable "db_host" {
+  description = "Host/endpoint do banco (RDS do repositório tech-challenge-database, identifier \"tech-challenge-db\"). Só existe depois que aquela RDS for aplicada por lá; até lá, não há valor válido para esta variável."
+  type        = string
+}
+
+variable "db_port" {
+  description = "Porta do banco de dados"
+  type        = string
+  default     = "3306"
+}
+
+variable "db_database" {
+  description = "Nome do banco de dados. Deve ser igual ao valor de 'db_name' usado no repositório tech-challenge-database."
+  type        = string
+}
+
+variable "db_username" {
+  description = "Usuário do banco de dados. Deve ser igual ao valor de 'db_user' usado no repositório tech-challenge-database."
+  type        = string
+}
+
 variable "db_password" {
-  description = "Senha do usuário de banco da aplicação (DB_PASSWORD / MYSQL_PASSWORD)"
+  description = "Senha do usuário de banco da aplicação (DB_PASSWORD). Deve ser igual ao valor de 'db_password' usado no repositório tech-challenge-database — é o mesmo usuário/senha que o Lambda de autenticação (tech-challenge-lambda-functions) também vai usar para consultar a RDS."
   type        = string
   sensitive   = true
 }

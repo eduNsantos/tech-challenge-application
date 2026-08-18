@@ -27,19 +27,6 @@ resource "kubernetes_job_v1" "migrate" {
           name = kubernetes_secret_v1.ghcr_secret.metadata[0].name
         }
 
-        init_container {
-          name    = "wait-for-mysql"
-          image   = "busybox:1.36"
-          command = ["sh", "-c", <<-EOT
-            until nc -z mysql 3306; do
-              echo "aguardando MySQL...";
-              sleep 3;
-            done;
-            echo "MySQL disponivel."
-          EOT
-          ]
-        }
-
         container {
           name              = "migrate"
           image             = "${var.image_repository}:${var.image_tag}"
@@ -77,6 +64,4 @@ resource "kubernetes_job_v1" "migrate" {
   timeouts {
     create = "4m"
   }
-
-  depends_on = [kubernetes_deployment_v1.mysql, kubernetes_service_v1.mysql]
 }

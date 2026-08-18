@@ -14,10 +14,10 @@ resource "kubernetes_config_map_v1" "app_config" {
     APP_FAKER_LOCALE        = "pt_BR"
     APP_MAINTENANCE_DRIVER  = "file"
     DB_CONNECTION           = "mysql"
-    DB_HOST                 = "mysql"
-    DB_PORT                 = "3306"
-    DB_DATABASE             = "techchallenge"
-    DB_USERNAME             = "techchallenge"
+    DB_HOST                 = var.db_host
+    DB_PORT                 = var.db_port
+    DB_DATABASE             = var.db_database
+    DB_USERNAME             = var.db_username
     QUEUE_CONNECTION        = "database"
     CACHE_STORE             = "database"
     MAIL_MAILER             = "log"

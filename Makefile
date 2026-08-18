@@ -126,7 +126,7 @@ minikube-stop: ## Para o cluster Minikube (sem destruir os recursos do Terraform
 infra-init: ## terraform init em infra/
 	@if [ ! -f $(TF_DIR)/terraform.tfvars ]; then \
 		echo "\033[31mErro: $(TF_DIR)/terraform.tfvars não encontrado.\033[0m"; \
-		echo "  Crie o arquivo com app_key, db_password, jwt_secret, ghcr_username, ghcr_token etc."; \
+		echo "  Crie o arquivo com app_key, db_host, db_database, db_username, db_password, jwt_secret, ghcr_username, ghcr_token etc."; \
 		exit 1; \
 	fi
 	cd $(TF_DIR) && terraform init
@@ -140,8 +140,8 @@ infra-apply: ## terraform apply (aceita IMAGE_TAG=<tag>, default: latest)
 infra-destroy: ## Remove toda a stack provisionada pelo Terraform
 	cd $(TF_DIR) && terraform destroy
 
-infra-reset: ## Limpeza forçada: apaga namespace, PV e dados do MySQL no host do minikube (bypassa o Terraform)
-	@echo "\033[33mIsso vai apagar o namespace '$(NAMESPACE)', o PV 'mysql-pv' e TODOS os dados do MySQL local.\033[0m"
+infra-reset: ## Limpeza forçada: apaga o namespace do minikube (bypassa o Terraform)
+	@echo "\033[33mIsso vai apagar o namespace '$(NAMESPACE)' (app, ConfigMaps, Secrets). O banco (RDS externa) não é afetado.\033[0m"
 	@printf "Digite 'reset' para confirmar: "; \
 	read confirm; \
 	if [ "$$confirm" != "reset" ]; then \
@@ -149,10 +149,6 @@ infra-reset: ## Limpeza forçada: apaga namespace, PV e dados do MySQL no host d
 		exit 1; \
 	fi
 	kubectl delete namespace $(NAMESPACE) --ignore-not-found
-	kubectl delete pv mysql-pv --ignore-not-found
-	for node in $$(minikube node list | awk '{print $$1}'); do \
-		minikube ssh -n $$node -- sudo rm -rf /tmp/postech-mysql; \
-	done
 	@echo "\033[32mReset concluído.\033[0m Rode 'make infra-apply' para recriar a stack do zero."
 
 k8s-up: minikube-start infra-init infra-apply ## Sobe minikube + aplica toda a stack via Terraform

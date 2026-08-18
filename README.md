@@ -201,7 +201,7 @@ Todo o provisionamento — desde o namespace até o Job de migration — é feit
 | Peça | Papel |
 |---|---|
 | **Minikube** | Cria o cluster Kubernetes de um nó rodando localmente (por padrão, como um container Docker via seu próprio driver). |
-| **Terraform** (`infra/`) | Orquestra **toda** a stack dentro do cluster: namespace, ConfigMaps, Secrets, MySQL (Deployment + Service + PV/PVC), Job de migration, Deployment/Service/HPA da aplicação, Deployment/Service do Swagger, e o `metrics-server` via Helm (necessário para o HPA). Cada peça é um resource nativo (`kubernetes_namespace_v1`, `kubernetes_deployment_v1`, `kubernetes_secret_v1` etc.) — nada é aplicado via shell. |
+| **Terraform** (`infra/`) | Orquestra **toda** a stack dentro do cluster: namespace, ConfigMaps, Secrets, Job de migration, Deployment/Service/HPA da aplicação, Deployment/Service do Swagger, e o `metrics-server` via Helm (necessário para o HPA). O banco de dados **não** roda dentro do cluster — a aplicação se conecta a uma instância RDS externa, provisionada pelo repositório `tech-challenge-database` (identifier `tech-challenge-db`). Cada peça é um resource nativo (`kubernetes_namespace_v1`, `kubernetes_deployment_v1`, `kubernetes_secret_v1` etc.) — nada é aplicado via shell. |
 | **GitHub Actions** | `build-ghcr.yml` builda e publica a imagem no GHCR. `deploy-minikube.yml` roda `terraform apply` em um runner self-hosted com o Minikube já em pé, passando os segredos como variáveis do Terraform (`TF_VAR_*`). |
 
 ### Docker Compose vs Minikube — quando usar cada um
@@ -210,7 +210,7 @@ Todo o provisionamento — desde o namespace até o Job de migration — é feit
 |---|---|---|
 | Uso principal | Dia a dia, desenvolvimento | Validar o comportamento em Kubernetes (Deployments, HPA, Services) |
 | Orquestração | `docker-compose.yml` | Resources Terraform (`kubernetes_*`) |
-| Banco | Container `db` | Deployment MySQL dentro do cluster |
+| Banco | Container `db` | RDS externa (`tech-challenge-database`, identifier `tech-challenge-db`) |
 | Acesso externo | Portas mapeadas direto | Services + `minikube tunnel` |
 | Escala | Manual | HPA (autoscaling automático) |
 
@@ -236,27 +236,36 @@ kubectl config use-context minikube
 
 **2. Configure as variáveis sensíveis**
 
-`app_key`, `db_password` e `jwt_secret` **não precisam ser gerados de novo** — são os mesmos valores que já estão no seu `.env` (gerados no fluxo de Docker Compose acima, via `make bootstrap` ou os passos manuais 2 e 5). Reaproveitar evita, por exemplo, que o JWT emitido pela API do Compose seja invalidado ao rodar no Kubernetes com uma chave diferente:
+`app_key` e `jwt_secret` **não precisam ser gerados de novo** — são os mesmos valores que já estão no seu `.env` (gerados no fluxo de Docker Compose acima, via `make bootstrap` ou os passos manuais 2 e 5). Reaproveitar evita, por exemplo, que o JWT emitido pela API do Compose seja invalidado ao rodar no Kubernetes com uma chave diferente:
 
 ```bash
-grep -E '^(APP_KEY|DB_PASSWORD|JWT_SECRET)=' .env
+grep -E '^(APP_KEY|JWT_SECRET)=' .env
 ```
+
+`db_host`, `db_database`, `db_username` e `db_password` **não têm valor local equivalente** — são as credenciais da RDS provisionada no repositório `tech-challenge-database` (identifier `tech-challenge-db`). Não há arquivo versionado com esses valores em nenhum dos dois repositórios (fica em `.tfvars`, sempre no `.gitignore`); peça-os a quem aplicou o Terraform daquele repositório, ou aguarde a RDS ser criada caso ainda esteja pendente — sem um `db_host` válido o `terraform apply` falha.
 
 Crie `infra/terraform.tfvars` com esses valores (está no `.gitignore` — nunca commitar com dados reais):
 
 ```hcl
 app_key       = "base64:COPIE_DO_SEU_.ENV"
-db_password   = "COPIE_DO_SEU_.ENV"
 jwt_secret    = "COPIE_DO_SEU_.ENV"
+
+db_host       = "ENDPOINT_DA_RDS_DO_TECH_CHALLENGE_DATABASE"
+db_database   = "MESMO_db_name_DO_TECH_CHALLENGE_DATABASE"
+db_username   = "MESMO_db_user_DO_TECH_CHALLENGE_DATABASE"
+db_password   = "MESMA_db_password_DO_TECH_CHALLENGE_DATABASE"
 
 ghcr_username = "SEU_USUARIO_GITHUB"
 ghcr_token    = "SEU_TOKEN_COM_read:packages"
 
 # Opcionais — já têm default em variables.tf, só defina se quiser sobrescrever:
+# db_port       = "3306"
 # ghcr_email    = "SEU_EMAIL"
 # mail_username = "SEU_EMAIL_SMTP"
 # mail_password = "SUA_SENHA_DE_APP"
 ```
+
+No pipeline (`deploy-minikube.yml`), esses mesmos valores vêm de secrets do GitHub Actions (`DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`) — configure-os manualmente em Settings → Secrets and variables → Actions assim que a RDS existir.
 
 **3. Aplique com Terraform**
 
@@ -277,7 +286,7 @@ terraform apply
 cd ..
 ```
 
-Isso cria o namespace, ConfigMaps, Secrets, MySQL, roda o Job de migration e sobe a aplicação e o Swagger — nessa ordem, controlada pelas dependências entre os resources.
+Isso cria o namespace, ConfigMaps, Secrets, roda o Job de migration (`php artisan migrate --force`, contra a RDS apontada em `db_host`) e sobe a aplicação e o Swagger — nessa ordem, controlada pelas dependências entre os resources.
 
 ### Acessando a documentação (Swagger)
 

@@ -25,19 +25,6 @@ resource "kubernetes_deployment_v1" "app" {
           name = kubernetes_secret_v1.ghcr_secret.metadata[0].name
         }
 
-        init_container {
-          name    = "wait-for-mysql"
-          image   = "busybox:1.36"
-          command = ["sh", "-c", <<-EOT
-            until nc -z mysql 3306; do
-              echo "aguardando MySQL...";
-              sleep 3;
-            done;
-            echo "MySQL disponivel."
-          EOT
-          ]
-        }
-
         container {
           name              = "app"
           image             = "${var.image_repository}:${var.image_tag}"
