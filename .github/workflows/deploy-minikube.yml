@@ -72,7 +72,7 @@ jobs:
           TF_VAR_ghcr_token: ${{ secrets.GHCR_TOKEN }}
           TF_VAR_ghcr_email: ${{ secrets.GHCR_EMAIL }}
         run: |
-          IMAGE_REPO="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          IMAGE_REPO="ghcr.io/edunsantos/tech-challenge-application"
           ROLLOUT_ID="${{ github.run_id }}-${{ github.run_attempt }}"
           cd infra
           terraform apply -auto-approve \
