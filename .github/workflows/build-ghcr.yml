@@ -58,3 +58,17 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Dispatch deployment to Kubernetes repo
+        if: github.event_name != 'pull_request'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.K8S_REPO_TOKEN }}
+          repository: edunsantos/tech-challenge-kubernetes
+          event-type: deploy-eks
+          client-payload: |
+            {
+              "image": "ghcr.io/edunsantos/tech-challenge-application:latest",
+              "tag": "latest",
+              "sha": "${{ github.sha }}"
+            }
