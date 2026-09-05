@@ -12,7 +12,7 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        error_log('Entrou aqui')
+        error_log('Entrou aqui');
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
