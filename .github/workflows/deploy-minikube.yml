@@ -1,10 +1,6 @@
 name: Deploy to local Minikube
 
 on:
-  workflow_run:
-    workflows: ["Build and Publish Docker image (GHCR)"]
-    types: [completed]
-    branches: [main, minikube]
   workflow_dispatch: {}
 
 permissions:
