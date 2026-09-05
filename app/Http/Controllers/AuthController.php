@@ -21,9 +21,13 @@ class AuthController extends Controller
             'password' => 'required|confirmed|min:8',
         ]);
 
+
         if($validator->fails()) {
             return response()->json($validator->errors(), 400);
         }
+
+
+        error_log('validou');
 
         $document = new Document((string) request('document'));
 
@@ -32,7 +36,11 @@ class AuthController extends Controller
         $user->email = request('email');
         $user->document = $document->getValue();
         $user->password = bcrypt(request('password'));
+
+        error_log('salvando');
         $user->save();
+
+        error_log('salvo');
 
         unset($user->password);
 
