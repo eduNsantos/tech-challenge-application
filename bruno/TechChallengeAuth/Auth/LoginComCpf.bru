@@ -1,0 +1,27 @@
+meta {
+  name: Login com CPF
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "document": "529.982.247-25",
+    "password": "senha12345"
+  }
+}
+
+script:post-response {
+  bru.setVar('token', res.getBody().access_token)
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

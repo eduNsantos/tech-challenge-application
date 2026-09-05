@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Customer\ValueObjects\Document;
-use Illuminate\Support\Facades\Validator;
 use App\Models\User;
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\JWTGuard;
 
 class AuthController extends Controller
 {
@@ -19,13 +19,13 @@ class AuthController extends Controller
             'password' => 'required|confirmed|min:8',
         ]);
 
-        if($validator->fails()) {
+        if ($validator->fails()) {
             return response()->json($validator->errors(), 400);
         }
 
         $document = new Document((string) request('document'));
 
-        $user = new User();
+        $user = new User;
         $user->name = request('name');
         $user->email = request('email');
         $user->document = $document->getValue();
@@ -37,32 +37,41 @@ class AuthController extends Controller
         return response()->json(['message' => 'Novo usuário criado com sucesso', 'user' => $user], 201);
     }
 
-    public function login()
+    public function login(Request $request)
     {
-        $credentials = request(['email', 'password']);
-        /** @var \Tymon\JWTAuth\JWTGuard $auth */
+        $identifier = $request->input('document') ?: $request->input('email');
+        $password = $request->input('password');
+
+        $normalizedDocument = Document::normalize((string) $identifier);
+
+        $credentials = strlen($normalizedDocument) === 11
+            ? ['document' => $normalizedDocument, 'password' => $password]
+            : ['email' => $identifier, 'password' => $password];
+
+        /** @var JWTGuard $auth */
         $auth = auth();
 
-        if (!$token = $auth->attempt($credentials)) {
+        if (! $token = $auth->attempt($credentials)) {
             return response()->json(['message' => 'Credenciais inválidas'], 401);
         }
 
         return response()->json([
-             'access_token' => $token,
-             'token_type' => 'bearer',
+            'access_token' => $token,
+            'token_type' => 'bearer',
         ]);
     }
 
     public function me()
     {
-        /** @var \Tymon\JWTAuth\JWTGuard $auth */
+        /** @var JWTGuard $auth */
         $auth = auth();
+
         return response()->json($auth->user());
     }
 
     public function logout()
     {
-        /** @var \Tymon\JWTAuth\JWTGuard $auth */
+        /** @var JWTGuard $auth */
         $auth = auth();
         $auth->logout();
 
@@ -71,19 +80,21 @@ class AuthController extends Controller
 
     public function refresh()
     {
-        /** @var \Tymon\JWTAuth\JWTGuard $auth */
+        /** @var JWTGuard $auth */
         $auth = auth();
+
         return $this->respondWithToken($auth->refresh());
     }
 
     protected function respondWithToken($token)
     {
-        /** @var \Tymon\JWTAuth\JWTGuard $auth */
+        /** @var JWTGuard $auth */
         $auth = auth();
+
         return response()->json([
             'access_token' => $token,
             'token_type' => 'bearer',
-            'expires_in' => $auth->factory()->getTTL() * 60
+            'expires_in' => $auth->factory()->getTTL() * 60,
         ]);
     }
 }
