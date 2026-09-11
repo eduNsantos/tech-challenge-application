@@ -15,6 +15,8 @@ class BusinessTelemetry
             'vehicle_id' => $serviceOrder->vehicleId ?? null,
             'status' => $serviceOrder->status ?? null,
             'request_id' => request()->attributes->get('request_id') ?? request()->header('X-Request-Id'),
+            'namespace_name' => env('POD_NAMESPACE', 'unknown'),
+            'pod_name' => gethostname(),
         ];
 
         Log::info('service_order_event', array_merge($payload, $context));
@@ -23,9 +25,12 @@ class BusinessTelemetry
     public static function integration(string $name, bool $success, array $context = []): void
     {
         $payload = [
+            'event' => $success ? 'integration_success' : 'integration_failed',
             'integration_name' => $name,
             'success' => $success,
             'request_id' => request()->attributes->get('request_id') ?? request()->header('X-Request-Id'),
+            'namespace_name' => env('POD_NAMESPACE', 'unknown'),
+            'pod_name' => gethostname(),
         ];
 
         if ($success) {

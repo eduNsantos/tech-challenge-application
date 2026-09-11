@@ -83,13 +83,33 @@ return [
             'formatter' => Monolog\Formatter\JsonFormatter::class,
             'processors' => [
                 static function ($record) {
-                    $requestId = request()->attributes->get('request_id') ?? request()->header('X-Request-Id');
+                    $context = $record['context'] ?? [];
+                    $requestId = $context['request_id']
+                        ?? request()->attributes->get('request_id')
+                        ?? request()->header('X-Request-Id');
 
-                    $record['context'] = array_merge($record['context'] ?? [], [
-                        'app' => env('APP_NAME', 'tech-challenge'),
-                        'environment' => env('APP_ENV', 'production'),
+                    $record['message'] = $record['message'] ?? ($context['event'] ?? 'application_event');
+                    $record['event'] = $context['event'] ?? $record['message'];
+                    $record['integration_name'] = $context['integration_name'] ?? null;
+                    $record['success'] = $context['success'] ?? null;
+                    $record['service_order_id'] = $context['service_order_id'] ?? null;
+                    $record['customer_id'] = $context['customer_id'] ?? null;
+                    $record['vehicle_id'] = $context['vehicle_id'] ?? null;
+                    $record['status'] = $context['status'] ?? null;
+                    $record['request_id'] = $requestId;
+                    $record['app'] = env('APP_NAME', 'tech-challenge');
+                    $record['environment'] = env('APP_ENV', 'production');
+                    $record['service'] = 'tech-challenge-app';
+                    $record['namespace_name'] = env('POD_NAMESPACE', 'unknown');
+                    $record['pod_name'] = gethostname();
+
+                    $record['context'] = array_merge($context, [
+                        'app' => $record['app'],
+                        'environment' => $record['environment'],
+                        'service' => $record['service'],
                         'request_id' => $requestId,
-                        'service' => 'tech-challenge-app',
+                        'namespace_name' => $record['namespace_name'],
+                        'pod_name' => $record['pod_name'],
                     ]);
 
                     return $record;
