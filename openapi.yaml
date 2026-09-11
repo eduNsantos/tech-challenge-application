@@ -97,7 +97,8 @@ paths:
         - Autenticação
       summary: Autenticar usuário
       description: |-
-        Autentica o usuário com e-mail e senha e retorna um **token JWT**.
+        Autentica o usuário com **e-mail ou CPF** e senha, retornando um **token JWT**.
+        Informe `email` OU `document` (CPF) — se ambos forem enviados, `document` tem prioridade.
       operationId: auth-login
       security: []
       requestBody:
@@ -106,9 +107,17 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoginRequest'
-            example:
-              email: joao@example.com
-              password: senha12345
+            examples:
+              porEmail:
+                summary: Login com e-mail
+                value:
+                  email: joao@example.com
+                  password: senha12345
+              porCpf:
+                summary: Login com CPF
+                value:
+                  document: "529.982.247-25"
+                  password: senha12345
       responses:
         '200':
           description: Login realizado com sucesso
@@ -2067,12 +2076,17 @@ components:
 
     LoginRequest:
       type: object
-      required: [email, password]
+      description: Informe `email` ou `document` (CPF) para autenticação.
+      required: [password]
       properties:
         email:
           type: string
           format: email
           example: joao@example.com
+        document:
+          type: string
+          description: CPF do usuário (com ou sem máscara).
+          example: "529.982.247-25"
         password:
           type: string
           format: password

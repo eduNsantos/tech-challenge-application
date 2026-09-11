@@ -30,7 +30,7 @@ services:
       MYSQL_USER: test_user
       MYSQL_PASSWORD: test_password
     ports:
-      - 3307:3306
+      - 13307:3306
     tmpfs:
       - /var/lib/mysql
     healthcheck:

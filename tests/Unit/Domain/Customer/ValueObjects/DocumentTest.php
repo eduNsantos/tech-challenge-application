@@ -121,4 +121,18 @@ class DocumentTest extends TestCase
 
         new Document('123456789012'); // 12 dígitos — nem CPF nem CNPJ
     }
+
+    // -------------------------------------------------------------------------
+    // normalize()
+    // -------------------------------------------------------------------------
+
+    public function test_normalize_strips_non_digit_characters(): void
+    {
+        $this->assertSame('52998224725', Document::normalize('529.982.247-25'));
+    }
+
+    public function test_normalize_does_not_validate_check_digits(): void
+    {
+        $this->assertSame('00000000000', Document::normalize('000.000.000-00'));
+    }
 }
