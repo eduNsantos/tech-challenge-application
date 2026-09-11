@@ -3,6 +3,8 @@ FROM php:8.4-cli
 RUN apt-get update && apt-get install -y \
     git \
     curl \
+    wget \
+    ca-certificates \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
@@ -14,7 +16,20 @@ RUN apt-get update && apt-get install -y \
 && docker-php-ext-install -j$(nproc) pdo_mysql mbstring exif pcntl bcmath gd zip opcache \
 && pecl install pcov \
 && docker-php-ext-enable pcov \
-&& rm -rf /var/lib/apt/lists/*
+&& curl -fsSL https://download.newrelic.com/php_agent/release/newrelic-php5-linux.tar.gz -o /tmp/newrelic.tar.gz \
+&& mkdir -p /tmp/newrelic \
+&& tar -xzf /tmp/newrelic.tar.gz -C /tmp/newrelic --strip-components=1 \
+&& /tmp/newrelic/newrelic-install install \
+&& rm -rf /tmp/newrelic /tmp/newrelic.tar.gz \
+&& rm -rf /var/lib/apt/lists/* \
+&& printf '%s\n' \
+    'extension=newrelic.so' \
+    'newrelic.enabled=${NEW_RELIC_ENABLED}' \
+    'newrelic.appname="${NEW_RELIC_APP_NAME}"' \
+    'newrelic.license="${NEW_RELIC_LICENSE_KEY}"' \
+    'newrelic.daemon.address="${NEW_RELIC_DAEMON_ADDRESS}"' \
+    'newrelic.logfile="/dev/stdout"' \
+    > /usr/local/etc/php/conf.d/newrelic.ini
 
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 
