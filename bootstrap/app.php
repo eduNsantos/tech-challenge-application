@@ -5,7 +5,6 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Auth\AuthenticationException;
-use Throwable;
 
 $recordApiExceptionMetric = function (Throwable $e, int $status, Request $request): void {
     if (function_exists('newrelic_add_custom_parameter')) {
