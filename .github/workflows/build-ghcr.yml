@@ -2,12 +2,10 @@ name: Build and Publish Docker image (GHCR)
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - development
   workflow_run:
     workflows: ["Laravel CI"]
     types: [completed]
+    branches: ["main", "development"]
 
 permissions:
   actions: write
@@ -56,6 +54,12 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEW_RELIC_ENABLED=${{ secrets.NEW_RELIC_ENABLED || 'true' }}
+            NEW_RELIC_APP_NAME=${{ secrets.NEW_RELIC_APP_NAME || 'Tech Challenge POS' }}
+            NEW_RELIC_LICENSE_KEY=${{ secrets.NEW_RELIC_LICENSE_KEY || secrets.NEW_RELIC_KEY || secrets.newrelic_key }}
+            NEW_RELIC_DAEMON_ADDRESS=${{ secrets.NEW_RELIC_DAEMON_ADDRESS || 'newrelic:31339' }}
+            NEW_RELIC_KEY=${{ secrets.NEW_RELIC_KEY || secrets.newrelic_key || secrets.NEW_RELIC_LICENSE_KEY }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
