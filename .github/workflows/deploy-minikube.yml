@@ -90,3 +90,15 @@ jobs:
               echo "$svc: http://$ip:$port"
             fi
           done
+
+      - name: Trigger tech-challenge-lambda-functions CI/CD
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.LAMBDA_REPO_TOKEN }}
+          repository: edunsantos/tech-challenge-lambda-functions
+          event-type: deploy-lambda-auth
+          client-payload: |
+            {
+              "sha": "${{ github.sha }}",
+              "ref": "${{ github.ref }}"
+            }
