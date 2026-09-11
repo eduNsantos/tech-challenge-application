@@ -31,7 +31,7 @@ class SendWelcomeNotification
             NotificationStatus::PENDING,
             new \DateTimeImmutable()
         );
-        
+
         $this->notificationRepository->save($notification);
         try {
             $this->notificationService->send($notification);
