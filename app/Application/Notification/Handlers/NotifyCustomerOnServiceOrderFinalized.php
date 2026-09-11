@@ -10,6 +10,7 @@ use App\Domain\Notification\ValueObjects\NotificationStatus;
 use App\Domain\Notification\ValueObjects\NotificationType;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Events\ServiceOrderStatusChanged;
+use App\Support\Observability\BusinessTelemetry;
 use Illuminate\Support\Str;
 
 class NotifyCustomerOnServiceOrderFinalized
@@ -33,6 +34,10 @@ class NotifyCustomerOnServiceOrderFinalized
             return;
         }
 
+        BusinessTelemetry::serviceOrder('service_order_finalized_notification_started', $serviceOrder, [
+            'customer_id' => $customer->id,
+        ]);
+
         $notification = new EntityNotification(
             Str::uuid()->toString(),
             $customer->email,
@@ -47,8 +52,19 @@ class NotifyCustomerOnServiceOrderFinalized
         try {
             $this->notificationService->send($notification);
             $notification->markAsSent();
+            BusinessTelemetry::integration('service_order_finalized_notification', true, [
+                'service_order_id' => $serviceOrder->id,
+                'customer_id' => $serviceOrder->customerId,
+                'notification_type' => 'email',
+            ]);
         } catch (\Throwable $th) {
             $notification->markAsFailed();
+            BusinessTelemetry::integration('service_order_finalized_notification', false, [
+                'service_order_id' => $serviceOrder->id,
+                'customer_id' => $serviceOrder->customerId,
+                'notification_type' => 'email',
+                'error' => $th->getMessage(),
+            ]);
         }
         $this->notificationRepository->save($notification);
     }

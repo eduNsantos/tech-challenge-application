@@ -9,6 +9,7 @@ use App\Domain\Notification\Interfaces\NotificationServiceInterface;
 use App\Domain\Notification\ValueObjects\NotificationStatus;
 use App\Domain\Notification\ValueObjects\NotificationType;
 use App\Domain\ServiceOrder\Events\ServiceOrderQuoteSent;
+use App\Support\Observability\BusinessTelemetry;
 use Illuminate\Support\Str;
 
 class NotifyCustomerOnQuoteSent
@@ -31,6 +32,11 @@ class NotifyCustomerOnQuoteSent
         $approvalLink = url("/api/service-order/approve/{$serviceOrder->approvalToken}");
         $rejectLink = url("/api/service-order/reject/{$serviceOrder->approvalToken}");
 
+        BusinessTelemetry::serviceOrder('service_order_quote_notification_started', $serviceOrder, [
+            'customer_id' => $customer->id,
+            'approval_token_present' => $serviceOrder->approvalToken !== null,
+        ]);
+
         $notification = new EntityNotification(
             Str::uuid()->toString(),
             $customer->email,
@@ -45,8 +51,19 @@ class NotifyCustomerOnQuoteSent
         try {
             $this->notificationService->send($notification);
             $notification->markAsSent();
+            BusinessTelemetry::integration('quote_sent_notification', true, [
+                'service_order_id' => $serviceOrder->id,
+                'customer_id' => $serviceOrder->customerId,
+                'notification_type' => 'email',
+            ]);
         } catch (\Throwable $th) {
             $notification->markAsFailed();
+            BusinessTelemetry::integration('quote_sent_notification', false, [
+                'service_order_id' => $serviceOrder->id,
+                'customer_id' => $serviceOrder->customerId,
+                'notification_type' => 'email',
+                'error' => $th->getMessage(),
+            ]);
         }
         $this->notificationRepository->save($notification);
     }

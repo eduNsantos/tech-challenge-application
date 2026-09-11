@@ -25,7 +25,9 @@ class CustomerController
             $request->phone,
             $request->document
         );
+
         $customer = $useCase->execute($dto);
+
         return response()->json([
             'customer' => [
                 'id' => $customer->id,
@@ -36,6 +38,7 @@ class CustomerController
             ],
         ]);
     }
+
     public function list(ListCustomerRequest $request, ListCustomerUseCase $useCase)
     {
         $dto = new ListCustomerDTO(

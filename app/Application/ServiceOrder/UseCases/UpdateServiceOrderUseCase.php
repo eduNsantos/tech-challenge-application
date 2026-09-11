@@ -13,6 +13,7 @@ use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use App\Domain\ServiceOrder\Events\ServiceOrderQuoteSent;
+use App\Support\Observability\BusinessTelemetry;
 
 class UpdateServiceOrderUseCase
 {
@@ -75,6 +76,9 @@ class UpdateServiceOrderUseCase
 
         if ($dto->sendQuote === true) {
             event(new ServiceOrderQuoteSent($serviceOrder));
+            BusinessTelemetry::serviceOrder('service_order_quote_sent', $serviceOrder, [
+                'send_quote' => true,
+            ]);
         }
 
         return $serviceOrder;
