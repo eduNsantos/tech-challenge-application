@@ -40,6 +40,12 @@ jobs:
         file: ./Dockerfile
         tags: techchallenge-1-app-php:v2
         load: true
+        build-args: |
+          NEW_RELIC_ENABLED=${{ secrets.NEW_RELIC_ENABLED || 'true' }}
+          NEW_RELIC_APP_NAME=${{ secrets.NEW_RELIC_APP_NAME || 'Tech Challenge POS' }}
+          NEW_RELIC_LICENSE_KEY=${{ secrets.NEW_RELIC_LICENSE_KEY || secrets.NEW_RELIC_KEY || secrets.newrelic_key }}
+          NEW_RELIC_DAEMON_ADDRESS=${{ secrets.NEW_RELIC_DAEMON_ADDRESS || 'newrelic:31339' }}
+          NEW_RELIC_KEY=${{ secrets.NEW_RELIC_KEY || secrets.newrelic_key || secrets.P }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
