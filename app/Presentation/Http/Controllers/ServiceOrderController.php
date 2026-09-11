@@ -31,7 +31,6 @@ class ServiceOrderController
     {
         Log::info('Service order to be created', ['service_order' => $request->input()]);
 
-        dd($request->input());
         $dto = new CreateServiceOrderDTO(
             vehicleId: $request->input('vehicle_id'),
             customerId: $request->input('customer_id'),
