@@ -28,9 +28,6 @@ class AuthController extends Controller
             return response()->json($validator->errors(), 400);
         }
 
-
-        error_log('validou');
-
         $document = new Document((string) request('document'));
 
         $user = new User();
@@ -38,11 +35,7 @@ class AuthController extends Controller
         $user->email = request('email');
         $user->document = $document->getValue();
         $user->password = bcrypt(request('password'));
-
-        error_log('salvando');
         $user->save();
-
-        error_log('salvo');
 
         unset($user->password);
 
