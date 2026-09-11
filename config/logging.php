@@ -54,7 +54,7 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
+            'channels' => explode(',', (string) env('LOG_STACK', 'stderr')),
             'ignore_exceptions' => false,
         ],
 
@@ -71,6 +71,30 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+        ],
+
+        'json' => [
+            'driver' => 'monolog',
+            'handler' => StreamHandler::class,
+            'handler_with' => [
+                'stream' => 'php://stderr',
+                'level' => env('LOG_LEVEL', 'debug'),
+            ],
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            'processors' => [
+                static function ($record) {
+                    $requestId = request()->attributes->get('request_id') ?? request()->header('X-Request-Id');
+
+                    $record['context'] = array_merge($record['context'] ?? [], [
+                        'app' => env('APP_NAME', 'tech-challenge'),
+                        'environment' => env('APP_ENV', 'production'),
+                        'request_id' => $requestId,
+                        'service' => 'tech-challenge-app',
+                    ]);
+
+                    return $record;
+                },
+            ],
         ],
 
         'slack' => [

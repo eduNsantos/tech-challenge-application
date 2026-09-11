@@ -9,6 +9,7 @@ use App\Domain\Notification\ValueObjects\NotificationStatus;
 use App\Domain\Notification\ValueObjects\NotificationType;
 use App\Domain\ServiceOrder\Events\ServiceOrderCreated;
 use App\Models\User;
+use App\Support\Observability\BusinessTelemetry;
 use Illuminate\Support\Str;
 
 class NotifyMechanicsOnServiceOrderCreated
@@ -38,8 +39,19 @@ class NotifyMechanicsOnServiceOrderCreated
             try {
                 $this->notificationService->send($notification);
                 $notification->markAsSent();
+                BusinessTelemetry::integration('mechanic_notification', true, [
+                    'service_order_id' => $serviceOrder->id,
+                    'recipient' => $mechanic->email,
+                    'notification_type' => 'email',
+                ]);
             } catch (\Throwable $th) {
                 $notification->markAsFailed();
+                BusinessTelemetry::integration('mechanic_notification', false, [
+                    'service_order_id' => $serviceOrder->id,
+                    'recipient' => $mechanic->email,
+                    'notification_type' => 'email',
+                    'error' => $th->getMessage(),
+                ]);
             }
             $this->notificationRepository->save($notification);
         }

@@ -6,6 +6,7 @@ use App\Application\ServiceOrder\DTOs\UpdateServiceOrderStatusDTO;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrder\Events\ServiceOrderStatusChanged;
+use App\Support\Observability\BusinessTelemetry;
 class UpdateServiceOrderStatusUseCase
 {
     public function __construct(
@@ -23,6 +24,12 @@ class UpdateServiceOrderStatusUseCase
         $serviceOrder->changeStatus($dto->status);
         $this->repository->update($serviceOrder);
         event(new ServiceOrderStatusChanged($serviceOrder, $oldStatus));
+
+        BusinessTelemetry::serviceOrder('service_order_status_changed', $serviceOrder, [
+            'old_status' => $oldStatus,
+            'new_status' => $dto->status,
+        ]);
+
         return $serviceOrder;
     }
 }

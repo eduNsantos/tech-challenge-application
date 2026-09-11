@@ -10,6 +10,7 @@ use App\Domain\Notification\ValueObjects\NotificationStatus;
 use App\Domain\Notification\ValueObjects\NotificationType;
 use App\Infrastructure\Notifications\GenericNotification;
 use App\Infrastructure\Notifications\WelcomeNotification;
+use App\Support\Observability\BusinessTelemetry;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
@@ -32,11 +33,20 @@ class SendWelcomeNotification
         );
         
         $this->notificationRepository->save($notification);
-        try {            
+        try {
             $this->notificationService->send($notification);
             $notification->markAsSent();
+            BusinessTelemetry::integration('welcome_notification', true, [
+                'customer_id' => $event->customer->id,
+                'notification_type' => 'email',
+            ]);
         } catch (\Throwable $th) {
             $notification->markAsFailed();
+            BusinessTelemetry::integration('welcome_notification', false, [
+                'customer_id' => $event->customer->id,
+                'notification_type' => 'email',
+                'error' => $th->getMessage(),
+            ]);
         }
         $this->notificationRepository->save($notification);
     }

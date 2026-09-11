@@ -1,5 +1,5 @@
 <?php
-
+use Illuminate\Support\Facades\Log;
 namespace App\Presentation\Http\Controllers;
 
 use App\Application\ServiceOrder\DTOs\CreateServiceOrderDTO;
@@ -28,6 +28,9 @@ class ServiceOrderController
 {
     public function store(CreateServiceOrderRequest $request, CreateServiceOrderUseCase $useCase)
     {
+        Log::info('Service order to be created', ['service_order' => $request->input()]);
+
+        dd($request->input());
         $dto = new CreateServiceOrderDTO(
             vehicleId: $request->input('vehicle_id'),
             customerId: $request->input('customer_id'),
@@ -37,6 +40,8 @@ class ServiceOrderController
         );
 
         $serviceOrder = $useCase->execute($dto);
+
+        Log::info('Service order created', ['service_order' => $serviceOrder]);
 
         $response = [
             'service_order' => $this->present($serviceOrder),
