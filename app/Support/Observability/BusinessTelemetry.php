@@ -15,6 +15,10 @@ class BusinessTelemetry
             'vehicle_id' => $serviceOrder->vehicleId ?? null,
             'status' => $serviceOrder->status ?? null,
             'request_id' => request()->attributes->get('request_id') ?? request()->header('X-Request-Id'),
+            'request_method' => request()->method(),
+            'request_path' => request()->path(),
+            'request_ip' => request()->ip(),
+            'request_user_agent' => request()->userAgent(),
             'namespace_name' => env('POD_NAMESPACE', 'unknown'),
             'pod_name' => gethostname(),
         ];

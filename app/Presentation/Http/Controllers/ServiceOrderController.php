@@ -29,7 +29,17 @@ class ServiceOrderController
 {
     public function store(CreateServiceOrderRequest $request, CreateServiceOrderUseCase $useCase)
     {
-        Log::info('Service order to be created', ['service_order' => $request->input()]);
+        Log::info('service_order_event', [
+            'event' => 'service_order_to_be_created',
+            'request_id' => request()->attributes->get('request_id') ?? request()->header('X-Request-Id'),
+            'request_method' => request()->method(),
+            'request_path' => request()->path(),
+            'request_ip' => request()->ip(),
+            'request_user_agent' => request()->userAgent(),
+            'customer_id' => $request->input('customer_id'),
+            'vehicle_id' => $request->input('vehicle_id'),
+            'service_order' => $request->input(),
+        ]);
 
         $dto = new CreateServiceOrderDTO(
             vehicleId: $request->input('vehicle_id'),
@@ -41,7 +51,19 @@ class ServiceOrderController
 
         $serviceOrder = $useCase->execute($dto);
 
-        Log::info('Service order created', ['service_order' => $serviceOrder]);
+        Log::info('service_order_event', [
+            'event' => 'service_order_created',
+            'request_id' => request()->attributes->get('request_id') ?? request()->header('X-Request-Id'),
+            'request_method' => request()->method(),
+            'request_path' => request()->path(),
+            'request_ip' => request()->ip(),
+            'request_user_agent' => request()->userAgent(),
+            'service_order_id' => $serviceOrder->id,
+            'customer_id' => $serviceOrder->customerId,
+            'vehicle_id' => $serviceOrder->vehicleId,
+            'status' => $serviceOrder->status,
+            'service_order' => $serviceOrder,
+        ]);
 
         $response = [
             'service_order' => $this->present($serviceOrder),
