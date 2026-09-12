@@ -13,6 +13,22 @@ use App\Presentation\Http\Controllers\VehicleController;
 
 use App\Presentation\Http\Controllers\ServiceOrderApprovalController;
 
+Route::get('/log_teste', function () {
+    file_put_contents('php://stderr', json_encode([
+        'event' => 'log_teste',
+        'message' => 'teste de log estruturado',
+        'request_id' => request()->attributes->get('request_id') ?? request()->header('X-Request-Id'),
+        'namespace_name' => env('POD_NAMESPACE', 'unknown'),
+        'pod_name' => gethostname(),
+        'timestamp' => now()->toIso8601String(),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)."\n");
+
+    return response()->json([
+        'status' => 'ok',
+        'event' => 'log_teste',
+    ]);
+});
+
 Route::get('/service-order/approve/{token}', [ServiceOrderApprovalController::class, 'approve']);
 Route::get('/service-order/reject/{token}', [ServiceOrderApprovalController::class, 'reject']);
 Route::post('/service-order/approval/{token}', [ServiceOrderApprovalController::class, 'handle']);
