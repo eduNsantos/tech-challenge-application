@@ -29,6 +29,7 @@ class ServiceOrderController
 {
     public function store(CreateServiceOrderRequest $request, CreateServiceOrderUseCase $useCase)
     {
+        error_log('teste');
         Log::info('service_order_event', [
             'event' => 'service_order_to_be_created',
             'request_id' => request()->attributes->get('request_id') ?? request()->header('X-Request-Id'),
