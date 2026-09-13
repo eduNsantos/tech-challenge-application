@@ -39,6 +39,7 @@ RUN apt-get update && apt-get install -y \
     && mkdir -p /tmp/newrelic \
     && tar -xzf /tmp/newrelic.tar.gz -C /tmp/newrelic --strip-components=1 \
     && NR_INSTALL_SILENT=yes /tmp/newrelic/newrelic-install install \
+    && curl -Ls https://download.newrelic.com/install/newrelic-cli/scripts/install.sh | bash \
     && rm -rf /tmp/newrelic /tmp/newrelic.tar.gz \
     && rm -rf /var/lib/apt/lists/*
 
@@ -54,5 +55,8 @@ RUN composer install \
     --no-progress
 
 COPY docker/newrelic.ini /usr/local/etc/php/conf.d/newrelic.ini
+COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint
+RUN chmod +x /usr/local/bin/docker-entrypoint
 
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
