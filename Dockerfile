@@ -34,11 +34,6 @@ RUN apt-get update && apt-get install -y \
         gd \
         zip \
         opcache \
-    && curl -fsSL https://download.newrelic.com/php_agent/release/newrelic-php5-12.10.0.39-linux.tar.gz -o /tmp/newrelic.tar.gz \
-    && mkdir -p /tmp/newrelic \
-    && tar -xzf /tmp/newrelic.tar.gz -C /tmp/newrelic --strip-components=1 \
-    && NR_INSTALL_SILENT=yes /tmp/newrelic/newrelic-install install \
-    && rm -rf /tmp/newrelic /tmp/newrelic.tar.gz \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer

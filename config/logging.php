@@ -74,9 +74,17 @@ return [
         ],
 
         'json' => [
-            'driver' => 'errorlog',
-            'level' => 'debug',
-        ],,
+            'driver' => 'monolog',
+            'handler' => StreamHandler::class,
+            'handler_with' => [
+                'stream' => 'php://stderr',
+                'level' => env('LOG_LEVEL', 'debug'),
+            ],
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            'processors' => [
+                App\Support\Observability\StructuredLogProcessor::class,
+            ],
+        ],
 
         'slack' => [
             'driver' => 'slack',
@@ -106,7 +114,10 @@ return [
             'handler_with' => [
                 'stream' => 'php://stderr',
             ],
-            'formatter' => Monolog\Formatter\JsonFormatter::class
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            'processors' => [
+                App\Support\Observability\StructuredLogProcessor::class,
+            ],
         ],
 
         'syslog' => [

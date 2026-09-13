@@ -12,16 +12,15 @@ use App\Presentation\Http\Controllers\CustomerController;
 use App\Presentation\Http\Controllers\VehicleController;
 
 use App\Presentation\Http\Controllers\ServiceOrderApprovalController;
+use Illuminate\Support\Facades\Log;
 
 Route::get('/log_teste', function () {
-    file_put_contents('php://stderr', json_encode([
-        'event' => 'log_teste',
-        'message' => 'teste de log estruturado',
-        'request_id' => request()->attributes->get('request_id') ?? request()->header('X-Request-Id'),
-        'namespace_name' => env('POD_NAMESPACE', 'unknown'),
-        'pod_name' => gethostname(),
-        'timestamp' => now()->toIso8601String(),
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)."\n");
+    Log::info('AAAA_LOG_INFO');
+
+    file_put_contents(
+        'php://stderr',
+        "BBBB_STDERR\n"
+    );
 
     return response()->json([
         'status' => 'ok',
