@@ -37,6 +37,7 @@ class BusinessTelemetry
             'previous_status' => $previousStatus,
             'status' => $newStatus,
             'status_started_at' => $serviceOrder->statusStartedAt ?? null,
+            'previous_status_started_at' => $context['previous_status_started_at'] ?? null,
             'request_id' => request()->attributes->get('request_id') ?? request()->header('X-Request-Id'),
             'namespace_name' => env('POD_NAMESPACE', 'unknown'),
             'pod_name' => gethostname(),

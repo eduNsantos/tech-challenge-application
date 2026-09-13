@@ -26,7 +26,7 @@ class UpdateServiceOrderStatusUseCase
         $serviceOrder->changeStatus($dto->status);
 
         $statusDurationSeconds = $previousStatusStartedAt
-            ? max(0, (int) now()->diffInSeconds(new \DateTimeImmutable($previousStatusStartedAt)))
+            ? max(0.0, round(now()->diffInSecondsFloat(new \DateTimeImmutable($previousStatusStartedAt)), 3))
             : null;
 
         $this->repository->update($serviceOrder);
@@ -35,6 +35,7 @@ class UpdateServiceOrderStatusUseCase
         BusinessTelemetry::statusTransition($oldStatus, $dto->status, $serviceOrder, [
             'status_duration_seconds' => $statusDurationSeconds,
             'status_started_at' => $serviceOrder->statusStartedAt,
+            'previous_status_started_at' => $previousStatusStartedAt,
         ]);
 
         BusinessTelemetry::serviceOrder('service_order_status_changed', $serviceOrder, [
