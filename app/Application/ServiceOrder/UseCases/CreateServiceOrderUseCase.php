@@ -86,6 +86,7 @@ class CreateServiceOrderUseCase
         });
 
         event(new ServiceOrderCreated($serviceOrder));
+
         BusinessTelemetry::serviceOrder('service_order_created', $serviceOrder, [
             'send_quote' => $dto->sendQuote,
         ]);

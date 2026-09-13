@@ -29,7 +29,6 @@ class ServiceOrderController
 {
     public function store(CreateServiceOrderRequest $request, CreateServiceOrderUseCase $useCase)
     {
-        error_log('teste');
         Log::info('service_order_event', [
             'event' => 'service_order_to_be_created',
             'request_id' => request()->attributes->get('request_id') ?? request()->header('X-Request-Id'),
@@ -51,20 +50,6 @@ class ServiceOrderController
         );
 
         $serviceOrder = $useCase->execute($dto);
-
-        Log::info('service_order_event', [
-            'event' => 'service_order_created',
-            'request_id' => request()->attributes->get('request_id') ?? request()->header('X-Request-Id'),
-            'request_method' => request()->method(),
-            'request_path' => request()->path(),
-            'request_ip' => request()->ip(),
-            'request_user_agent' => request()->userAgent(),
-            'service_order_id' => $serviceOrder->id,
-            'customer_id' => $serviceOrder->customerId,
-            'vehicle_id' => $serviceOrder->vehicleId,
-            'status' => $serviceOrder->status,
-            'service_order' => $serviceOrder,
-        ]);
 
         $response = [
             'service_order' => $this->present($serviceOrder),
