@@ -38,7 +38,7 @@ jobs:
           helm repo add newrelic https://helm-charts.newrelic.com || true
           helm repo update
 
-          NEW_RELIC_LICENSE_KEY=$(kubectl get secret app-secret -n "$NAMESPACE" -o jsonpath='{.data.NEW_RELIC_LICENSE_KEY}' | base64 -d)
+          NEW_RELIC_LICENSE_KEY="${{ secrets.NEW_RELIC_LICENSE_KEY }}"
 
           helm upgrade --install newrelic-bundle \
             newrelic/nri-bundle \
