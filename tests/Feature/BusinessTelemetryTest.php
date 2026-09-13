@@ -2,7 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Application\ServiceOrder\DTOs\UpdateServiceOrderStatusDTO;
+use App\Application\ServiceOrder\UseCases\UpdateServiceOrderStatusUseCase;
+use App\Domain\ServiceOrder\Entities\ServiceOrder;
+use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Mockery;
 use Tests\TestCase;
 
 class BusinessTelemetryTest extends TestCase
@@ -57,6 +63,34 @@ class BusinessTelemetryTest extends TestCase
                 && ($payload['previous_status'] ?? null) === 'em_diagnostico'
                 && ($payload['status_duration_seconds'] ?? null) === 3600
             )
+        );
+    }
+
+    public function test_status_duration_is_measured_from_previous_status_timestamp(): void
+    {
+        Log::spy();
+
+        Carbon::setTestNow('2026-09-13 12:00:00');
+
+        $serviceOrder = ServiceOrder::create('customer-3', 'vehicle-3', [], []);
+        $serviceOrder->status = ServiceOrder::STATUS_EM_DIAGNOSTICO;
+        $serviceOrder->statusStartedAt = '2026-09-13 11:55:00';
+
+        $repository = Mockery::mock(ServiceOrderRepositoryInterface::class);
+        $repository->shouldReceive('findById')->with($serviceOrder->id)->andReturn($serviceOrder);
+        $repository->shouldReceive('update')->once()->with(Mockery::on(function (ServiceOrder $updatedOrder) {
+            return $updatedOrder->status === ServiceOrder::STATUS_EM_EXECUCAO;
+        }));
+
+        $useCase = new UpdateServiceOrderStatusUseCase($repository);
+        $useCase->execute(new UpdateServiceOrderStatusDTO($serviceOrder->id, ServiceOrder::STATUS_EM_EXECUCAO));
+
+        Log::shouldHaveReceived('info')->with(
+            'service_order_status_timeline',
+            Mockery::on(function (array $payload) {
+                return isset($payload['status_duration_seconds'])
+                    && $payload['status_duration_seconds'] === 300;
+            })
         );
     }
 }

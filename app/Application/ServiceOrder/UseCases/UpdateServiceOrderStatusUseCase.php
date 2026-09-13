@@ -23,11 +23,11 @@ class UpdateServiceOrderStatusUseCase
         $oldStatus = $serviceOrder->status;
         $previousStatusStartedAt = $serviceOrder->statusStartedAt;
 
-        $serviceOrder->changeStatus($dto->status);
-
         $statusDurationSeconds = $previousStatusStartedAt
-            ? max(0.0, round(now()->diffInSecondsFloat(new \DateTimeImmutable($previousStatusStartedAt)), 3))
+            ? max(0, now()->diffInSeconds(new \DateTimeImmutable($previousStatusStartedAt)))
             : null;
+
+        $serviceOrder->changeStatus($dto->status);
 
         $this->repository->update($serviceOrder);
         event(new ServiceOrderStatusChanged($serviceOrder, $oldStatus));
