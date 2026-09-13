@@ -54,7 +54,7 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
+            'channels' => explode(',', (string) env('LOG_STACK', 'stderr')),
             'ignore_exceptions' => false,
         ],
 
@@ -71,6 +71,50 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+        ],
+
+        'json' => [
+            'driver' => 'monolog',
+            'handler' => StreamHandler::class,
+            'handler_with' => [
+                'stream' => 'php://stderr',
+                'level' => env('LOG_LEVEL', 'debug'),
+            ],
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            'processors' => [
+                static function ($record) {
+                    $context = $record['context'] ?? [];
+                    $requestId = $context['request_id']
+                        ?? request()->attributes->get('request_id')
+                        ?? request()->header('X-Request-Id');
+
+                    $record['message'] = $record['message'] ?? ($context['event'] ?? 'application_event');
+                    $record['event'] = $context['event'] ?? $record['message'];
+                    $record['integration_name'] = $context['integration_name'] ?? null;
+                    $record['success'] = $context['success'] ?? null;
+                    $record['service_order_id'] = $context['service_order_id'] ?? null;
+                    $record['customer_id'] = $context['customer_id'] ?? null;
+                    $record['vehicle_id'] = $context['vehicle_id'] ?? null;
+                    $record['status'] = $context['status'] ?? null;
+                    $record['request_id'] = $requestId;
+                    $record['app'] = env('APP_NAME', 'tech-challenge');
+                    $record['environment'] = env('APP_ENV', 'production');
+                    $record['service'] = 'tech-challenge-app';
+                    $record['namespace_name'] = env('POD_NAMESPACE', 'unknown');
+                    $record['pod_name'] = gethostname();
+
+                    $record['context'] = array_merge($context, [
+                        'app' => $record['app'],
+                        'environment' => $record['environment'],
+                        'service' => $record['service'],
+                        'request_id' => $requestId,
+                        'namespace_name' => $record['namespace_name'],
+                        'pod_name' => $record['pod_name'],
+                    ]);
+
+                    return $record;
+                },
+            ],
         ],
 
         'slack' => [

@@ -12,15 +12,11 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        error_log('Entrou aqui');
-
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'document' => 'required|string|max:14|unique:users,document',
-            'email' => 'required|string|email|max:255',
-            'document' => 'required|string|max:14,document',
-            'password' => 'required|confirmed|min:8',
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'document' => ['required', 'string', 'max:14', 'unique:users,document'],
+            'password' => ['required', 'confirmed', 'min:8'],
         ]);
 
         if ($validator->fails()) {

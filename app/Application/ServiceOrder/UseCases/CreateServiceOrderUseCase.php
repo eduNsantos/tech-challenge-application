@@ -12,6 +12,7 @@ use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrder\Events\ServiceOrderCreated;
 use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
+use App\Support\Observability\BusinessTelemetry;
 use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use Illuminate\Support\Facades\DB;
@@ -85,6 +86,9 @@ class CreateServiceOrderUseCase
         });
 
         event(new ServiceOrderCreated($serviceOrder));
+        BusinessTelemetry::serviceOrder('service_order_created', $serviceOrder, [
+            'send_quote' => $dto->sendQuote,
+        ]);
 
         return $serviceOrder;
     }
