@@ -18,7 +18,9 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     zip \
     unzip \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-configure gd \
+        --with-freetype \
+        --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo_mysql \
         mbstring \
@@ -27,9 +29,10 @@ RUN apt-get update && apt-get install -y \
         bcmath \
         gd \
         zip \
-        opcache
+        opcache \
+    && rm -rf /var/lib/apt/lists/*
 
-
+# New Relic PHP Agent
 RUN set -eux; \
     cd /tmp; \
     curl -fsSL \
@@ -44,26 +47,20 @@ RUN set -eux; \
       ./newrelic/newrelic-install install; \
     rm -rf /tmp/newrelic /tmp/newrelic.tar.gz
 
-# New Relic CLI
-RUN curl -Ls \
-    https://download.newrelic.com/install/newrelic-cli/scripts/install.sh \
-    | bash
-
-
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 
 WORKDIR /var/www/html
 
-COPY . .
+# Melhor aproveitamento do cache do Docker
+COPY composer.json composer.lock ./
 
 RUN composer install \
     --no-interaction \
     --prefer-dist \
     --no-progress
 
-COPY docker/newrelic.ini /usr/local/etc/php/conf.d/newrelic.ini
-COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint
-RUN chmod +x /usr/local/bin/docker-entrypoint
+COPY . .
 
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint"]
+COPY docker/newrelic.ini /usr/local/etc/php/conf.d/newrelic.ini
+
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
