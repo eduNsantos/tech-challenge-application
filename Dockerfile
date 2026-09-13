@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y \
     && curl -fsSL https://download.newrelic.com/php_agent/release/newrelic-php5-12.10.0.39-linux.tar.gz -o /tmp/newrelic.tar.gz \
     && mkdir -p /tmp/newrelic \
     && tar -xzf /tmp/newrelic.tar.gz -C /tmp/newrelic --strip-components=1 \
-    && NR_INSTALL_SILENT=yes /tmp/newrelic/newrelic-install install \
+    && NR_INSTALL_SILENT=yes NR_INSTALL_KEY=${NEW_RELIC_LICENSE_KEY} /tmp/newrelic/newrelic-install install \
     && curl -Ls https://download.newrelic.com/install/newrelic-cli/scripts/install.sh | bash \
     && rm -rf /tmp/newrelic /tmp/newrelic.tar.gz \
     && rm -rf /var/lib/apt/lists/*
