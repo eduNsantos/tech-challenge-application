@@ -63,5 +63,8 @@ RUN composer install \
 COPY . .
 
 COPY docker/newrelic.ini /usr/local/etc/php/conf.d/newrelic.ini
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]

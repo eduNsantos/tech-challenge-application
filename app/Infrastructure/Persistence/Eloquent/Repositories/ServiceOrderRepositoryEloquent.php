@@ -20,6 +20,7 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
             'customer_id' => $serviceOrder->customerId,
             'vehicle_id' => $serviceOrder->vehicleId,
             'status' => $serviceOrder->status,
+            'status_started_at' => $serviceOrder->statusStartedAt,
             'services_total' => $serviceOrder->servicesTotal,
             'parts_total' => $serviceOrder->itemsTotal,
             'total_budget' => $serviceOrder->totalBudget,
@@ -95,6 +96,7 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
             totalBudget: (float) $model->total_budget,
             quoteSentAt: $model->quote_sent_at?->toDateTimeString(),
             quoteApprovedAt: $model->quote_approved_at?->toDateTimeString(),
+            statusStartedAt: $model->status_started_at?->toDateTimeString(),
             approvalToken: $model->approval_token
         );
     }
@@ -136,6 +138,7 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
                 'customer_id' => $serviceOrder->customerId,
                 'vehicle_id' => $serviceOrder->vehicleId,
                 'status' => $serviceOrder->status,
+                'status_started_at' => $serviceOrder->statusStartedAt,
                 'services_total' => $serviceOrder->servicesTotal,
                 'parts_total' => $serviceOrder->itemsTotal,
                 'total_budget' => $serviceOrder->totalBudget,
