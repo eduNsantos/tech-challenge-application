@@ -1,17 +1,10 @@
 FROM php:8.4-cli
 
-ARG NEW_RELIC_ENABLED=true
-ARG NEW_RELIC_APP_NAME="Tech Challenge POS"
-ARG NEW_RELIC_LICENSE_KEY
-ARG NEW_RELIC_DAEMON_ADDRESS=newrelic:31339
-ARG NEW_RELIC_KEY
+ARG NEW_RELIC_AGENT_VERSION=12.10.0.39
 
-ENV NEW_RELIC_ENABLED=${NEW_RELIC_ENABLED}
-ENV NEW_RELIC_APP_NAME=${NEW_RELIC_APP_NAME}
-ENV NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY:-${NEW_RELIC_KEY}}
-ENV NR_INSTALL_KEY=${NEW_RELIC_LICENSE_KEY:-${NEW_RELIC_KEY}}
-ENV NEW_RELIC_DAEMON_ADDRESS=${NEW_RELIC_DAEMON_ADDRESS}
-ENV NEW_RELIC_KEY=${NEW_RELIC_KEY}
+ENV NEW_RELIC_ENABLED=true
+ENV NEW_RELIC_APP_NAME="Tech Challenge POS"
+ENV NEW_RELIC_DAEMON_ADDRESS=newrelic:31339
 
 RUN apt-get update && apt-get install -y \
     git \
@@ -34,14 +27,28 @@ RUN apt-get update && apt-get install -y \
         bcmath \
         gd \
         zip \
-        opcache \
-    && curl -fsSL https://download.newrelic.com/php_agent/release/newrelic-php5-12.10.0.39-linux.tar.gz -o /tmp/newrelic.tar.gz \
-    && mkdir -p /tmp/newrelic \
-    && tar -xzf /tmp/newrelic.tar.gz -C /tmp/newrelic --strip-components=1 \
-    && NR_INSTALL_SILENT=yes NR_INSTALL_KEY=${NEW_RELIC_LICENSE_KEY} /tmp/newrelic/newrelic-install install \
-    && curl -Ls https://download.newrelic.com/install/newrelic-cli/scripts/install.sh | bash \
-    && rm -rf /tmp/newrelic /tmp/newrelic.tar.gz \
-    && rm -rf /var/lib/apt/lists/*
+        opcache
+
+
+RUN set -eux; \
+    cd /tmp; \
+    curl -fsSL \
+      "https://download.newrelic.com/php_agent/release/newrelic-php5-${NEW_RELIC_AGENT_VERSION}-linux.tar.gz" \
+      -o newrelic.tar.gz; \
+    mkdir newrelic; \
+    tar -xzf newrelic.tar.gz \
+      -C newrelic \
+      --strip-components=1; \
+    NR_INSTALL_SILENT=1 \
+      NR_INSTALL_USE_CP_NOT_LN=1 \
+      ./newrelic/newrelic-install install; \
+    rm -rf /tmp/newrelic /tmp/newrelic.tar.gz
+
+# New Relic CLI
+RUN curl -Ls \
+    https://download.newrelic.com/install/newrelic-cli/scripts/install.sh \
+    | bash
+
 
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 
