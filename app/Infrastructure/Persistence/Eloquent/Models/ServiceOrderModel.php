@@ -18,6 +18,7 @@ class ServiceOrderModel extends Model
         'customer_id',
         'vehicle_id',
         'status',
+        'status_started_at',
         'services_total',
         'parts_total',
         'total_budget',
@@ -32,6 +33,7 @@ class ServiceOrderModel extends Model
         'services_total' => 'float',
         'parts_total' => 'float',
         'total_budget' => 'float',
+        'status_started_at' => 'datetime',
         'quote_sent_at' => 'datetime',
         'quote_approved_at' => 'datetime',
     ];

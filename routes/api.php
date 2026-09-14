@@ -12,6 +12,21 @@ use App\Presentation\Http\Controllers\CustomerController;
 use App\Presentation\Http\Controllers\VehicleController;
 
 use App\Presentation\Http\Controllers\ServiceOrderApprovalController;
+use Illuminate\Support\Facades\Log;
+
+Route::get('/log_teste', function () {
+    Log::info('AAAA_LOG_INFO');
+
+    file_put_contents(
+        'php://stderr',
+        "BBBB_STDERR\n"
+    );
+
+    return response()->json([
+        'status' => 'ok',
+        'event' => 'log_teste',
+    ]);
+});
 
 Route::get('/service-order/approve/{token}', [ServiceOrderApprovalController::class, 'approve']);
 Route::get('/service-order/reject/{token}', [ServiceOrderApprovalController::class, 'reject']);

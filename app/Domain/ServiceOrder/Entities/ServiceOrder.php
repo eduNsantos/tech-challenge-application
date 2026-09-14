@@ -25,9 +25,14 @@ class ServiceOrder
         public float $totalBudget,
         public ?string $quoteSentAt,
         public ?string $quoteApprovedAt,
+        public ?string $statusStartedAt = null,
         public ?string $approvalToken = null
     ) {
         $this->assertStatus($status);
+
+        if ($this->statusStartedAt === null) {
+            $this->statusStartedAt = now()->toDateTimeString();
+        }
     }
 
     public static function create(
@@ -51,6 +56,7 @@ class ServiceOrder
             totalBudget: $servicesTotal + $itemsTotal,
             quoteSentAt: null,
             quoteApprovedAt: null,
+            statusStartedAt: now()->toDateTimeString(),
             approvalToken: null
         );
     }
@@ -74,11 +80,13 @@ class ServiceOrder
     {
         $this->assertStatus($status);
         $this->status = $status;
+        $this->statusStartedAt = now()->toDateTimeString();
     }
 
     public function sendQuoteForApproval(): void
     {
         $this->status = self::STATUS_AGUARDANDO_APROVACAO;
+        $this->statusStartedAt = now()->toDateTimeString();
         $this->quoteSentAt = now()->toDateTimeString();
         $this->approvalToken = bin2hex(random_bytes(32));
     }
@@ -86,6 +94,7 @@ class ServiceOrder
     public function approveQuote(): void
     {
         $this->status = self::STATUS_EM_EXECUCAO;
+        $this->statusStartedAt = now()->toDateTimeString();
         $this->quoteApprovedAt = now()->toDateTimeString();
         $this->approvalToken = null;
     }
@@ -93,6 +102,7 @@ class ServiceOrder
     public function rejectQuote(): void
     {
         $this->status = self::STATUS_EM_DIAGNOSTICO;
+        $this->statusStartedAt = now()->toDateTimeString();
         $this->approvalToken = null;
     }
 

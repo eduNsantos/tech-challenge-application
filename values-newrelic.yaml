@@ -1,0 +1,28 @@
+# Configuracao base do nri-bundle (New Relic Kubernetes integration).
+# A licenca (global.licenseKey) NAO fica neste arquivo: e injetada em tempo de
+# deploy via --set, lida a partir do Secret "app-secret" ja aplicado no cluster.
+global:
+  cluster: postech-minikube
+  lowDataMode: true
+
+newrelic-infrastructure:
+  enabled: true
+  privileged: true
+
+kube-state-metrics:
+  enabled: true
+
+nri-metadata-injection:
+  enabled: true
+
+newrelic-logging:
+  enabled: true
+
+newrelic-prometheus-agent:
+  enabled: false
+
+newrelic-pixie:
+  enabled: false
+
+pixie-chart:
+  enabled: false
