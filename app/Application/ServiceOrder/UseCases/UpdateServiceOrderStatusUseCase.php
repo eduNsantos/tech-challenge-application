@@ -7,6 +7,7 @@ use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrder\Events\ServiceOrderStatusChanged;
 use App\Support\Observability\BusinessTelemetry;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class UpdateServiceOrderStatusUseCase
@@ -25,9 +26,9 @@ class UpdateServiceOrderStatusUseCase
         $oldStatus = $serviceOrder->status;
         $previousStatusStartedAt = $serviceOrder->statusStartedAt;
 
-        $statusDurationSeconds = $previousStatusStartedAt
-            ? max(0, now()->diffInSeconds(new \DateTimeImmutable($previousStatusStartedAt)))
-            : null;
+        $previous = Carbon::parse($previousStatusStartedAt);
+
+        $statusDurationSeconds = $previous->diffInSeconds(now());
 
         Log::info('Updating service order status', [
             'service_order_id' => $serviceOrder->id ?? null,
