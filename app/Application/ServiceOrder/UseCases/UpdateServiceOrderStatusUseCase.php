@@ -7,6 +7,8 @@ use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrder\Events\ServiceOrderStatusChanged;
 use App\Support\Observability\BusinessTelemetry;
+use Illuminate\Support\Facades\Log;
+
 class UpdateServiceOrderStatusUseCase
 {
     public function __construct(
@@ -26,6 +28,15 @@ class UpdateServiceOrderStatusUseCase
         $statusDurationSeconds = $previousStatusStartedAt
             ? max(0, now()->diffInSeconds(new \DateTimeImmutable($previousStatusStartedAt)))
             : null;
+
+        Log::info('Updating service order status', [
+            'service_order_id' => $serviceOrder->id ?? null,
+            'old_status' => $oldStatus,
+            'new_status' => $dto->status,
+            'previous_status_started_at' => $previousStatusStartedAt,
+            'status_started_at' => now()->toDateTimeString(),
+            'status_duration_seconds' => $statusDurationSeconds,
+        ]);
 
         $serviceOrder->changeStatus($dto->status);
 
