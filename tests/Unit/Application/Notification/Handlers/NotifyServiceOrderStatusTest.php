@@ -42,7 +42,7 @@ class NotifyServiceOrderStatusTest extends TestCase
             vehicleId: '456',
             services: [],
             items: [],
-            status: ServiceOrder::STATUS_RECEBIDA,
+            status: ServiceOrder::STATUS_FINALIZADA,
             servicesTotal: 0,
             itemsTotal: 0,
             totalBudget: 0,
