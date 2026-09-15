@@ -72,6 +72,22 @@ class BusinessTelemetry
 
         Log::info('service_order_status_timeline', array_merge($payload, $context));
 
+        if (function_exists('newrelic_record_custom_event')) {
+            newrelic_record_custom_event('ServiceOrderStatusDuration', [
+                'service_order_id' => $serviceOrder->id ?? null,
+                'customer_id' => $serviceOrder->customerId ?? null,
+                'vehicle_id' => $serviceOrder->vehicleId ?? null,
+                'previous_status' => $previousStatus,
+                'new_status' => $newStatus,
+                'status_duration_seconds' => (int) ($context['status_duration_seconds'] ?? 0),
+                'previous_status_started_at' => $context['previous_status_started_at'] ?? null,
+                'new_status_started_at' => $serviceOrder->statusStartedAt ?? null,
+                'request_id' => self::requestContextValue('request_id'),
+                'namespace_name' => env('POD_NAMESPACE', 'unknown'),
+                'pod_name' => gethostname(),
+            ]);
+        }
+
         if (function_exists('newrelic_record_metric')) {
             newrelic_record_metric('Custom/ServiceOrder/StatusTransition/' . strtoupper($newStatus), 1);
             newrelic_record_metric('Custom/ServiceOrder/StatusDuration/' . strtoupper($newStatus), (float) ($context['status_duration_seconds'] ?? 0));

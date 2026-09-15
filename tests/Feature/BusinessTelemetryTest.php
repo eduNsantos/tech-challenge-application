@@ -104,6 +104,35 @@ class BusinessTelemetryTest extends TestCase
         );
     }
 
+    public function test_business_telemetry_records_custom_event_for_status_duration(): void
+    {
+        $GLOBALS['__nr_custom_events'] = [];
+
+        $serviceOrder = (object) [
+            'id' => 'os-321',
+            'customerId' => 'customer-3',
+            'vehicleId' => 'vehicle-3',
+            'status' => 'em_execucao',
+            'statusStartedAt' => '2026-09-13T09:00:00+00:00',
+        ];
+
+        \App\Support\Observability\BusinessTelemetry::statusTransition(
+            'em_diagnostico',
+            'em_execucao',
+            $serviceOrder,
+            [
+                'status_duration_seconds' => 1800,
+                'previous_status_started_at' => '2026-09-13T08:30:00+00:00',
+            ]
+        );
+
+        $this->assertCount(1, $GLOBALS['__nr_custom_events']);
+        $this->assertSame('ServiceOrderStatusDuration', $GLOBALS['__nr_custom_events'][0]['name']);
+        $this->assertSame('em_diagnostico', $GLOBALS['__nr_custom_events'][0]['attributes']['previous_status']);
+        $this->assertSame('em_execucao', $GLOBALS['__nr_custom_events'][0]['attributes']['new_status']);
+        $this->assertSame(1800, $GLOBALS['__nr_custom_events'][0]['attributes']['status_duration_seconds']);
+    }
+
     public function test_business_telemetry_records_custom_event_for_service_order_creation(): void
     {
         $GLOBALS['__nr_custom_events'] = [];
