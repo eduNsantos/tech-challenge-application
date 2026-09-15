@@ -35,6 +35,20 @@ Route::get('/up', function () {
     ]);
 });
 
+Route::get('/debug/service-order/failure', function () {
+    if (function_exists('newrelic_record_metric')) {
+        newrelic_record_metric('Custom/ServiceOrder/Failure', 1);
+        newrelic_add_custom_parameter('service_order_test', 'manual_trigger');
+        newrelic_notice_error('Manual trigger: service order processing failure test');
+    }
+
+    return response()->json([
+        'status' => 'ok',
+        'metric' => 'Custom/ServiceOrder/Failure',
+        'trigger' => 'manual_trigger',
+    ]);
+});
+
 Route::get('/service-order/approve/{token}', [ServiceOrderApprovalController::class, 'approve']);
 Route::get('/service-order/reject/{token}', [ServiceOrderApprovalController::class, 'reject']);
 Route::post('/service-order/approval/{token}', [ServiceOrderApprovalController::class, 'handle']);
