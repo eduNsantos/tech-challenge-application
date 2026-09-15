@@ -17,7 +17,7 @@ services:
       - app_network
     command: "php artisan serve --host=0.0.0.0"
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8000/up"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
       interval: 5s
       timeout: 3s
       retries: 15

@@ -29,7 +29,6 @@ $recordApiExceptionMetric = function (Throwable $e, int $status, Request $reques
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         api: __DIR__.'/../routes/api.php',
-        health: '/health',
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\RequestCorrelationMiddleware::class);
