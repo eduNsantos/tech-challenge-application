@@ -1,15 +1,4 @@
 <?php
-
-namespace {
-    function newrelic_record_custom_event(string $name, array $attributes = []): void
-    {
-        $GLOBALS['__nr_custom_events'][] = [
-            'name' => $name,
-            'attributes' => $attributes,
-        ];
-    }
-}
-
 namespace Tests\Feature {
 
 use App\Application\ServiceOrder\DTOs\UpdateServiceOrderStatusDTO;
