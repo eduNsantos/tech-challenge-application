@@ -5,6 +5,9 @@ use App\Application\ServiceOrder\DTOs\UpdateServiceOrderStatusDTO;
 use App\Application\ServiceOrder\UseCases\UpdateServiceOrderStatusUseCase;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
+use App\Support\Observability\BusinessTelemetry;
+use App\Support\Observability\NewRelicTelemetry;
+use App\Support\Observability\TelemetryInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Mockery;
@@ -12,6 +15,13 @@ use Tests\TestCase;
 
 class BusinessTelemetryTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        BusinessTelemetry::setTelemetry(new NewRelicTelemetry());
+
+        parent::tearDown();
+    }
+
     public function test_business_telemetry_logs_service_order_events(): void
     {
         Log::spy();
@@ -95,7 +105,23 @@ class BusinessTelemetryTest extends TestCase
 
     public function test_business_telemetry_records_custom_event_for_status_duration(): void
     {
-        $GLOBALS['__nr_custom_events'] = [];
+        $telemetry = Mockery::mock(TelemetryInterface::class);
+        $telemetry
+            ->shouldReceive('customEvent')
+            ->once()
+            ->with(
+                'ServiceOrderStatusDuration',
+                Mockery::on(function (array $attributes) {
+                    return $attributes['previous_status'] === 'em_diagnostico'
+                        && $attributes['new_status'] === 'em_execucao'
+                        && $attributes['status_duration_seconds'] === 1800;
+                })
+            );
+        $telemetry
+            ->shouldReceive('metric')
+            ->twice();
+
+        BusinessTelemetry::setTelemetry($telemetry);
 
         $serviceOrder = (object) [
             'id' => 'os-321',
@@ -105,7 +131,7 @@ class BusinessTelemetryTest extends TestCase
             'statusStartedAt' => '2026-09-13T09:00:00+00:00',
         ];
 
-        \App\Support\Observability\BusinessTelemetry::statusTransition(
+        BusinessTelemetry::statusTransition(
             'em_diagnostico',
             'em_execucao',
             $serviceOrder,
@@ -114,32 +140,48 @@ class BusinessTelemetryTest extends TestCase
                 'previous_status_started_at' => '2026-09-13T08:30:00+00:00',
             ]
         );
-
-        $this->assertCount(1, $GLOBALS['__nr_custom_events']);
-        $this->assertSame('ServiceOrderStatusDuration', $GLOBALS['__nr_custom_events'][0]['name']);
-        $this->assertSame('em_diagnostico', $GLOBALS['__nr_custom_events'][0]['attributes']['previous_status']);
-        $this->assertSame('em_execucao', $GLOBALS['__nr_custom_events'][0]['attributes']['new_status']);
-        $this->assertSame(1800, $GLOBALS['__nr_custom_events'][0]['attributes']['status_duration_seconds']);
     }
 
     public function test_business_telemetry_records_custom_event_for_healthcheck(): void
     {
-        $GLOBALS['__nr_custom_events'] = [];
+        $telemetry = Mockery::mock(TelemetryInterface::class);
+        $telemetry
+            ->shouldReceive('customEvent')
+            ->once()
+            ->with(
+                'ServiceHealth',
+                Mockery::on(function (array $attributes) {
+                    return $attributes['status'] === 'ok'
+                        && $attributes['uptime_seconds'] === 3600;
+                })
+            );
+        $telemetry
+            ->shouldReceive('metric')
+            ->twice();
 
-        \App\Support\Observability\BusinessTelemetry::healthCheck('ok', [
+        BusinessTelemetry::setTelemetry($telemetry);
+
+        BusinessTelemetry::healthCheck('ok', [
             'service' => 'tech-challenge-application',
             'uptime_seconds' => 3600,
         ]);
-
-        $this->assertCount(1, $GLOBALS['__nr_custom_events']);
-        $this->assertSame('ServiceHealth', $GLOBALS['__nr_custom_events'][0]['name']);
-        $this->assertSame('ok', $GLOBALS['__nr_custom_events'][0]['attributes']['status']);
-        $this->assertSame(3600, $GLOBALS['__nr_custom_events'][0]['attributes']['uptime_seconds']);
     }
 
     public function test_business_telemetry_records_custom_event_for_service_order_creation(): void
     {
-        $GLOBALS['__nr_custom_events'] = [];
+        $telemetry = Mockery::mock(TelemetryInterface::class);
+        $telemetry
+            ->shouldReceive('customEvent')
+            ->once()
+            ->with(
+                'ServiceOrderCreated',
+                Mockery::on(function (array $attributes) {
+                    return $attributes['service_order_id'] === 'os-789'
+                        && $attributes['customer_id'] === 'customer-9';
+                })
+            );
+
+        BusinessTelemetry::setTelemetry($telemetry);
 
         $serviceOrder = (object) [
             'id' => 'os-789',
@@ -148,21 +190,31 @@ class BusinessTelemetryTest extends TestCase
             'status' => 'em_aberto',
         ];
 
-        \App\Support\Observability\BusinessTelemetry::serviceOrderCreated($serviceOrder, [
+        BusinessTelemetry::serviceOrderCreated($serviceOrder, [
             'send_quote' => true,
         ]);
-
-        $this->assertCount(1, $GLOBALS['__nr_custom_events']);
-        $this->assertSame('ServiceOrderCreated', $GLOBALS['__nr_custom_events'][0]['name']);
-        $this->assertSame('os-789', $GLOBALS['__nr_custom_events'][0]['attributes']['service_order_id']);
-        $this->assertSame('customer-9', $GLOBALS['__nr_custom_events'][0]['attributes']['customer_id']);
     }
 
     public function test_business_telemetry_records_custom_event_for_service_order_error(): void
     {
-        $GLOBALS['__nr_custom_events'] = [];
+        $telemetry = Mockery::mock(TelemetryInterface::class);
+        $telemetry
+            ->shouldReceive('customEvent')
+            ->once()
+            ->with(
+                'ServiceOrderError',
+                Mockery::on(function (array $attributes) {
+                    return $attributes['service_order_id'] === 'os-999'
+                        && $attributes['error'] === 'Cliente nao encontrado.';
+                })
+            );
+        $telemetry
+            ->shouldReceive('noticeError')
+            ->once();
 
-        \App\Support\Observability\BusinessTelemetry::serviceOrderError(
+        BusinessTelemetry::setTelemetry($telemetry);
+
+        BusinessTelemetry::serviceOrderError(
             'Cliente nao encontrado.',
             [
                 'service_order_id' => 'os-999',
@@ -173,11 +225,6 @@ class BusinessTelemetryTest extends TestCase
                 'request_method' => 'POST',
             ]
         );
-
-        $this->assertCount(1, $GLOBALS['__nr_custom_events']);
-        $this->assertSame('ServiceOrderError', $GLOBALS['__nr_custom_events'][0]['name']);
-        $this->assertSame('os-999', $GLOBALS['__nr_custom_events'][0]['attributes']['service_order_id']);
-        $this->assertSame('Cliente nao encontrado.', $GLOBALS['__nr_custom_events'][0]['attributes']['error']);
     }
 }
 
