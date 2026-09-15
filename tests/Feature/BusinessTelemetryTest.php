@@ -133,6 +133,21 @@ class BusinessTelemetryTest extends TestCase
         $this->assertSame(1800, $GLOBALS['__nr_custom_events'][0]['attributes']['status_duration_seconds']);
     }
 
+    public function test_business_telemetry_records_custom_event_for_healthcheck(): void
+    {
+        $GLOBALS['__nr_custom_events'] = [];
+
+        \App\Support\Observability\BusinessTelemetry::healthCheck('ok', [
+            'service' => 'tech-challenge-application',
+            'uptime_seconds' => 3600,
+        ]);
+
+        $this->assertCount(1, $GLOBALS['__nr_custom_events']);
+        $this->assertSame('ServiceHealth', $GLOBALS['__nr_custom_events'][0]['name']);
+        $this->assertSame('ok', $GLOBALS['__nr_custom_events'][0]['attributes']['status']);
+        $this->assertSame(3600, $GLOBALS['__nr_custom_events'][0]['attributes']['uptime_seconds']);
+    }
+
     public function test_business_telemetry_records_custom_event_for_service_order_creation(): void
     {
         $GLOBALS['__nr_custom_events'] = [];

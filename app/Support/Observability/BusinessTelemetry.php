@@ -94,6 +94,29 @@ class BusinessTelemetry
         }
     }
 
+    public static function healthCheck(string $status, array $context = []): void
+    {
+        $attributes = [
+            'status' => $status,
+            'service' => $context['service'] ?? 'tech-challenge-application',
+            'uptime_seconds' => (int) ($context['uptime_seconds'] ?? 0),
+            'request_id' => self::requestContextValue('request_id'),
+            'namespace_name' => env('POD_NAMESPACE', 'unknown'),
+            'pod_name' => gethostname(),
+        ];
+
+        if (function_exists('newrelic_record_custom_event')) {
+            newrelic_record_custom_event('ServiceHealth', $attributes);
+        }
+
+        if (function_exists('newrelic_record_metric')) {
+            newrelic_record_metric('Custom/Service/Health', $status === 'ok' ? 1 : 0);
+            newrelic_record_metric('Custom/Service/UptimeSeconds', (float) $attributes['uptime_seconds']);
+        }
+
+        Log::info('service_health_check', $attributes);
+    }
+
     public static function serviceOrderCreated(object $serviceOrder, array $context = []): void
     {
         $attributes = [

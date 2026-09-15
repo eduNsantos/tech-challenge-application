@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Observability\BusinessTelemetry;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Presentation\Http\Controllers\ServiceOrderController;
@@ -29,9 +30,34 @@ Route::get('/log_teste', function () {
 });
 
 Route::get('/up', function () {
+    $startedAt = defined('LARAVEL_START') ? LARAVEL_START : ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true));
+    $uptimeSeconds = max(0, (int) (microtime(true) - (float) $startedAt));
+
+    BusinessTelemetry::healthCheck('ok', [
+        'service' => 'tech-challenge-application',
+        'uptime_seconds' => $uptimeSeconds,
+    ]);
+
     return response()->json([
         'status' => 'ok',
         'service' => 'tech-challenge-application',
+        'uptime_seconds' => $uptimeSeconds,
+    ]);
+});
+
+Route::get('/health', function () {
+    $startedAt = defined('LARAVEL_START') ? LARAVEL_START : ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true));
+    $uptimeSeconds = max(0, (int) (microtime(true) - (float) $startedAt));
+
+    BusinessTelemetry::healthCheck('ok', [
+        'service' => 'tech-challenge-application',
+        'uptime_seconds' => $uptimeSeconds,
+    ]);
+
+    return response()->json([
+        'status' => 'ok',
+        'service' => 'tech-challenge-application',
+        'uptime_seconds' => $uptimeSeconds,
     ]);
 });
 
