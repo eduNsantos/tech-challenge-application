@@ -6,6 +6,18 @@ use Illuminate\Support\Facades\Log;
 
 class BusinessTelemetry
 {
+    private static ?TelemetryInterface $telemetry = null;
+
+    public static function setTelemetry(TelemetryInterface $telemetry): void
+    {
+        self::$telemetry = $telemetry;
+    }
+
+    public static function telemetry(): TelemetryInterface
+    {
+        return self::$telemetry ??= new NewRelicTelemetry();
+    }
+
     private static function requestContextValue(string $key, mixed $fallback = null): mixed
     {
         $request = function_exists('request') ? request() : null;
@@ -72,26 +84,22 @@ class BusinessTelemetry
 
         Log::info('service_order_status_timeline', array_merge($payload, $context));
 
-        if (function_exists('newrelic_record_custom_event')) {
-            newrelic_record_custom_event('ServiceOrderStatusDuration', [
-                'service_order_id' => $serviceOrder->id ?? null,
-                'customer_id' => $serviceOrder->customerId ?? null,
-                'vehicle_id' => $serviceOrder->vehicleId ?? null,
-                'previous_status' => $previousStatus,
-                'new_status' => $newStatus,
-                'status_duration_seconds' => (int) ($context['status_duration_seconds'] ?? 0),
-                'previous_status_started_at' => $context['previous_status_started_at'] ?? null,
-                'new_status_started_at' => $serviceOrder->statusStartedAt ?? null,
-                'request_id' => self::requestContextValue('request_id'),
-                'namespace_name' => env('POD_NAMESPACE', 'unknown'),
-                'pod_name' => gethostname(),
-            ]);
-        }
+        self::telemetry()->customEvent('ServiceOrderStatusDuration', [
+            'service_order_id' => $serviceOrder->id ?? null,
+            'customer_id' => $serviceOrder->customerId ?? null,
+            'vehicle_id' => $serviceOrder->vehicleId ?? null,
+            'previous_status' => $previousStatus,
+            'new_status' => $newStatus,
+            'status_duration_seconds' => (int) ($context['status_duration_seconds'] ?? 0),
+            'previous_status_started_at' => $context['previous_status_started_at'] ?? null,
+            'new_status_started_at' => $serviceOrder->statusStartedAt ?? null,
+            'request_id' => self::requestContextValue('request_id'),
+            'namespace_name' => env('POD_NAMESPACE', 'unknown'),
+            'pod_name' => gethostname(),
+        ]);
 
-        if (function_exists('newrelic_record_metric')) {
-            newrelic_record_metric('Custom/ServiceOrder/StatusTransition/' . strtoupper($newStatus), 1);
-            newrelic_record_metric('Custom/ServiceOrder/StatusDuration/' . strtoupper($newStatus), (float) ($context['status_duration_seconds'] ?? 0));
-        }
+        self::telemetry()->metric('Custom/ServiceOrder/StatusTransition/' . strtoupper($newStatus), 1);
+        self::telemetry()->metric('Custom/ServiceOrder/StatusDuration/' . strtoupper($newStatus), (float) ($context['status_duration_seconds'] ?? 0));
     }
 
     public static function healthCheck(string $status, array $context = []): void
@@ -105,14 +113,10 @@ class BusinessTelemetry
             'pod_name' => gethostname(),
         ];
 
-        if (function_exists('newrelic_record_custom_event')) {
-            newrelic_record_custom_event('ServiceHealth', $attributes);
-        }
+        self::telemetry()->customEvent('ServiceHealth', $attributes);
 
-        if (function_exists('newrelic_record_metric')) {
-            newrelic_record_metric('Custom/Service/Health', $status === 'ok' ? 1 : 0);
-            newrelic_record_metric('Custom/Service/UptimeSeconds', (float) $attributes['uptime_seconds']);
-        }
+        self::telemetry()->metric('Custom/Service/Health', $status === 'ok' ? 1 : 0);
+        self::telemetry()->metric('Custom/Service/UptimeSeconds', (float) $attributes['uptime_seconds']);
 
         Log::info('service_health_check', $attributes);
     }
@@ -130,9 +134,7 @@ class BusinessTelemetry
             'pod_name' => gethostname(),
         ];
 
-        if (function_exists('newrelic_record_custom_event')) {
-            newrelic_record_custom_event('ServiceOrderCreated', $attributes);
-        }
+        self::telemetry()->customEvent('ServiceOrderCreated', $attributes);
 
         self::serviceOrder('service_order_created', $serviceOrder, $context);
     }
@@ -152,13 +154,8 @@ class BusinessTelemetry
             'pod_name' => gethostname(),
         ];
 
-        if (function_exists('newrelic_record_custom_event')) {
-            newrelic_record_custom_event('ServiceOrderError', $attributes);
-        }
-
-        if (function_exists('newrelic_notice_error')) {
-            newrelic_notice_error('Service order error: ' . $message, new \RuntimeException($message));
-        }
+        self::telemetry()->customEvent('ServiceOrderError', $attributes);
+        self::telemetry()->noticeError('Service order error: ' . $message, new \RuntimeException($message));
 
         Log::warning('service_order_error', $attributes);
     }
@@ -178,21 +175,14 @@ class BusinessTelemetry
         if ($success) {
             Log::info('integration_event', array_merge($payload, $context));
 
-            if (function_exists('newrelic_record_metric')) {
-                newrelic_record_metric('Custom/Integration/' . strtoupper(str_replace(['-', '_', ' '], '', $name)) . '/Success', 1);
-            }
+            self::telemetry()->metric('Custom/Integration/' . strtoupper(str_replace(['-', '_', ' '], '', $name)) . '/Success', 1);
 
             return;
         }
 
         Log::warning('integration_event', array_merge($payload, $context));
 
-        if (function_exists('newrelic_record_metric')) {
-            newrelic_record_metric('Custom/Integration/' . strtoupper(str_replace(['-', '_', ' '], '', $name)) . '/Failure', 1);
-        }
-
-        if (function_exists('newrelic_notice_error')) {
-            newrelic_notice_error('Integration failure: ' . $name, new \RuntimeException($context['error'] ?? 'Integration failure'));
-        }
+        self::telemetry()->metric('Custom/Integration/' . strtoupper(str_replace(['-', '_', ' '], '', $name)) . '/Failure', 1);
+        self::telemetry()->noticeError('Integration failure: ' . $name, new \RuntimeException($context['error'] ?? 'Integration failure'));
     }
 }
