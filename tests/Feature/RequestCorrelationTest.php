@@ -15,4 +15,12 @@ class RequestCorrelationTest extends TestCase
         $response->assertOk();
         $this->assertSame('req-123', $response->headers->get('X-Request-Id'));
     }
+
+    public function test_health_endpoint_is_available(): void
+    {
+        $response = $this->get('/health');
+
+        $response->assertOk();
+        $this->assertSame('ok', $response->json('status'));
+    }
 }

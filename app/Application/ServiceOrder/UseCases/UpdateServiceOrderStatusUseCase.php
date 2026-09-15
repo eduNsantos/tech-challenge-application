@@ -28,7 +28,7 @@ class UpdateServiceOrderStatusUseCase
 
         $previous = Carbon::parse($previousStatusStartedAt);
 
-        $statusDurationSeconds = $previous->diffInSeconds(now());
+        $statusDurationSeconds = (int) $previous->diffInSeconds(now());
 
         Log::info('Updating service order status', [
             'service_order_id' => $serviceOrder->id ?? null,
