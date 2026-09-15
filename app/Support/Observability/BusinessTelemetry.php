@@ -6,8 +6,31 @@ use Illuminate\Support\Facades\Log;
 
 class BusinessTelemetry
 {
+    private static function requestContextValue(string $key, mixed $fallback = null): mixed
+    {
+        $request = function_exists('request') ? request() : null;
+
+        if (!$request) {
+            return $fallback;
+        }
+
+        $attributes = method_exists($request, 'attributes') ? $request->attributes : null;
+
+        if ($attributes && $attributes->has($key)) {
+            return $attributes->get($key);
+        }
+
+        if (method_exists($request, 'header')) {
+            return $request->header($key) ?? $request->headers->get($key) ?? $fallback;
+        }
+
+        return $fallback;
+    }
+
     public static function serviceOrder(string $event, object $serviceOrder, array $context = []): void
     {
+        $request = function_exists('request') ? request() : null;
+
         $payload = [
             'event' => $event,
             'service_order_id' => $serviceOrder->id ?? null,
@@ -15,11 +38,11 @@ class BusinessTelemetry
             'vehicle_id' => $serviceOrder->vehicleId ?? null,
             'status' => $serviceOrder->status ?? null,
             'status_started_at' => $serviceOrder->statusStartedAt ?? null,
-            'request_id' => request()->attributes->get('request_id') ?? request()->header('X-Request-Id'),
-            'request_method' => request()->method(),
-            'request_path' => request()->path(),
-            'request_ip' => request()->ip(),
-            'request_user_agent' => request()->userAgent(),
+            'request_id' => self::requestContextValue('request_id'),
+            'request_method' => $request?->method() ?? null,
+            'request_path' => $request?->path() ?? null,
+            'request_ip' => $request?->ip() ?? null,
+            'request_user_agent' => $request?->userAgent() ?? null,
             'namespace_name' => env('POD_NAMESPACE', 'unknown'),
             'pod_name' => gethostname(),
         ];
@@ -29,6 +52,10 @@ class BusinessTelemetry
 
     public static function statusTransition(string $previousStatus, string $newStatus, object $serviceOrder, array $context = []): void
     {
+        if (isset($context['status_duration_seconds'])) {
+            $context['status_duration_seconds'] = (int) $context['status_duration_seconds'];
+        }
+
         $payload = [
             'event' => 'service_order_status_timeline',
             'service_order_id' => $serviceOrder->id ?? null,
@@ -38,7 +65,7 @@ class BusinessTelemetry
             'status' => $newStatus,
             'status_started_at' => $serviceOrder->statusStartedAt ?? null,
             'previous_status_started_at' => $context['previous_status_started_at'] ?? null,
-            'request_id' => request()->attributes->get('request_id') ?? request()->header('X-Request-Id'),
+            'request_id' => self::requestContextValue('request_id'),
             'namespace_name' => env('POD_NAMESPACE', 'unknown'),
             'pod_name' => gethostname(),
         ];

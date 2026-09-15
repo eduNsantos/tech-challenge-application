@@ -21,6 +21,14 @@ class SendServiceOrderStatusNotification
         $serviceOrder = $event->serviceOrder;
         $oldStatus = $event->oldStatus;
         $newStatus = $event->serviceOrder->status;
+
+        if (!in_array($newStatus, [
+            \App\Domain\ServiceOrder\Entities\ServiceOrder::STATUS_FINALIZADA,
+            \App\Domain\ServiceOrder\Entities\ServiceOrder::STATUS_ENTREGUE,
+        ], true)) {
+            return;
+        }
+
         BusinessTelemetry::serviceOrder('service_order_status_notification_started', $serviceOrder, [
             'old_status' => $oldStatus,
             'new_status' => $newStatus,
