@@ -5,7 +5,6 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Auth\AuthenticationException;
-use Illuminate\Validation\ValidationException;
 
 $recordApiExceptionMetric = function (Throwable $e, int $status, Request $request): void {
     if (function_exists('newrelic_add_custom_parameter')) {
@@ -17,6 +16,18 @@ $recordApiExceptionMetric = function (Throwable $e, int $status, Request $reques
 
     if (function_exists('newrelic_notice_error')) {
         newrelic_notice_error($e->getMessage() ?: 'API error', $e);
+    }
+
+    if (function_exists('newrelic_record_custom_event')) {
+        newrelic_record_custom_event('ServiceOrderError', [
+            'error' => $e->getMessage() ?: 'API error',
+            'error_type' => class_basename($e),
+            'request_path' => $request->path(),
+            'request_method' => $request->method(),
+            'service_order_id' => $request->route('id') ?? null,
+            'customer_id' => $request->input('customer_id') ?? null,
+            'vehicle_id' => $request->input('vehicle_id') ?? null,
+        ]);
     }
 
     if (function_exists('newrelic_record_metric')) {

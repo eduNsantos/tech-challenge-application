@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Observability\BusinessTelemetry;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Presentation\Http\Controllers\ServiceOrderController;
@@ -29,10 +30,63 @@ Route::get('/log_teste', function () {
 });
 
 Route::get('/up', function () {
+    $startedAt = defined('LARAVEL_START') ? LARAVEL_START : ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true));
+    $uptimeSeconds = max(0, (int) (microtime(true) - (float) $startedAt));
+
+    BusinessTelemetry::healthCheck('ok', [
+        'service' => 'tech-challenge-application',
+        'uptime_seconds' => $uptimeSeconds,
+    ]);
+
     return response()->json([
         'status' => 'ok',
         'service' => 'tech-challenge-application',
+        'uptime_seconds' => $uptimeSeconds,
     ]);
+});
+
+Route::get('/health', function () {
+    $startedAt = defined('LARAVEL_START') ? LARAVEL_START : ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true));
+    $uptimeSeconds = max(0, (int) (microtime(true) - (float) $startedAt));
+
+    BusinessTelemetry::healthCheck('ok', [
+        'service' => 'tech-challenge-application',
+        'uptime_seconds' => $uptimeSeconds,
+    ]);
+
+    return response()->json([
+        'status' => 'ok',
+        'service' => 'tech-challenge-application',
+        'uptime_seconds' => $uptimeSeconds,
+    ]);
+});
+
+Route::get('/debug/service-order/failure', function () {
+    $result = [
+        'extension_loaded' => extension_loaded('newrelic'),
+        'record_metric' => function_exists('newrelic_record_metric'),
+        'custom_event' => function_exists('newrelic_record_custom_event'),
+        'notice_error' => function_exists('newrelic_notice_error'),
+    ];
+
+    if (function_exists('newrelic_record_metric')) {
+        newrelic_record_metric('Custom/ServiceOrder/Failure', 1);
+    }
+
+    if (function_exists('newrelic_record_custom_event')) {
+        newrelic_record_custom_event('ServiceOrderDebug', [
+            'type' => 'failure',
+            'source' => 'manual_trigger',
+        ]);
+    }
+
+    if (function_exists('newrelic_notice_error')) {
+        newrelic_notice_error(
+            'Manual trigger: service order processing failure test'
+        );
+    }
+
+    return response()->json($result);
 });
 
 Route::get('/service-order/approve/{token}', [ServiceOrderApprovalController::class, 'approve']);
