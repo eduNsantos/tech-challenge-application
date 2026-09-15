@@ -28,6 +28,13 @@ Route::get('/log_teste', function () {
     ]);
 });
 
+Route::get('/up', function () {
+    return response()->json([
+        'status' => 'ok',
+        'service' => 'tech-challenge-application',
+    ]);
+});
+
 Route::get('/service-order/approve/{token}', [ServiceOrderApprovalController::class, 'approve']);
 Route::get('/service-order/reject/{token}', [ServiceOrderApprovalController::class, 'reject']);
 Route::post('/service-order/approval/{token}', [ServiceOrderApprovalController::class, 'handle']);
