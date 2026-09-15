@@ -78,6 +78,52 @@ class BusinessTelemetry
         }
     }
 
+    public static function serviceOrderCreated(object $serviceOrder, array $context = []): void
+    {
+        $attributes = [
+            'service_order_id' => $serviceOrder->id ?? null,
+            'customer_id' => $serviceOrder->customerId ?? null,
+            'vehicle_id' => $serviceOrder->vehicleId ?? null,
+            'status' => $serviceOrder->status ?? null,
+            'send_quote' => $context['send_quote'] ?? false,
+            'request_id' => self::requestContextValue('request_id'),
+            'namespace_name' => env('POD_NAMESPACE', 'unknown'),
+            'pod_name' => gethostname(),
+        ];
+
+        if (function_exists('newrelic_record_custom_event')) {
+            newrelic_record_custom_event('ServiceOrderCreated', $attributes);
+        }
+
+        self::serviceOrder('service_order_created', $serviceOrder, $context);
+    }
+
+    public static function serviceOrderError(string $message, array $context = []): void
+    {
+        $attributes = [
+            'service_order_id' => $context['service_order_id'] ?? null,
+            'customer_id' => $context['customer_id'] ?? null,
+            'vehicle_id' => $context['vehicle_id'] ?? null,
+            'error' => $message,
+            'error_type' => $context['error_type'] ?? 'DomainException',
+            'request_id' => self::requestContextValue('request_id'),
+            'request_path' => $context['request_path'] ?? null,
+            'request_method' => $context['request_method'] ?? null,
+            'namespace_name' => env('POD_NAMESPACE', 'unknown'),
+            'pod_name' => gethostname(),
+        ];
+
+        if (function_exists('newrelic_record_custom_event')) {
+            newrelic_record_custom_event('ServiceOrderError', $attributes);
+        }
+
+        if (function_exists('newrelic_notice_error')) {
+            newrelic_notice_error('Service order error: ' . $message, new \RuntimeException($message));
+        }
+
+        Log::warning('service_order_error', $attributes);
+    }
+
     public static function integration(string $name, bool $success, array $context = []): void
     {
         $payload = [
