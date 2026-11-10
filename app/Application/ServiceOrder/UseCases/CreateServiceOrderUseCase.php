@@ -15,6 +15,7 @@ use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
 use App\Support\Observability\BusinessTelemetry;
 use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
+use App\Infrastructure\Messaging\ServiceOrderCreatedOutbox;
 use Illuminate\Support\Facades\DB;
 
 class CreateServiceOrderUseCase
@@ -26,7 +27,8 @@ class CreateServiceOrderUseCase
         private ItemRepositoryInterface $itemRepository,
         private ServiceOrderItemInterface $serviceOrderItemRepository,
         private ServiceOrderServiceInterface $serviceOrderServiceRepository,
-        private VehicleRepositoryInterface $vehicleRepository
+        private VehicleRepositoryInterface $vehicleRepository,
+        private ServiceOrderCreatedOutbox $outbox
     ) {}
 
     public function execute(CreateServiceOrderDTO $dto): ServiceOrder
@@ -60,8 +62,10 @@ class CreateServiceOrderUseCase
         DB::transaction(function () use ($serviceOrder, $items, $services): void {
             $this->serviceOrderRepository->save($serviceOrder);
 
+            $createdServices = [];
+
             foreach ($services as $service) {
-                $this->serviceOrderServiceRepository->createServiceOrderService(
+                $created = $this->serviceOrderServiceRepository->createServiceOrderService(
                     new CreateServiceOrderServiceDTO(
                         $serviceOrder->id,
                         (string) $service['service_id'],
@@ -71,6 +75,8 @@ class CreateServiceOrderUseCase
                         null
                     )
                 );
+
+                $createdServices[] = ['id' => $created->id] + $service;
             }
 
             foreach ($items as $item) {
@@ -83,6 +89,8 @@ class CreateServiceOrderUseCase
                     )
                 );
             }
+
+            $this->outbox->record($serviceOrder, $createdServices);
         });
 
         event(new ServiceOrderCreated($serviceOrder));

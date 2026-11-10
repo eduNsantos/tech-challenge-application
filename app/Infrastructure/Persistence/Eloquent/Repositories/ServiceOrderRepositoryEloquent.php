@@ -36,7 +36,7 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
     {
         $model = ServiceOrderModel::find($id);
 
-        if (!$model) {
+        if (! $model) {
             return null;
         }
 
@@ -47,7 +47,7 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
                 'service_order_services.service_id',
                 'service_order_services.quantity',
                 'service_order_services.price as price',
-                'services.name as name'
+                'services.name as name',
             ])
             ->map(static fn ($service) => [
                 'service_id' => $service->service_id,
@@ -55,7 +55,7 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
                 'unit_price' => (float) $service->price,
                 'service' => [
                     'id' => $service->service_id,
-                    'name' => $service->name
+                    'name' => $service->name,
                 ],
             ])
             ->values()
@@ -196,7 +196,21 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
     {
         $model = ServiceOrderModel::where('approval_token', $token)->first();
 
-        if (!$model) {
+        if (! $model) {
+            return null;
+        }
+
+        return $this->findById($model->id);
+    }
+
+    public function findByApprovalTokenForUpdate(string $token): ?ServiceOrder
+    {
+        $model = ServiceOrderModel::query()
+            ->where('approval_token', $token)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $model) {
             return null;
         }
 

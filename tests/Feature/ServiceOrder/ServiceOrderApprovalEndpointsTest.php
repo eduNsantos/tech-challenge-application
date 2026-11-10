@@ -14,7 +14,9 @@ class ServiceOrderApprovalEndpointsTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private string $customerId;
+
     private string $vehicleId;
 
     private const VALID_CPF = '52998224725';
@@ -80,6 +82,7 @@ class ServiceOrderApprovalEndpointsTest extends TestCase
 
     public function test_public_get_approve_endpoint_approves_quote(): void
     {
+        config(['services_ms.enabled' => true]);
         $token = bin2hex(random_bytes(16));
         $osId = $this->createAwaitingApprovalOrder($token);
 
@@ -93,10 +96,16 @@ class ServiceOrderApprovalEndpointsTest extends TestCase
             'status' => 'em_execucao',
             'approval_token' => null,
         ]);
+
+        $event = json_decode(DB::table('outbox')->where('group_id', $osId)->first()->payload, true);
+        $this->assertSame('ServiceOrderApprovalChanged', $event['type']);
+        $this->assertSame('aguardando_aprovacao', $event['previous_status']);
+        $this->assertSame('em_execucao', $event['status']);
     }
 
     public function test_public_get_reject_endpoint_rejects_quote(): void
     {
+        config(['services_ms.enabled' => true]);
         $token = bin2hex(random_bytes(16));
         $osId = $this->createAwaitingApprovalOrder($token);
 
@@ -110,6 +119,11 @@ class ServiceOrderApprovalEndpointsTest extends TestCase
             'status' => 'em_diagnostico',
             'approval_token' => null,
         ]);
+
+        $event = json_decode(DB::table('outbox')->where('group_id', $osId)->first()->payload, true);
+        $this->assertSame('ServiceOrderApprovalChanged', $event['type']);
+        $this->assertSame('aguardando_aprovacao', $event['previous_status']);
+        $this->assertSame('em_diagnostico', $event['status']);
     }
 
     public function test_public_post_approval_endpoint_processes_decision(): void

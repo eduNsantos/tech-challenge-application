@@ -5,13 +5,18 @@ namespace Tests\Unit\Application\ServiceOrder\UseCases;
 use App\Application\ServiceOrder\UseCases\RejectServiceOrderByTokenUseCase;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
+use App\Infrastructure\Messaging\ServiceOrderApprovalOutbox;
+use Illuminate\Support\Facades\DB;
 use Mockery;
 use Mockery\MockInterface;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class RejectServiceOrderByTokenUseCaseTest extends TestCase
 {
     private ServiceOrderRepositoryInterface&MockInterface $serviceOrderRepository;
+
+    private ServiceOrderApprovalOutbox&MockInterface $approvalOutbox;
+
     private RejectServiceOrderByTokenUseCase $useCase;
 
     protected function setUp(): void
@@ -19,9 +24,12 @@ class RejectServiceOrderByTokenUseCaseTest extends TestCase
         parent::setUp();
 
         $this->serviceOrderRepository = Mockery::mock(ServiceOrderRepositoryInterface::class);
+        $this->approvalOutbox = Mockery::mock(ServiceOrderApprovalOutbox::class);
+        DB::shouldReceive('transaction')->andReturnUsing(static fn ($callback) => $callback());
 
         $this->useCase = new RejectServiceOrderByTokenUseCase(
-            $this->serviceOrderRepository
+            $this->serviceOrderRepository,
+            $this->approvalOutbox
         );
     }
 
@@ -48,7 +56,7 @@ class RejectServiceOrderByTokenUseCaseTest extends TestCase
     public function test_throws_when_token_not_found(): void
     {
         $this->serviceOrderRepository
-            ->shouldReceive('findByApprovalToken')
+            ->shouldReceive('findByApprovalTokenForUpdate')
             ->with('invalid-token')
             ->andReturn(null);
 
@@ -68,7 +76,7 @@ class RejectServiceOrderByTokenUseCaseTest extends TestCase
         );
 
         $this->serviceOrderRepository
-            ->shouldReceive('findByApprovalToken')
+            ->shouldReceive('findByApprovalTokenForUpdate')
             ->with('some-token')
             ->andReturn($serviceOrder);
 
@@ -84,11 +92,12 @@ class RejectServiceOrderByTokenUseCaseTest extends TestCase
         $serviceOrder = $this->makeServiceOrderWithToken($token);
 
         $this->serviceOrderRepository
-            ->shouldReceive('findByApprovalToken')
+            ->shouldReceive('findByApprovalTokenForUpdate')
             ->with($token)
             ->andReturn($serviceOrder);
 
         $this->serviceOrderRepository->shouldReceive('update')->once();
+        $this->approvalOutbox->shouldReceive('record')->once()->with($serviceOrder, ServiceOrder::STATUS_AGUARDANDO_APROVACAO);
 
         $result = $this->useCase->execute($token);
 

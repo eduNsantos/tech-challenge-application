@@ -19,4 +19,6 @@ interface ServiceOrderRepositoryInterface
     public function delete(string $id): void;
 
     public function findByApprovalToken(string $token): ?ServiceOrder;
+
+    public function findByApprovalTokenForUpdate(string $token): ?ServiceOrder;
 }
