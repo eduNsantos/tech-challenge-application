@@ -2,12 +2,14 @@
 
 namespace Tests\Unit\Application\ServiceOrder\UseCases;
 
+use App\Application\Payment\Services\ServiceOrderPaymentRequester;
 use App\Application\ServiceOrder\DTOs\CreateServiceOrderDTO;
 use App\Application\ServiceOrder\UseCases\CreateServiceOrderUseCase;
 use App\Domain\Customer\Entities\Customer;
 use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Item\Entities\Item;
 use App\Domain\Item\Interfaces\ItemRepositoryInterface;
+use App\Domain\Payment\Interfaces\PaymentGatewayInterface;
 use App\Domain\Item\ValueObjects\ItemCode;
 use App\Domain\Item\ValueObjects\ItemType;
 use App\Domain\Item\ValueObjects\MeasureUnit;
@@ -35,6 +37,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
     private ServiceOrderItemInterface&MockInterface $serviceOrderItemRepository;
     private ServiceOrderServiceInterface&MockInterface $serviceOrderServiceRepository;
     private VehicleRepositoryInterface&MockInterface $vehicleRepository;
+    private PaymentGatewayInterface&MockInterface $gateway;
     private CreateServiceOrderUseCase $useCase;
 
     protected function setUp(): void
@@ -51,6 +54,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->serviceOrderItemRepository = Mockery::mock(ServiceOrderItemInterface::class);
         $this->serviceOrderServiceRepository = Mockery::mock(ServiceOrderServiceInterface::class);
         $this->vehicleRepository = Mockery::mock(VehicleRepositoryInterface::class);
+        $this->gateway = Mockery::mock(PaymentGatewayInterface::class);
 
         $this->useCase = new CreateServiceOrderUseCase(
             $this->serviceOrderRepository,
@@ -59,7 +63,8 @@ class CreateServiceOrderUseCaseTest extends TestCase
             $this->itemRepository,
             $this->serviceOrderItemRepository,
             $this->serviceOrderServiceRepository,
-            $this->vehicleRepository
+            $this->vehicleRepository,
+            new ServiceOrderPaymentRequester($this->gateway)
         );
     }
 
@@ -207,10 +212,13 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once();
         $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();
 
+        $this->gateway->shouldNotReceive('requestPaymentLink');
+
         $result = $this->useCase->execute($this->makeDTO(['sendQuote' => false]));
 
         $this->assertSame(ServiceOrder::STATUS_RECEBIDA, $result->status);
         $this->assertNull($result->quoteSentAt);
+        $this->assertNull($result->paymentOrderId);
     }
 
     public function test_sends_quote_when_flag_is_true(): void
@@ -224,10 +232,40 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once();
         $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();
 
+        $sent = null;
+        $this->gateway->shouldReceive('requestPaymentLink')->once()->andReturnUsing(function (array $order) use (&$sent): void {
+            $sent = $order;
+        });
+
         $result = $this->useCase->execute($this->makeDTO(['sendQuote' => true]));
 
         $this->assertSame(ServiceOrder::STATUS_AGUARDANDO_APROVACAO, $result->status);
         $this->assertNotNull($result->quoteSentAt);
+
+        // Serviço 1 × R$100 + peça 2 × R$25 = R$150
+        $this->assertSame($result->paymentOrderId, $sent['order_id']);
+        $this->assertSame(15000, $sent['amount_cents']);
+        $this->assertSame('52998224725', $sent['customer']['cpf']);
+        $this->assertStringEndsWith("/api/payment/callback/{$result->paymentCallbackToken}", $sent['callback_url']);
+    }
+
+    public function test_does_not_persist_when_payment_service_fails(): void
+    {
+        $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
+        $this->vehicleRepository->shouldReceive('findById')->with('veh-1')->once()->andReturn($this->makeVehicle());
+        $this->serviceRepository->shouldReceive('findById')->once()->andReturn($this->makeService());
+        $this->itemRepository->shouldReceive('findById')->once()->andReturn($this->makeItem());
+
+        $this->serviceOrderRepository->shouldReceive('save')->once();
+        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once();
+        $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();
+        $this->gateway->shouldReceive('requestPaymentLink')->once()
+            ->andThrow(new \App\Domain\Payment\Exceptions\PaymentServiceUnavailableException('fora do ar'));
+
+        // A exceção sobe de dentro do DB::transaction → rollback da OS
+        $this->expectException(\App\Domain\Payment\Exceptions\PaymentServiceUnavailableException::class);
+
+        $this->useCase->execute($this->makeDTO(['sendQuote' => true]));
     }
 
     public function test_throws_domain_exception_when_service_not_found(): void

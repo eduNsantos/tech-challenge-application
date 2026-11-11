@@ -16,11 +16,13 @@ use Tests\TestCase;
  *      ↓
  * [Notificação 1] Mecânico notificado por e-mail
  *      ↓
- * [Mecânico] Faz levantamento (serviços + peças) e envia orçamento
+ * [Mecânico] Faz levantamento (serviços + peças) e envia orçamento → payment-service (POST /orders)
  *      ↓
- * [Notificação 2] Cliente notificado por e-mail com o orçamento
+ * [payment-service] Devolve o link de pagamento (POST /api/payment/notification)
  *      ↓
- * [Atendente] Aprova orçamento em nome do cliente → baixa automática de estoque
+ * [Notificação 2] Cliente notificado por e-mail com o orçamento e o link de pagamento
+ *      ↓
+ * [Cliente] Paga → callback PAID aprova o orçamento → baixa automática de estoque
  *      ↓
  * [Mecânico] Finaliza o serviço
  *      ↓
@@ -191,8 +193,27 @@ class ServiceOrderWorkflowTest extends TestCase
 
         $this->app['auth']->forgetGuards();
 
+        // Orçamento só é notificado depois que o payment-service devolve o link
+        $this->assertDatabaseMissing('notifications', [
+            'subject' => 'Orçamento da sua ordem de serviço disponível',
+        ]);
+
+        $paymentOrder = $this->paymentGateway->lastRequest();
+        $this->assertNotNull($paymentOrder);
+        $this->assertSame($osId, $paymentOrder['metadata']['service_order_id']);
+        $callbackPath = parse_url($paymentOrder['callback_url'], PHP_URL_PATH);
+
         // ─────────────────────────────────────────────────────────────────────
-        // NOTIFICAÇÃO 2 — Cliente notificado do orçamento
+        // PAYMENT-SERVICE (Step ③) — devolve o link do Mercado Pago
+        // ─────────────────────────────────────────────────────────────────────
+        $this->postJson('/api/payment/notification', [
+            'order_id'     => $paymentOrder['order_id'],
+            'payment_link' => 'https://sandbox.mercadopago.com.br/checkout/v1/redirect?pref_id=wf-1',
+            'status'       => 'WAITING_PAYMENT',
+        ])->assertOk();
+
+        // ─────────────────────────────────────────────────────────────────────
+        // NOTIFICAÇÃO 2 — Cliente notificado do orçamento com link de pagamento
         // ─────────────────────────────────────────────────────────────────────
         $this->assertDatabaseHas('notifications', [
             'recipient_id' => self::ATENDENTE_EMAIL,
@@ -200,13 +221,19 @@ class ServiceOrderWorkflowTest extends TestCase
         ]);
 
         // ─────────────────────────────────────────────────────────────────────
-        // PASSO 5 — Atendente aprova orçamento em nome do cliente
+        // PASSO 5 — Cliente paga (callback PAID do payment-service) → orçamento aprovado
         //           → baixa automática de estoque das peças
         // ─────────────────────────────────────────────────────────────────────
+        $this->postJson($callbackPath, [
+            'order_id'      => $paymentOrder['order_id'],
+            'status'        => 'PAID',
+            'mp_payment_id' => '123456789',
+        ])
+            ->assertOk()
+            ->assertJsonPath('status', 'em_execucao');
+
         $this->actingAs($this->atendente, 'api')
-            ->putJson("/api/service-order/{$osId}", [
-                'approve_quote' => true,
-            ])
+            ->getJson("/api/service-order/{$osId}")
             ->assertOk()
             ->assertJsonPath('service_order.status', 'em_execucao')
             ->assertJsonPath('service_order.quote_approved_at', fn ($v) => $v !== null);

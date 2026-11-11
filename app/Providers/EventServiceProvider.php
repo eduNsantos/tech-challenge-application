@@ -2,14 +2,14 @@
 
 namespace App\Providers;
 
-use App\Application\Notification\Handlers\NotifyCustomerOnQuoteSent;
+use App\Application\Notification\Handlers\NotifyCustomerOnPaymentLinkReady;
 use App\Application\Notification\Handlers\NotifyCustomerOnServiceOrderFinalized;
 use App\Application\Notification\Handlers\NotifyMechanicsOnServiceOrderCreated;
 use App\Application\Notification\Handlers\SendServiceOrderStatusNotification;
 use App\Application\Notification\Handlers\SendWelcomeNotification;
 use App\Domain\Customer\Events\CustomerCreated;
 use App\Domain\ServiceOrder\Events\ServiceOrderCreated;
-use App\Domain\ServiceOrder\Events\ServiceOrderQuoteSent;
+use App\Domain\ServiceOrder\Events\ServiceOrderPaymentLinkReady;
 use App\Domain\ServiceOrder\Events\ServiceOrderStatusChanged;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -43,9 +43,10 @@ class EventServiceProvider extends ServiceProvider
             NotifyMechanicsOnServiceOrderCreated::class
         );
 
+        // O orçamento só é enviado ao cliente quando o payment-service devolve o link de pagamento
         Event::listen(
-            ServiceOrderQuoteSent::class,
-            NotifyCustomerOnQuoteSent::class
+            ServiceOrderPaymentLinkReady::class,
+            NotifyCustomerOnPaymentLinkReady::class
         );
 
         Event::listen(

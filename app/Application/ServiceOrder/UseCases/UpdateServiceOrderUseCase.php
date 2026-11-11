@@ -2,6 +2,7 @@
 
 namespace App\Application\ServiceOrder\UseCases;
 
+use App\Application\Payment\Services\ServiceOrderPaymentRequester;
 use App\Application\ServiceOrder\DTOs\UpdateServiceOrderDTO;
 use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Item\Entities\StockMovement;
@@ -23,7 +24,8 @@ class UpdateServiceOrderUseCase
         private ServiceRepositoryInterface $serviceRepository,
         private ItemRepositoryInterface $itemRepository,
         private StockMovementRepositoryInterface $stockMovementRepository,
-        private VehicleRepositoryInterface $vehicleRepository
+        private VehicleRepositoryInterface $vehicleRepository,
+        private ServiceOrderPaymentRequester $paymentRequester
     ) {}
 
     public function execute(UpdateServiceOrderDTO $dto): ServiceOrder
@@ -65,6 +67,15 @@ class UpdateServiceOrderUseCase
 
         if ($dto->sendQuote === true) {
             $serviceOrder->sendQuoteForApproval();
+
+            $customer = $this->customerRepository->findById($serviceOrder->customerId);
+
+            if (!$customer) {
+                throw new \DomainException("Cliente '{$serviceOrder->customerId}' nao encontrado.");
+            }
+
+            // O e-mail do orçamento só sai quando o payment-service devolver o link (POST /api/payment/notification)
+            $this->paymentRequester->request($serviceOrder, $customer);
         }
 
         if ($dto->approveQuote === true) {

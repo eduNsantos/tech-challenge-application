@@ -90,6 +90,56 @@ class ServiceOrderTest extends TestCase
         $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $serviceOrder->approvalToken);
     }
 
+    public function test_send_quote_opens_new_payment_each_time(): void
+    {
+        $serviceOrder = $this->makeServiceOrder();
+
+        $serviceOrder->sendQuoteForApproval();
+        $firstPaymentOrderId = $serviceOrder->paymentOrderId;
+        $serviceOrder->attachPaymentLink('https://mp/1');
+        $serviceOrder->rejectQuote();
+        $serviceOrder->sendQuoteForApproval();
+
+        $this->assertMatchesRegularExpression('/^[0-9a-f-]{36}$/', $serviceOrder->paymentOrderId);
+        $this->assertNotSame($firstPaymentOrderId, $serviceOrder->paymentOrderId);
+        $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $serviceOrder->paymentCallbackToken);
+        $this->assertNull($serviceOrder->paymentLink);
+    }
+
+    public function test_attach_payment_link_only_once_while_awaiting(): void
+    {
+        $serviceOrder = $this->makeServiceOrder();
+        $serviceOrder->sendQuoteForApproval();
+
+        $serviceOrder->attachPaymentLink('https://mp/1');
+        $this->assertSame('https://mp/1', $serviceOrder->paymentLink);
+
+        $this->expectException(\DomainException::class);
+        $serviceOrder->attachPaymentLink('https://mp/2');
+    }
+
+    public function test_attach_payment_link_requires_awaiting_status(): void
+    {
+        $serviceOrder = $this->makeServiceOrder();
+
+        $this->expectException(\DomainException::class);
+        $serviceOrder->attachPaymentLink('https://mp/1');
+    }
+
+    public function test_approve_and_reject_invalidate_payment_callback_token(): void
+    {
+        $approved = $this->makeServiceOrder();
+        $approved->sendQuoteForApproval();
+        $approved->approveQuote();
+
+        $rejected = $this->makeServiceOrder();
+        $rejected->sendQuoteForApproval();
+        $rejected->rejectQuote();
+
+        $this->assertNull($approved->paymentCallbackToken);
+        $this->assertNull($rejected->paymentCallbackToken);
+    }
+
     public function test_approve_quote_sets_status_and_timestamp(): void
     {
         Carbon::setTestNow('2026-04-27 11:00:00');
