@@ -12,6 +12,7 @@ use App\Presentation\Http\Controllers\ServiceController;
 use App\Presentation\Http\Controllers\CustomerController;
 use App\Presentation\Http\Controllers\VehicleController;
 
+use App\Presentation\Http\Controllers\PaymentController;
 use App\Presentation\Http\Controllers\ServiceOrderApprovalController;
 use Illuminate\Support\Facades\Log;
 
@@ -89,9 +90,15 @@ Route::get('/debug/service-order/failure', function () {
     return response()->json($result);
 });
 
-Route::get('/service-order/approve/{token}', [ServiceOrderApprovalController::class, 'approve']);
+// A aprovação do orçamento acontece pelo pagamento (callback do payment-service); o cliente só pode recusar
 Route::get('/service-order/reject/{token}', [ServiceOrderApprovalController::class, 'reject']);
 Route::post('/service-order/approval/{token}', [ServiceOrderApprovalController::class, 'handle']);
+
+// Chamadas server-to-server do payment-service
+Route::prefix('payment')->group(function () {
+    Route::post('/notification', [PaymentController::class, 'notification']);
+    Route::post('/callback/{token}', [PaymentController::class, 'callback']);
+});
 
 Route::group([
     'middleware' => 'auth:api',

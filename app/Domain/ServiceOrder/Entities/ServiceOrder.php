@@ -26,7 +26,10 @@ class ServiceOrder
         public ?string $quoteSentAt,
         public ?string $quoteApprovedAt,
         public ?string $statusStartedAt = null,
-        public ?string $approvalToken = null
+        public ?string $approvalToken = null,
+        public ?string $paymentOrderId = null,
+        public ?string $paymentCallbackToken = null,
+        public ?string $paymentLink = null
     ) {
         $this->assertStatus($status);
 
@@ -89,6 +92,24 @@ class ServiceOrder
         $this->statusStartedAt = now()->toDateTimeString();
         $this->quoteSentAt = now()->toDateTimeString();
         $this->approvalToken = bin2hex(random_bytes(32));
+
+        // Cada envio de orçamento abre uma nova cobrança no payment-service
+        $this->paymentOrderId = Str::uuid()->toString();
+        $this->paymentCallbackToken = bin2hex(random_bytes(32));
+        $this->paymentLink = null;
+    }
+
+    public function attachPaymentLink(string $paymentLink): void
+    {
+        if ($this->status !== self::STATUS_AGUARDANDO_APROVACAO) {
+            throw new \DomainException('Esta ordem de servico nao esta aguardando pagamento.');
+        }
+
+        if ($this->paymentLink !== null) {
+            throw new \DomainException('O link de pagamento desta ordem de servico ja foi registrado.');
+        }
+
+        $this->paymentLink = $paymentLink;
     }
 
     public function approveQuote(): void
@@ -97,6 +118,7 @@ class ServiceOrder
         $this->statusStartedAt = now()->toDateTimeString();
         $this->quoteApprovedAt = now()->toDateTimeString();
         $this->approvalToken = null;
+        $this->paymentCallbackToken = null;
     }
 
     public function rejectQuote(): void
@@ -104,6 +126,7 @@ class ServiceOrder
         $this->status = self::STATUS_EM_DIAGNOSTICO;
         $this->statusStartedAt = now()->toDateTimeString();
         $this->approvalToken = null;
+        $this->paymentCallbackToken = null;
     }
 
     public static function allowedStatuses(): array

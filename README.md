@@ -190,6 +190,24 @@ make ci
 - O Swagger UI lê diretamente o arquivo `openapi.yaml` do projeto.
 - O banco MySQL é exposto localmente na porta `3308`.
 
+## Integração com o payment-service
+
+O envio de orçamento chama o [tech-challenge-payment-service](../tech-challenge-payment-service):
+
+1. `POST {PAYMENT_SERVICE_URL}/orders` com `callback_url` e `notification_url` (montados a partir do `APP_URL`)
+2. o link de pagamento volta em `POST /api/payment/notification` → e-mail do orçamento ao cliente
+3. o resultado volta em `POST /api/payment/callback/{token}` → `PAID` aprova; qualquer outro status recusa
+
+| Variável | Para que serve | Em produção (EKS) |
+|---|---|---|
+| `PAYMENT_SERVICE_URL` | Base da API do payment-service | Descoberta no deploy pelo nome da API Gateway `payment-service-api` |
+| `APP_URL` | URL pública do app (links do e-mail, `callback_url`, `notification_url`) | Hostname do ELB do Service `postech-app` |
+| `PAYMENT_CALLBACK_BASE_URL` | Sobrescreve a base do `callback_url`/`notification_url` (opcional) | — |
+
+As duas primeiras são resolvidas pelo job `rollout` do `deploy-eks.yml` no repo **tech-challenge-kubernetes**, que é quem implanta este app no EKS. Para fixar um valor, defina `PAYMENT_SERVICE_URL` ou `APP_URL` em *Settings → Variables* daquele repo.
+
+**Ordem de deploy:** payment-service primeiro, depois o app. Se o payment-service for recriado, basta rodar o deploy do app de novo. Se o ELB mudar, as cobranças já abertas perdem o retorno, porque a URL antiga fica gravada nelas.
+
 ## Ambiente Kubernetes (Minikube + Terraform)
 
 Além do Docker Compose (fluxo padrão do dia a dia), o projeto tem um segundo ambiente que roda a aplicação inteira dentro de um cluster Kubernetes local, via **Minikube**. É o ambiente usado sempre que você mexe em algo que impacta o deploy em si (Deployments, Services, HPA, ConfigMaps, Secrets).
@@ -256,6 +274,7 @@ ghcr_token    = "SEU_TOKEN_COM_read:packages"
 # ghcr_email    = "SEU_EMAIL"
 # mail_username = "SEU_EMAIL_SMTP"
 # mail_password = "SUA_SENHA_DE_APP"
+
 ```
 
 **3. Aplique com Terraform**

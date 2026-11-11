@@ -78,20 +78,18 @@ class ServiceOrderApprovalEndpointsTest extends TestCase
         return $id;
     }
 
-    public function test_public_get_approve_endpoint_approves_quote(): void
+    public function test_public_get_approve_endpoint_no_longer_exists(): void
     {
         $token = bin2hex(random_bytes(16));
         $osId = $this->createAwaitingApprovalOrder($token);
 
-        $this->getJson("/api/service-order/approve/{$token}")
-            ->assertOk()
-            ->assertJsonPath('service_order_id', $osId)
-            ->assertJsonPath('status', 'em_execucao');
+        // Aprovação só acontece pelo pagamento (callback do payment-service)
+        $this->getJson("/api/service-order/approve/{$token}")->assertNotFound();
 
         $this->assertDatabaseHas('service_orders', [
             'id' => $osId,
-            'status' => 'em_execucao',
-            'approval_token' => null,
+            'status' => 'aguardando_aprovacao',
+            'approval_token' => $token,
         ]);
     }
 
@@ -119,12 +117,16 @@ class ServiceOrderApprovalEndpointsTest extends TestCase
         $approveOsId = $this->createAwaitingApprovalOrder($approveToken);
         $rejectOsId = $this->createAwaitingApprovalOrder($rejectToken);
 
+        // decision=approve não é mais aceita: aprovação só via pagamento
         $this->postJson("/api/service-order/approval/{$approveToken}", [
             'decision' => 'approve',
         ])
-            ->assertOk()
-            ->assertJsonPath('service_order_id', $approveOsId)
-            ->assertJsonPath('status', 'em_execucao');
+            ->assertUnprocessable();
+
+        $this->assertDatabaseHas('service_orders', [
+            'id' => $approveOsId,
+            'status' => 'aguardando_aprovacao',
+        ]);
 
         $this->postJson("/api/service-order/approval/{$rejectToken}", [
             'decision' => 'reject',

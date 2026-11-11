@@ -43,6 +43,8 @@ tags:
     description: Controle de execução individual de serviços dentro de uma OS — iniciar e finalizar (requer autenticação)
   - name: Clientes
     description: Operações de gerenciamento de clientes (requer autenticação)
+  - name: Pagamentos
+    description: Integração com o payment-service (link de pagamento e resultado da cobrança)
   - name: Notificações
     description: Consulta de notificações enviadas aos clientes (requer autenticação)
 
@@ -1079,7 +1081,7 @@ paths:
         | `services` | array | Substitui os serviços da OS (mínimo 1 item) |
         | `items` / `parts` | array | Substitui as peças/itens da OS |
         | `status` | string | Muda o status manualmente (ver valores permitidos) |
-        | `send_quote` | boolean | `true` → envia o orçamento (status → `aguardando_aprovacao`) e notifica o cliente |
+        | `send_quote` | boolean | `true` → envia o orçamento (status → `aguardando_aprovacao`) e solicita o link de pagamento ao payment-service; o cliente é notificado quando o link chega em `POST /payment/notification` (502 se o payment-service falhar) |
         | `approve_quote` | boolean | `true` → aprova o orçamento (status → `em_execucao`) e realiza baixa automática de estoque |
 
         > **Nota:** `items` e `parts` são equivalentes. Se ambos forem enviados, `items` tem precedência.
@@ -1219,51 +1221,6 @@ paths:
         '422':
           $ref: '#/components/responses/ErroNegocio'
 
-  /service-order/approve/{token}:
-    get:
-      tags:
-        - Ordens de Serviço
-      summary: Aprovar orçamento da ordem de serviço
-      description: |-
-        Aprova o orçamento vinculado ao token enviado por e-mail.
-
-        Ao aprovar, a OS entra em `em_execucao` e a baixa de estoque das peças é realizada automaticamente.
-
-        **Requer autenticação.**
-      operationId: service-order-approve-by-token
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/ApprovalToken'
-      responses:
-        '200':
-          description: Orçamento aprovado com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  service_order_id:
-                    type: string
-                    format: uuid
-                  status:
-                    type: string
-                  quote_approved_at:
-                    type: string
-                    format: date-time
-                    nullable: true
-              example:
-                message: Orçamento aprovado com sucesso. A ordem de serviço está em execução.
-                service_order_id: "b1c2d3e4-f5a6-7890-bcde-f01234567890"
-                status: em_execucao
-                quote_approved_at: "2026-07-13T23:24:48Z"
-        '401':
-          $ref: '#/components/responses/NaoAutenticado'
-        '422':
-          $ref: '#/components/responses/ErroNegocio'
-
   /service-order/reject/{token}:
     get:
       tags:
@@ -1308,9 +1265,12 @@ paths:
     post:
       tags:
         - Ordens de Serviço
-      summary: Processar decisão de aprovação do orçamento
+      summary: Recusar orçamento da ordem de serviço (decisão via JSON)
       description: |-
-        Endpoint alternativo para confirmar ou recusar o orçamento usando um corpo JSON com a decisão.
+        Endpoint alternativo para o cliente recusar o orçamento usando um corpo JSON.
+
+        A **aprovação** do orçamento acontece exclusivamente pelo pagamento
+        (`POST /payment/callback/{token}` com `status: PAID`); `decision: approve` retorna 422.
 
         **Requer autenticação.**
       operationId: service-order-handle-approval
@@ -1325,10 +1285,10 @@ paths:
             schema:
               $ref: '#/components/schemas/HandleServiceOrderApprovalRequest'
             example:
-              decision: approve
+              decision: reject
       responses:
         '200':
-          description: Decisão processada com sucesso
+          description: Recusa processada com sucesso
           content:
             application/json:
               schema:
@@ -1346,12 +1306,118 @@ paths:
                     format: date-time
                     nullable: true
               example:
-                message: Aprovacao processada com sucesso.
+                message: Recusa processada com sucesso.
                 service_order_id: "b1c2d3e4-f5a6-7890-bcde-f01234567890"
-                status: em_execucao
-                quote_approved_at: "2026-07-13T23:24:48Z"
+                status: em_diagnostico
         '401':
           $ref: '#/components/responses/NaoAutenticado'
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
+  /payment/notification:
+    post:
+      tags:
+        - Pagamentos
+      summary: Receber link de pagamento do payment-service
+      description: |-
+        Chamado pelo payment-service (Step ③ da SAGA) quando o link do Mercado Pago é gerado.
+        Configure `app_notification_url` do payment-service apontando para este endpoint.
+
+        Registra o link na OS (`aguardando_aprovacao`) e **só então** envia ao cliente o e-mail do orçamento
+        com o link de pagamento e o link de recusa. Um segundo envio para a mesma cobrança retorna 422.
+
+        Chamada server-to-server, sem autenticação JWT.
+      operationId: payment-notification
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_id, payment_link]
+              properties:
+                order_id:
+                  type: string
+                  format: uuid
+                  description: '`payment_order_id` da OS (enviado como `order_id` no POST /orders).'
+                payment_link:
+                  type: string
+                  format: uri
+                status:
+                  type: string
+                  example: WAITING_PAYMENT
+            example:
+              order_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+              payment_link: "https://sandbox.mercadopago.com.br/checkout/v1/redirect?pref_id=123"
+              status: WAITING_PAYMENT
+      responses:
+        '200':
+          description: Link registrado e cliente notificado
+          content:
+            application/json:
+              example:
+                message: Link de pagamento registrado. Orcamento enviado ao cliente.
+                service_order_id: "b1c2d3e4-f5a6-7890-bcde-f01234567890"
+                status: aguardando_aprovacao
+        '422':
+          $ref: '#/components/responses/ErroNegocio'
+
+  /payment/callback/{token}:
+    post:
+      tags:
+        - Pagamentos
+      summary: Resultado final do pagamento (callback_url)
+      description: |-
+        URL enviada obrigatoriamente como `callback_url` ao payment-service quando o orçamento é enviado.
+        O `token` é um segredo por cobrança e é invalidado após o primeiro processamento.
+
+        - `status: PAID` → orçamento aprovado: OS vai para `em_execucao` com baixa automática de estoque.
+        - Qualquer outro status (`REJECTED`, `EXPIRED`, ...) → segue o fluxo de recusa (`/service-order/reject`):
+          OS volta para `em_diagnostico`.
+
+        Chamada server-to-server, sem autenticação JWT.
+      operationId: payment-callback
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{64}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_id, status]
+              properties:
+                order_id:
+                  type: string
+                  format: uuid
+                status:
+                  type: string
+                  enum: [PAID, REJECTED, EXPIRED]
+                mp_payment_id:
+                  type: string
+                  nullable: true
+              description: Payload completo do registro DynamoDB do payment-service; apenas os campos acima são usados.
+            example:
+              order_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+              status: PAID
+              mp_payment_id: "123456789"
+      responses:
+        '200':
+          description: Resultado aplicado à OS
+          content:
+            application/json:
+              example:
+                message: Pagamento confirmado. Orcamento aprovado e ordem de servico em execucao.
+                service_order_id: "b1c2d3e4-f5a6-7890-bcde-f01234567890"
+                status: em_execucao
+                quote_approved_at: "2026-11-11T14:45:00Z"
         '422':
           $ref: '#/components/responses/ErroNegocio'
 
@@ -2042,9 +2108,9 @@ components:
       properties:
         decision:
           type: string
-          enum: [approve, reject]
-          description: Decide se o orçamento será aprovado ou recusado.
-          example: approve
+          enum: [reject]
+          description: Apenas recusa — a aprovação acontece pelo pagamento.
+          example: reject
 
     # ── Auth ──────────────────────────────────────────────────────────────────
 

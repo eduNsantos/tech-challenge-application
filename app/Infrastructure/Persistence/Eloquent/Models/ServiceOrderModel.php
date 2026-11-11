@@ -25,8 +25,16 @@ class ServiceOrderModel extends Model
         'quote_sent_at',
         'quote_approved_at',
         'approval_token',
+        'payment_order_id',
+        'payment_callback_token',
+        'payment_link',
         'created_user_id',
         'updated_user_id'
+    ];
+
+    // Segredo do callback_url do payment-service — nunca sai em respostas da API
+    protected $hidden = [
+        'payment_callback_token',
     ];
 
     protected $casts = [

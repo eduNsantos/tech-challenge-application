@@ -28,6 +28,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'payment' => [
+        // Base da API do payment-service (API Gateway). Ex: https://xxxx.execute-api.us-east-1.amazonaws.com
+        'url' => env('PAYMENT_SERVICE_URL'),
+        'timeout' => (int) env('PAYMENT_SERVICE_TIMEOUT', 5),
+        // URL pública deste app usada em callback_url e notification_url (padrão: APP_URL)
+        'callback_base_url' => env('PAYMENT_CALLBACK_BASE_URL'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
