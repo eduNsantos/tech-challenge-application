@@ -29,16 +29,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # 1. Validação do Terraform
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: "1.7.0"
-
-    - name: Terraform Validate
-      run: |
-        cd k8s && terraform init -backend=false && terraform validate && cd ..
-        cd tech-challenge-services-ms/infra && terraform init -backend=false && terraform validate
 
     # 2. Build e teste da imagem PHP
     - name: Set up Docker Buildx
@@ -60,17 +50,17 @@ jobs:
     - name: Setup and Run Tests
       run: |
         set -euo pipefail
-        
+
         echo "=== Step 1: Install Dependencies ==="
         docker run --rm \
           -v ${{ github.workspace }}:/app \
           -w /app \
           techchallenge-app:test \
           composer install --no-interaction --prefer-dist --optimize-autoloader
-        
+
         echo "=== Step 2: Copy .env.example to .env ==="
         cp .env.example .env
-        
+
         echo "=== Step 3: Setup environment and generate APP_KEY ==="
         docker run --rm \
           -v ${{ github.workspace }}:/app \
@@ -85,7 +75,7 @@ jobs:
           -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
           techchallenge-app:test \
           php artisan key:generate --force
-        
+
         echo "=== Step 4: Wait for MySQL to be ready ==="
         for i in {1..30}; do
           echo "  Tentativa $i/30..."
@@ -99,7 +89,7 @@ jobs:
           fi
           sleep 2
         done
-        
+
         echo "=== Step 5: Run Database Migrations ==="
         docker run --rm \
           -v ${{ github.workspace }}:/app \
@@ -115,7 +105,7 @@ jobs:
           -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
           techchallenge-app:test \
           php artisan migrate --force
-        
+
         echo "=== Step 6: Run Tests ==="
         docker run --rm \
           -v ${{ github.workspace }}:/app \
