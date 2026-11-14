@@ -9,133 +9,80 @@ jobs:
   laravel-tests:
     runs-on: ubuntu-latest
 
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: tech_challenge
-          MYSQL_USER: tech_user
-          MYSQL_PASSWORD: tech_pass
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-        ports:
-          - 3306:3306
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    # 1. Validação do Terraform
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.7.0"
 
-    # 2. Build e teste da imagem PHP
+    - name: Terraform Validate
+      run: |
+        cd k8s && terraform init -backend=false && terraform validate && cd ..
+        cd tech-challenge-services-ms/infra && terraform init -backend=false && terraform validate
+
+    # 2. Build imagem PHP otimizada para testes (sem New Relic)
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Build Laravel Docker Image
+    - name: Build Laravel Test Docker Image
       uses: docker/build-push-action@v6
       with:
         context: .
-        file: ./Dockerfile
+        file: ./Dockerfile.test
         tags: techchallenge-app:test
         load: true
-        build-args: |
-          NEW_RELIC_ENABLED=false
-          NEW_RELIC_APP_NAME=Tech Challenge POS
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
     - name: Setup and Run Tests
       run: |
         set -euo pipefail
-
+        
         echo "=== Step 1: Install Dependencies ==="
         docker run --rm \
           -v ${{ github.workspace }}:/app \
           -w /app \
           techchallenge-app:test \
           composer install --no-interaction --prefer-dist --optimize-autoloader
-
-        echo "=== Step 2: Copy .env.example to .env ==="
-        cp .env.example .env
-
-        echo "=== Step 3: Setup environment and generate APP_KEY ==="
+        
+        echo "=== Step 2: Setup .env for Testing ==="
+        cp .env.testing .env
+        
+        echo "=== Step 3: Generate APP_KEY ==="
         docker run --rm \
           -v ${{ github.workspace }}:/app \
           -w /app \
-          -e DB_CONNECTION=mysql \
-          -e DB_HOST=localhost \
-          -e DB_PORT=3306 \
-          -e DB_DATABASE=tech_challenge \
-          -e DB_USERNAME=root \
-          -e DB_PASSWORD=root \
+          -e APP_ENV=testing \
+          -e DB_CONNECTION=sqlite \
           -e APP_KEY="${{ secrets.APP_KEY }}" \
           -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
           techchallenge-app:test \
           php artisan key:generate --force
-
-        echo "=== Step 4: Wait for MySQL to be ready ==="
-        for i in {1..30}; do
-          echo "  Tentativa $i/30..."
-          if mysql -h 127.0.0.1 -u root -p"root" -e "SELECT 1" >/dev/null 2>&1; then
-            echo "  ✓ MySQL está pronto!"
-            break
-          fi
-          if [ $i -eq 30 ]; then
-            echo "  ✗ MySQL não respondeu a tempo"
-            exit 1
-          fi
-          sleep 2
-        done
-
-        echo "=== Step 5: Run Database Migrations ==="
+        
+        echo "=== Step 4: Run Database Migrations (SQLite in-memory) ==="
         docker run --rm \
           -v ${{ github.workspace }}:/app \
           -w /app \
-          --network host \
-          -e DB_CONNECTION=mysql \
-          -e DB_HOST=127.0.0.1 \
-          -e DB_PORT=3306 \
-          -e DB_DATABASE=tech_challenge \
-          -e DB_USERNAME=root \
-          -e DB_PASSWORD=root \
+          -e APP_ENV=testing \
+          -e DB_CONNECTION=sqlite \
+          -e DB_DATABASE=:memory: \
           -e APP_KEY="${{ secrets.APP_KEY }}" \
           -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
           techchallenge-app:test \
           php artisan migrate --force
-
-        echo "=== Step 6: Run Tests ==="
+        
+        echo "=== Step 5: Run Tests ==="
         docker run --rm \
           -v ${{ github.workspace }}:/app \
           -w /app \
-          --network host \
-          -e DB_CONNECTION=mysql \
-          -e DB_HOST=127.0.0.1 \
-          -e DB_PORT=3306 \
-          -e DB_DATABASE=tech_challenge \
-          -e DB_USERNAME=root \
-          -e DB_PASSWORD=root \
+          -e APP_ENV=testing \
+          -e DB_CONNECTION=sqlite \
+          -e DB_DATABASE=:memory: \
           -e APP_KEY="${{ secrets.APP_KEY }}" \
           -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
           techchallenge-app:test \
           ./vendor/bin/phpunit --no-configuration tests/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
