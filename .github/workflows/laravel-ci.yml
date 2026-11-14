@@ -75,6 +75,10 @@ jobs:
         yq eval 'del(.spec.template.spec.containers[0].livenessProbe)' -i "$MYSQL_FILE"
         yq eval 'del(.spec.template.spec.containers[0].readinessProbe)' -i "$MYSQL_FILE"
 
+        # Aumenta o tempo limite de readiness para o MySQL
+        yq eval '.spec.template.spec.containers[0].readinessProbe.initialDelaySeconds = 30' -i "$MYSQL_FILE" || true
+        yq eval '.spec.template.spec.containers[0].readinessProbe.timeoutSeconds = 10' -i "$MYSQL_FILE" || true
+
         # Remove o init container do Laravel para gerenciarmos a espera de forma direta
         yq eval 'del(.spec.template.spec.initContainers)' -i k8s/02-app/app-deployment.yaml
 
@@ -92,30 +96,50 @@ jobs:
         kubectl apply -f k8s/02-app/
         kubectl apply -f k8s/03-database/
 
+        echo "=== AGUARDANDO O POD DO MYSQL SER CRIADO ==="
+        for i in $(seq 1 30); do
+          MYSQL_POD=$(kubectl get pods -n postech -l app=mysql -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+          if [ -n "$MYSQL_POD" ]; then
+            echo "Pod MySQL encontrado: $MYSQL_POD"
+            break
+          fi
+          if [ "$i" -eq 30 ]; then
+            echo "Timeout aguardando pod do MySQL ser criado"
+            kubectl get pods -n postech || true
+            exit 1
+          fi
+          sleep 1
+        done
 
-        echo "=== AGUARDANDO O SOCKET DO MYSQL ABRIR ==="
-        # Aguarda dinamicamente o pod do MySQL ser criado e iniciar o processo do container
-        kubectl wait --namespace postech --for=jsonpath='{.status.phase}'=Running pod -l app=mysql --timeout=90s
+        echo "=== AGUARDANDO O MYSQL FICAR PRONTO (Running) ==="
+        kubectl wait --namespace postech --for=condition=ready pod -l app=mysql --timeout=120s 2>&1 || {
+          echo "Pod ainda não está ready, aguardando processo do MySQL iniciar..."
+          kubectl describe pod -n postech -l app=mysql || true
+        }
 
         MYSQL_POD=$(kubectl get pods -n postech -l app=mysql -o jsonpath='{.items[0].metadata.name}')
         echo "Aguardando MySQL aceitar conexoes..."
-        for i in $(seq 1 45); do
+        for i in $(seq 1 60); do
           if kubectl exec -n postech "$MYSQL_POD" -- sh -lc 'mysql -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1"' >/dev/null 2>&1; then
-            echo "MySQL pronto."
+            echo "✓ MySQL pronto para conexões."
             break
           fi
 
-          if [ "$i" -eq 45 ]; then
-            echo "Timeout aguardando MySQL ficar pronto."
+          if [ "$i" -eq 60 ]; then
+            echo "✗ Timeout aguardando MySQL ficar pronto."
             kubectl logs -n postech "$MYSQL_POD" --tail=200 || true
             exit 1
           fi
 
+          echo "  Tentativa $i/60..."
           sleep 2
         done
 
         echo "=== AGUARDANDO O LARAVEL FICAR PRONTO ==="
-        kubectl wait --namespace postech --for=condition=ready pod -l app=postech-app --timeout=90s
+        kubectl wait --namespace postech --for=condition=ready pod -l app=postech-app --timeout=120s 2>&1 || {
+          echo "Pod do Laravel ainda não está ready"
+          kubectl get pods -n postech || true
+        }
 
         echo "=== STATUS ATUAL DOS PODS ==="
         kubectl get pods -n postech
