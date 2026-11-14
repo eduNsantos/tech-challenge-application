@@ -8,187 +8,128 @@ on:
 jobs:
   laravel-tests:
     runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: tech_challenge
+          MYSQL_USER: tech_user
+          MYSQL_PASSWORD: tech_pass
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 3306:3306
 
     steps:
-    - name: Baixar o código do repositório
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    # 1. Validação e Planejamento do Terraform
+    # 1. Validação do Terraform
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
         terraform_version: "1.7.0"
 
-    - name: Terraform Validate & Plan
+    - name: Terraform Validate
       run: |
-        terraform init -backend=false
-        terraform validate
+        cd k8s && terraform init -backend=false && terraform validate && cd ..
+        cd tech-challenge-services-ms/infra && terraform init -backend=false && terraform validate
 
-    # 2. Cria o Cluster Kubernetes temporário (Kind)
-    - name: Setup Kubernetes Cluster (Kind)
-      uses: helm/kind-action@v1.10.0
-      with:
-        cluster_name: laravel-cluster-ci
-
+    # 2. Build e teste da imagem PHP
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    # 3. Constroi a imagem Docker exatamente com o nome esperado pelo Kubernetes
     - name: Build Laravel Docker Image
       uses: docker/build-push-action@v6
       with:
         context: .
         file: ./Dockerfile
-        tags: techchallenge-1-app-php:v2
+        tags: techchallenge-app:test
         load: true
         build-args: |
-          NEW_RELIC_ENABLED=${{ secrets.NEW_RELIC_ENABLED || 'true' }}
+          NEW_RELIC_ENABLED=${{ secrets.NEW_RELIC_ENABLED || 'false' }}
           NEW_RELIC_APP_NAME=${{ secrets.NEW_RELIC_APP_NAME || 'Tech Challenge POS' }}
-          NEW_RELIC_LICENSE_KEY=${{ secrets.NEW_RELIC_LICENSE_KEY || secrets.NEW_RELIC_KEY || secrets.newrelic_key }}
+          NEW_RELIC_LICENSE_KEY=${{ secrets.NEW_RELIC_LICENSE_KEY || secrets.NEW_RELIC_KEY || '' }}
           NEW_RELIC_DAEMON_ADDRESS=${{ secrets.NEW_RELIC_DAEMON_ADDRESS || 'newrelic:31339' }}
-          NEW_RELIC_KEY=${{ secrets.NEW_RELIC_KEY || secrets.newrelic_key || secrets.P }}
+          NEW_RELIC_KEY=${{ secrets.NEW_RELIC_KEY || '' }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-    # 4. Injeta a imagem para dentro do nó do Kind
-    - name: Load Image into Kind Cluster
+    - name: Install Dependencies
       run: |
-        kind load docker-image techchallenge-1-app-php:v2 --name laravel-cluster-ci
+        docker run --rm \
+          -v ${{ github.workspace }}:/app \
+          -w /app \
+          techchallenge-app:test \
+          bash -c "composer install --no-interaction --prefer-dist --optimize-autoloader"
 
-    # 5. Valida a sintaxe dos manifestos (Ajuste o caminho se não usar a pasta k8s/)
-    - name: Validate K8s Manifests
+    - name: Setup Laravel Environment
       run: |
-        kubectl apply --dry-run=client -f k8s/02-app/app-deployment.yaml
+        cp .env.example .env
+        # Define configurações do teste
+        docker run --rm \
+          -v ${{ github.workspace }}:/app \
+          -w /app \
+          -e DB_CONNECTION=mysql \
+          -e DB_HOST=mysql \
+          -e DB_PORT=3306 \
+          -e DB_DATABASE=tech_challenge \
+          -e DB_USERNAME=root \
+          -e DB_PASSWORD=root \
+          -e APP_KEY="${{ secrets.APP_KEY }}" \
+          -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+          techchallenge-app:test \
+          php artisan key:generate --force
 
-    # 6. Executa o deploy de teste
-    - name: Deploy and Test Laravel App
+    - name: Wait for MySQL
       run: |
-        set -euo pipefail
-        export CI_IMAGE=techchallenge-1-app-php:v2
-        kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
-
-        echo "=== OTIMIZANDO MANIFESTOS PARA O AMBIENTE DE CI ==="
-        MYSQL_FILE=$(ls k8s/03-database/* 2>/dev/null | grep deployment | head -n 1)
-        echo "Arquivo do MySQL encontrado: $MYSQL_FILE"
-
-        # Configura readiness probe com valores adequados para CI (remove liveness que causa reinicio)
-        yq eval 'del(.spec.template.spec.containers[0].livenessProbe)' -i "$MYSQL_FILE"
-        yq eval '.spec.template.spec.containers[0].readinessProbe.initialDelaySeconds = 10' -i "$MYSQL_FILE"
-        yq eval '.spec.template.spec.containers[0].readinessProbe.timeoutSeconds = 5' -i "$MYSQL_FILE"
-        yq eval '.spec.template.spec.containers[0].readinessProbe.periodSeconds = 5' -i "$MYSQL_FILE"
-
-        # Remove o init container do Laravel para gerenciarmos a espera de forma direta
-        yq eval 'del(.spec.template.spec.initContainers)' -i k8s/02-app/app-deployment.yaml
-
-        # Forca os manifestos a usar a imagem carregada no Kind, sem pull externo
-        yq eval '.spec.template.spec.imagePullSecrets = []' -i k8s/02-app/app-deployment.yaml
-        yq eval '.spec.template.spec.containers[0].image = env(CI_IMAGE)' -i k8s/02-app/app-deployment.yaml
-        yq eval '.spec.template.spec.containers[0].imagePullPolicy = "IfNotPresent"' -i k8s/02-app/app-deployment.yaml
-        yq eval '.spec.template.spec.imagePullSecrets = []' -i k8s/02-app/migrate-job.yaml
-        yq eval '.spec.template.spec.containers[0].image = env(CI_IMAGE)' -i k8s/02-app/migrate-job.yaml
-        yq eval '.spec.template.spec.containers[0].imagePullPolicy = "IfNotPresent"' -i k8s/02-app/migrate-job.yaml
-
-        echo "=== APLICANDO MANIFESTOS EM ORDEM CORRETA ==="
-        echo "1. Namespaces"
-        kubectl apply -f k8s/00-namespaces/
-        
-        echo "2. PersistentVolume e PersistentVolumeClaim (devem vir antes da secret)"
-        kubectl apply -f k8s/03-database/mysql-pv.yaml
-        kubectl apply -f k8s/03-database/mysql-pvc.yaml
-        
-        echo "3. Config e Secrets"
-        kubectl apply -f k8s/01-config/
-        
-        echo "4. Aguardando PVC estar bound"
-        kubectl wait --namespace postech --for=jsonpath='{.status.phase}'=Bound pvc/mysql-pvc --timeout=60s || {
-          echo "PVC ainda aguardando PV"
-          kubectl describe pvc -n postech mysql-pvc || true
-        }
-        
-        echo "5. Database (MySQL)"
-        kubectl apply -f k8s/03-database/mysql-deployment.yaml
-        kubectl apply -f k8s/03-database/mysql-service.yaml
-        
-        echo "6. App e migrações"
-        kubectl apply -f k8s/02-app/app-deployment.yaml
-        kubectl apply -f k8s/02-app/app-hpa.yaml
-        kubectl apply -f k8s/02-app/app-service.yaml
-        kubectl apply -f k8s/02-app/migrate-job.yaml
-        kubectl apply -f k8s/02-app/swagger-deployment.yaml
-        kubectl apply -f k8s/02-app/swagger-service.yaml
-
-        echo "=== AGUARDANDO O POD DO MYSQL SER CRIADO ==="
-        for i in $(seq 1 30); do
-          MYSQL_POD=$(kubectl get pods -n postech -l app=mysql -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-          if [ -n "$MYSQL_POD" ]; then
-            echo "Pod MySQL encontrado: $MYSQL_POD"
-            break
-          fi
-          if [ "$i" -eq 30 ]; then
-            echo "Timeout aguardando pod do MySQL ser criado"
-            kubectl get pods -n postech || true
-            kubectl get pvc -n postech || true
-            exit 1
-          fi
-          sleep 1
-        done
-
-        echo "=== AGUARDANDO O MYSQL FICAR PRONTO (Running) ==="
-        kubectl wait --namespace postech --for=condition=ready pod -l app=mysql --timeout=120s 2>&1 || {
-          echo "Pod ainda não está ready, aguardando processo do MySQL iniciar..."
-          kubectl describe pod -n postech -l app=mysql || true
-          kubectl logs -n postech "$MYSQL_POD" --tail=50 || true
-        }
-
-        MYSQL_POD=$(kubectl get pods -n postech -l app=mysql -o jsonpath='{.items[0].metadata.name}')
-        echo "Aguardando MySQL aceitar conexoes..."
-        for i in $(seq 1 60); do
-          if kubectl exec -n postech "$MYSQL_POD" -- sh -lc 'mysql -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1"' >/dev/null 2>&1; then
-            echo "✓ MySQL pronto para conexões."
-            break
-          fi
-
-          if [ "$i" -eq 60 ]; then
-            echo "✗ Timeout aguardando MySQL ficar pronto."
-            kubectl logs -n postech "$MYSQL_POD" --tail=200 || true
-            exit 1
-          fi
-
-          echo "  Tentativa $i/60..."
+        for i in {1..30}; do
+          echo "Tentativa $i/30..."
+          mysql -h 127.0.0.1 -u root -p"root" -e "SELECT 1" && echo "MySQL está pronto!" && exit 0
           sleep 2
         done
+        echo "MySQL não respondeu a tempo"
+        exit 1
+      env:
+        MYSQL_PWD: root
 
-        echo "=== AGUARDANDO O LARAVEL FICAR PRONTO ==="
-        kubectl wait --namespace postech --for=condition=ready pod -l app=postech-app --timeout=120s 2>&1 || {
-          echo "Pod do Laravel ainda não está ready"
-          kubectl get pods -n postech || true
-        }
-
-        echo "=== STATUS ATUAL DOS PODS ==="
-        kubectl get pods -n postech
-
-        echo "=== COLETANDO NOME DO POD DO LARAVEL ==="
-        APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items[0].metadata.name}')
-        echo "Pod detectado: $APP_POD"
-
-        echo "=== COPIANDO PASTA DE TESTES PARA O POD ==="
-        kubectl cp tests/ postech/$APP_POD:/var/www/html/tests -c app
-
-        echo "=== PREPARANDO BANCO E EXECUTANDO OS TESTES ==="
-        # 1. Executa as migrações usando o host do banco correto
-        kubectl exec -n postech "$APP_POD" -c app -- env \
-          DB_CONNECTION=mysql \
-          DB_HOST=mysql \
-          DB_PORT=3306 \
+    - name: Run Database Migrations
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/app \
+          -w /app \
+          --network host \
+          -e DB_CONNECTION=mysql \
+          -e DB_HOST=127.0.0.1 \
+          -e DB_PORT=3306 \
+          -e DB_DATABASE=tech_challenge \
+          -e DB_USERNAME=root \
+          -e DB_PASSWORD=root \
+          -e APP_KEY="${{ secrets.APP_KEY }}" \
+          -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+          techchallenge-app:test \
           php artisan migrate --force
 
-        # 2. Executa os testes injetando uma APP_KEY e JWT_SECRET temporárias para o ambiente do CI
-        kubectl exec -n postech "$APP_POD" -c app -- env \
-          DB_CONNECTION=mysql \
-          DB_HOST=mysql \
-          DB_PORT=3306 \
-          APP_KEY=${{ secrets.APP_KEY }} \
-          JWT_SECRET=${{ secrets.JWT_SECRET }} \
+    - name: Run Tests
+      run: |
+        docker run --rm \
+          -v ${{ github.workspace }}:/app \
+          -w /app \
+          --network host \
+          -e DB_CONNECTION=mysql \
+          -e DB_HOST=127.0.0.1 \
+          -e DB_PORT=3306 \
+          -e DB_DATABASE=tech_challenge \
+          -e DB_USERNAME=root \
+          -e DB_PASSWORD=root \
+          -e APP_KEY="${{ secrets.APP_KEY }}" \
+          -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+          techchallenge-app:test \
           ./vendor/bin/phpunit --no-configuration tests/
 
 
