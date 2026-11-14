@@ -1,3 +1,4 @@
+
 name: Laravel CI
 
 on:
@@ -23,7 +24,6 @@ jobs:
       run: |
         terraform init -backend=false
         terraform validate
-
     # 2. Cria o Cluster Kubernetes temporário (Kind)
     - name: Setup Kubernetes Cluster (Kind)
       uses: helm/kind-action@v1.10.0
@@ -54,30 +54,24 @@ jobs:
     - name: Load Image into Kind Cluster
       run: |
         kind load docker-image techchallenge-1-app-php:v2 --name laravel-cluster-ci
-
     # 5. Valida a sintaxe dos manifestos (Ajuste o caminho se não usar a pasta k8s/)
     - name: Validate K8s Manifests
       run: |
         kubectl apply --dry-run=client -f k8s/02-app/app-deployment.yaml
-
     # 6. Executa o deploy de teste
     - name: Deploy and Test Laravel App
       run: |
         set -euo pipefail
         export CI_IMAGE=techchallenge-1-app-php:v2
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
-
         echo "=== OTIMIZANDO MANIFESTOS PARA O AMBIENTE DE CI ==="
         MYSQL_FILE=$(ls k8s/03-database/* 2>/dev/null | head -n 1)
         echo "Arquivo do MySQL encontrado: $MYSQL_FILE"
-
         # Remove as probes do MySQL para evitar reinícios por falso-positivo no ambiente do CI
         yq eval 'del(.spec.template.spec.containers[0].livenessProbe)' -i "$MYSQL_FILE"
         yq eval 'del(.spec.template.spec.containers[0].readinessProbe)' -i "$MYSQL_FILE"
-
         # Remove o init container do Laravel para gerenciarmos a espera de forma direta
         yq eval 'del(.spec.template.spec.initContainers)' -i k8s/02-app/app-deployment.yaml
-
         # Forca os manifestos a usar a imagem carregada no Kind, sem pull externo
         yq eval '.spec.template.spec.imagePullSecrets = []' -i k8s/02-app/app-deployment.yaml
         yq eval '.spec.template.spec.containers[0].image = env(CI_IMAGE)' -i k8s/02-app/app-deployment.yaml
@@ -85,18 +79,14 @@ jobs:
         yq eval '.spec.template.spec.imagePullSecrets = []' -i k8s/02-app/migrate-job.yaml
         yq eval '.spec.template.spec.containers[0].image = env(CI_IMAGE)' -i k8s/02-app/migrate-job.yaml
         yq eval '.spec.template.spec.containers[0].imagePullPolicy = "IfNotPresent"' -i k8s/02-app/migrate-job.yaml
-
         echo "Aplicando todos os manifestos no Kubernetes..."
         kubectl apply -f k8s/00-namespaces/
         kubectl apply -f k8s/01-config/
         kubectl apply -f k8s/02-app/
         kubectl apply -f k8s/03-database/
-
-
         echo "=== AGUARDANDO O SOCKET DO MYSQL ABRIR ==="
         # Aguarda dinamicamente o pod do MySQL ser criado e iniciar o processo do container
         kubectl wait --namespace postech --for=jsonpath='{.status.phase}'=Running pod -l app=mysql --timeout=90s
-
         MYSQL_POD=$(kubectl get pods -n postech -l app=mysql -o jsonpath='{.items[0].metadata.name}')
         echo "Aguardando MySQL aceitar conexoes..."
         for i in $(seq 1 45); do
@@ -104,29 +94,22 @@ jobs:
             echo "MySQL pronto."
             break
           fi
-
           if [ "$i" -eq 45 ]; then
             echo "Timeout aguardando MySQL ficar pronto."
             kubectl logs -n postech "$MYSQL_POD" --tail=200 || true
             exit 1
           fi
-
           sleep 2
         done
-
         echo "=== AGUARDANDO O LARAVEL FICAR PRONTO ==="
         kubectl wait --namespace postech --for=condition=ready pod -l app=postech-app --timeout=90s
-
         echo "=== STATUS ATUAL DOS PODS ==="
         kubectl get pods -n postech
-
         echo "=== COLETANDO NOME DO POD DO LARAVEL ==="
         APP_POD=$(kubectl get pods -n postech -l app=postech-app -o jsonpath='{.items[0].metadata.name}')
         echo "Pod detectado: $APP_POD"
-
         echo "=== COPIANDO PASTA DE TESTES PARA O POD ==="
         kubectl cp tests/ postech/$APP_POD:/var/www/html/tests -c app
-
         echo "=== PREPARANDO BANCO E EXECUTANDO OS TESTES ==="
         # 1. Executa as migrações usando o host do banco correto
         kubectl exec -n postech "$APP_POD" -c app -- env \
@@ -134,7 +117,6 @@ jobs:
           DB_HOST=mysql \
           DB_PORT=3306 \
           php artisan migrate --force
-
         # 2. Executa os testes injetando uma APP_KEY e JWT_SECRET temporárias para o ambiente do CI
         kubectl exec -n postech "$APP_POD" -c app -- env \
           DB_CONNECTION=mysql \
@@ -143,21 +125,3 @@ jobs:
           APP_KEY=${{ secrets.APP_KEY }} \
           JWT_SECRET=${{ secrets.JWT_SECRET }} \
           ./vendor/bin/phpunit --no-configuration tests/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
