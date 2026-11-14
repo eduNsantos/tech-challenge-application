@@ -8,11 +8,15 @@ use App\Domain\Notification\Interfaces\NotificationRepositoryInterface;
 use App\Domain\Notification\Interfaces\NotificationServiceInterface;
 use App\Domain\Notification\ValueObjects\NotificationStatus;
 use App\Domain\Notification\ValueObjects\NotificationType;
-use App\Domain\ServiceOrder\Events\ServiceOrderQuoteSent;
+use App\Domain\ServiceOrder\Events\ServiceOrderPaymentLinkReady;
 use App\Support\Observability\BusinessTelemetry;
 use Illuminate\Support\Str;
 
-class NotifyCustomerOnQuoteSent
+/**
+ * Envia o orçamento ao cliente quando o payment-service devolve o link de pagamento.
+ * A aprovação do orçamento acontece pelo pagamento; o cliente ainda pode recusar pelo link de recusa.
+ */
+class NotifyCustomerOnPaymentLinkReady
 {
     public function __construct(
         private NotificationServiceInterface $notificationService,
@@ -20,7 +24,7 @@ class NotifyCustomerOnQuoteSent
         private CustomerRepositoryInterface $customerRepository
     ) {}
 
-    public function handle(ServiceOrderQuoteSent $event): void
+    public function handle(ServiceOrderPaymentLinkReady $event): void
     {
         $serviceOrder = $event->serviceOrder;
         $customer = $this->customerRepository->findById($serviceOrder->customerId);
@@ -29,12 +33,13 @@ class NotifyCustomerOnQuoteSent
             return;
         }
 
-        $approvalLink = url("/api/service-order/approve/{$serviceOrder->approvalToken}");
         $rejectLink = url("/api/service-order/reject/{$serviceOrder->approvalToken}");
+        $total = number_format($serviceOrder->totalBudget, 2, ',', '.');
 
         BusinessTelemetry::serviceOrder('service_order_quote_notification_started', $serviceOrder, [
             'customer_id' => $customer->id,
             'approval_token_present' => $serviceOrder->approvalToken !== null,
+            'payment_link_present' => $serviceOrder->paymentLink !== null,
         ]);
 
         $notification = new EntityNotification(
@@ -42,7 +47,9 @@ class NotifyCustomerOnQuoteSent
             $customer->email,
             NotificationType::EMAIL,
             'Orçamento da sua ordem de serviço disponível',
-            "Olá {$customer->name}, o orçamento da sua ordem de serviço foi gerado. Total: R$ {$serviceOrder->totalBudget}.\n\nClique em um dos links abaixo para decidir:\nAprovar: {$approvalLink}\nRecusar: {$rejectLink}",
+            "Olá {$customer->name}, o orçamento da sua ordem de serviço foi gerado. Total: R$ {$total}.\n\n"
+                . "Para aprovar o orçamento, realize o pagamento pelo link abaixo:\n{$serviceOrder->paymentLink}\n\n"
+                . "Caso não queira prosseguir, recuse o orçamento:\n{$rejectLink}",
             NotificationStatus::PENDING,
             new \DateTimeImmutable()
         );

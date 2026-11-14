@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Application\ServiceOrder\UseCases;
 
+use App\Application\Payment\Services\ServiceOrderPaymentRequester;
 use App\Application\ServiceOrder\DTOs\UpdateServiceOrderDTO;
 use App\Application\ServiceOrder\UseCases\UpdateServiceOrderUseCase;
 use App\Domain\Customer\Entities\Customer;
@@ -10,6 +11,7 @@ use App\Domain\Item\Entities\Item;
 use App\Domain\Item\Entities\StockMovement;
 use App\Domain\Item\Interfaces\ItemRepositoryInterface;
 use App\Domain\Item\Interfaces\StockMovementRepositoryInterface;
+use App\Domain\Payment\Interfaces\PaymentGatewayInterface;
 use App\Domain\Item\ValueObjects\ItemCode;
 use App\Domain\Item\ValueObjects\ItemType;
 use App\Domain\Item\ValueObjects\MeasureUnit;
@@ -51,7 +53,8 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             $this->serviceRepository,
             $this->itemRepository,
             $this->stockMovementRepository,
-            $this->vehicleRepository
+            $this->vehicleRepository,
+            new ServiceOrderPaymentRequester(Mockery::mock(PaymentGatewayInterface::class))
         );
     }
 

@@ -6,6 +6,8 @@ use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Item\Interfaces\ItemRepositoryInterface;
 use App\Domain\Item\Interfaces\StockMovementRepositoryInterface;
 use App\Domain\Notification\Interfaces\NotificationRepositoryInterface;
+use App\Domain\Payment\Interfaces\PaymentGatewayInterface;
+use App\Infrastructure\Payment\HttpPaymentGateway;
 use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
@@ -69,6 +71,11 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ServiceOrderServiceInterface::class,
             ServiceOrderServiceRepositoryEloquent::class
+        );
+
+        $this->app->bind(
+            PaymentGatewayInterface::class,
+            HttpPaymentGateway::class
         );
     }
 

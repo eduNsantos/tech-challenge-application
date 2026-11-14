@@ -2,6 +2,7 @@
 
 namespace App\Application\ServiceOrder\UseCases;
 
+use App\Application\Payment\Services\ServiceOrderPaymentRequester;
 use App\Application\ServiceOrder\DTOs\CreateServiceOrderDTO;
 use App\Application\ServiceOrderItem\DTOs\CreateServiceOrderItemDTO;
 use App\Application\ServiceOrderService\DTOs\CreateServiceOrderServiceDTO;
@@ -28,7 +29,8 @@ class CreateServiceOrderUseCase
         private ServiceOrderItemInterface $serviceOrderItemRepository,
         private ServiceOrderServiceInterface $serviceOrderServiceRepository,
         private VehicleRepositoryInterface $vehicleRepository,
-        private ServiceOrderCreatedOutbox $outbox
+        private ServiceOrderCreatedOutbox $outbox,
+        private ServiceOrderPaymentRequester $paymentRequester
     ) {}
 
     public function execute(CreateServiceOrderDTO $dto): ServiceOrder
@@ -59,7 +61,7 @@ class CreateServiceOrderUseCase
             $serviceOrder->sendQuoteForApproval();
         }
 
-        DB::transaction(function () use ($serviceOrder, $items, $services): void {
+        DB::transaction(function () use ($serviceOrder, $items, $services, $customer, $dto): void {
             $this->serviceOrderRepository->save($serviceOrder);
 
             $createdServices = [];
@@ -91,6 +93,10 @@ class CreateServiceOrderUseCase
             }
 
             $this->outbox->record($serviceOrder, $createdServices);
+            // Último passo da transação: se o payment-service falhar, a OS não é gravada
+            if ($dto->sendQuote) {
+                $this->paymentRequester->request($serviceOrder, $customer);
+            }
         });
 
         event(new ServiceOrderCreated($serviceOrder));

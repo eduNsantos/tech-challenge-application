@@ -19,7 +19,8 @@ class HandleServiceOrderApprovalRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'decision' => ['required', 'string', Rule::in(['approve', 'reject'])],
+            // Aprovação só acontece via pagamento (POST /api/payment/callback/{token})
+            'decision' => ['required', 'string', Rule::in(['reject'])],
         ];
     }
 }

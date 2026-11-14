@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y \
 RUN set -eux; \
     cd /tmp; \
     curl -fsSL \
-      "https://download.newrelic.com/php_agent/release/newrelic-php5-${NEW_RELIC_AGENT_VERSION}-linux.tar.gz" \
+      "https://download.newrelic.com/php_agent/archive/${NEW_RELIC_AGENT_VERSION}/newrelic-php5-${NEW_RELIC_AGENT_VERSION}-linux.tar.gz" \
       -o newrelic.tar.gz; \
     mkdir newrelic; \
     tar -xzf newrelic.tar.gz \

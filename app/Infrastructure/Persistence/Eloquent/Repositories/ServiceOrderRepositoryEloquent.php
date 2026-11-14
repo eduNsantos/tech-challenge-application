@@ -27,6 +27,9 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
             'quote_sent_at' => $serviceOrder->quoteSentAt,
             'quote_approved_at' => $serviceOrder->quoteApprovedAt,
             'approval_token' => $serviceOrder->approvalToken,
+            'payment_order_id' => $serviceOrder->paymentOrderId,
+            'payment_callback_token' => $serviceOrder->paymentCallbackToken,
+            'payment_link' => $serviceOrder->paymentLink,
             'created_user_id' => Auth::id(),
             'updated_user_id' => Auth::id(),
         ]);
@@ -97,7 +100,10 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
             quoteSentAt: $model->quote_sent_at?->toDateTimeString(),
             quoteApprovedAt: $model->quote_approved_at?->toDateTimeString(),
             statusStartedAt: $model->status_started_at?->toDateTimeString(),
-            approvalToken: $model->approval_token
+            approvalToken: $model->approval_token,
+            paymentOrderId: $model->payment_order_id,
+            paymentCallbackToken: $model->payment_callback_token,
+            paymentLink: $model->payment_link
         );
     }
 
@@ -145,6 +151,9 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
                 'quote_sent_at' => $serviceOrder->quoteSentAt,
                 'quote_approved_at' => $serviceOrder->quoteApprovedAt,
                 'approval_token' => $serviceOrder->approvalToken,
+                'payment_order_id' => $serviceOrder->paymentOrderId,
+                'payment_callback_token' => $serviceOrder->paymentCallbackToken,
+                'payment_link' => $serviceOrder->paymentLink,
                 'updated_user_id' => $actorId,
             ]);
 
@@ -215,5 +224,19 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
         }
 
         return $this->findById($model->id);
+    }
+
+    public function findByPaymentOrderId(string $paymentOrderId): ?ServiceOrder
+    {
+        $id = ServiceOrderModel::where('payment_order_id', $paymentOrderId)->value('id');
+
+        return $id ? $this->findById($id) : null;
+    }
+
+    public function findByPaymentCallbackToken(string $token): ?ServiceOrder
+    {
+        $id = ServiceOrderModel::where('payment_callback_token', $token)->value('id');
+
+        return $id ? $this->findById($id) : null;
     }
 }
