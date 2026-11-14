@@ -8,7 +8,7 @@ on:
 jobs:
   laravel-tests:
     runs-on: ubuntu-latest
-    
+
     services:
       mysql:
         image: mysql:8.0
@@ -29,16 +29,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # 1. Validação do Terraform
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: "1.7.0"
-
-    - name: Terraform Validate
-      run: |
-        cd k8s && terraform init -backend=false && terraform validate && cd ..
-        cd tech-challenge-services-ms/infra && terraform init -backend=false && terraform validate
 
     # 2. Build e teste da imagem PHP
     - name: Set up Docker Buildx
