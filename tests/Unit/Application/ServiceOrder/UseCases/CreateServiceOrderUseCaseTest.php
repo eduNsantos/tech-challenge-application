@@ -270,7 +270,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->itemRepository->shouldReceive('findById')->once()->andReturn($this->makeItem());
 
         $this->serviceOrderRepository->shouldReceive('save')->once();
-        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once();
+        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once()->andReturn(new ServiceOrderServiceEntity('sos-1', 'so-1', 'svc-1', 1, 1.0, null, null));
         $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();
         $this->gateway->shouldReceive('requestPaymentLink')->once()
             ->andThrow(new \App\Domain\Payment\Exceptions\PaymentServiceUnavailableException('fora do ar'));

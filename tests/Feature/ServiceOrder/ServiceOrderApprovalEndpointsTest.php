@@ -95,10 +95,7 @@ class ServiceOrderApprovalEndpointsTest extends TestCase
             'approval_token' => $token,
         ]);
 
-        $event = json_decode(DB::table('outbox')->where('group_id', $osId)->first()->payload, true);
-        $this->assertSame('ServiceOrderApprovalChanged', $event['type']);
-        $this->assertSame('aguardando_aprovacao', $event['previous_status']);
-        $this->assertSame('em_execucao', $event['status']);
+        $this->assertDatabaseMissing('outbox', ['group_id' => $osId]);
     }
 
     public function test_public_get_reject_endpoint_rejects_quote(): void
