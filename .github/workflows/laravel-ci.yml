@@ -42,7 +42,7 @@ jobs:
         tags: techchallenge-1-app-php:v2
         load: true
         build-args: |
-          NEW_RELIC_ENABLED=${{ secrets.NEW_RELIC_ENABLED || 'true' }}
+          NEW_RELIC_ENABLED=false
           NEW_RELIC_APP_NAME=${{ secrets.NEW_RELIC_APP_NAME || 'Tech Challenge POS' }}
           NEW_RELIC_LICENSE_KEY=${{ secrets.NEW_RELIC_LICENSE_KEY || secrets.NEW_RELIC_KEY || secrets.newrelic_key }}
           NEW_RELIC_DAEMON_ADDRESS=${{ secrets.NEW_RELIC_DAEMON_ADDRESS || 'newrelic:31339' }}
@@ -63,6 +63,14 @@ jobs:
       run: |
         set -euo pipefail
         export CI_IMAGE=techchallenge-1-app-php:v2
+        debug_kubernetes_state() {
+          echo "=== DEBUG: PODS NO NAMESPACE postech ==="
+          kubectl get pods -n postech -o wide || true
+          echo "=== DEBUG: PVCs NO NAMESPACE postech ==="
+          kubectl get pvc -n postech -o wide || true
+          echo "=== DEBUG: EVENTOS RECENTES NO NAMESPACE postech ==="
+          kubectl get events -n postech --sort-by=.lastTimestamp | tail -n 40 || true
+        }
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
         echo "=== OTIMIZANDO MANIFESTOS PARA O AMBIENTE DE CI ==="
         MYSQL_FILE=$(ls k8s/03-database/* 2>/dev/null | head -n 1)
@@ -86,7 +94,11 @@ jobs:
         kubectl apply -f k8s/03-database/
         echo "=== AGUARDANDO O SOCKET DO MYSQL ABRIR ==="
         # Aguarda dinamicamente o pod do MySQL ser criado e iniciar o processo do container
-        kubectl wait --namespace postech --for=jsonpath='{.status.phase}'=Running pod -l app=mysql --timeout=90s
+        if ! kubectl wait --namespace postech --for=jsonpath='{.status.phase}'=Running pod -l app=mysql --timeout=90s; then
+          echo "MySQL nao chegou ao estado Running; coletando diagnostico."
+          debug_kubernetes_state
+          exit 1
+        fi
         MYSQL_POD=$(kubectl get pods -n postech -l app=mysql -o jsonpath='{.items[0].metadata.name}')
         echo "Aguardando MySQL aceitar conexoes..."
         for i in $(seq 1 45); do
@@ -96,13 +108,18 @@ jobs:
           fi
           if [ "$i" -eq 45 ]; then
             echo "Timeout aguardando MySQL ficar pronto."
+            debug_kubernetes_state
             kubectl logs -n postech "$MYSQL_POD" --tail=200 || true
             exit 1
           fi
           sleep 2
         done
         echo "=== AGUARDANDO O LARAVEL FICAR PRONTO ==="
-        kubectl wait --namespace postech --for=condition=ready pod -l app=postech-app --timeout=90s
+        if ! kubectl wait --namespace postech --for=condition=ready pod -l app=postech-app --timeout=90s; then
+          echo "Aplicacao nao ficou Ready; coletando diagnostico."
+          debug_kubernetes_state
+          exit 1
+        fi
         echo "=== STATUS ATUAL DOS PODS ==="
         kubectl get pods -n postech
         echo "=== COLETANDO NOME DO POD DO LARAVEL ==="

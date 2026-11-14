@@ -24,11 +24,16 @@ spec:
             - sh
             - -c
             - |
-              until nc -z mysql 3306; do
-                echo "aguardando MySQL...";
-                sleep 3;
-              done;
-              echo "MySQL disponivel."
+              for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+                if nc -z mysql 3306 2>/dev/null; then
+                  echo "MySQL disponivel."
+                  exit 0
+                fi
+                echo "Aguardando MySQL... tentativa $i/20"
+                sleep 3
+              done
+              echo "Timeout esperando MySQL"
+              exit 1
       containers:
         - name: app
           image: ghcr.io/edunsantos/tech-challenge-application:latest

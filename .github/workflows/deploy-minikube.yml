@@ -28,6 +28,10 @@ jobs:
         run: |
           set -euo pipefail
           kubectl apply -f k8s/00-namespaces/
+          if ! kubectl get secret ghcr-secret -n "$NAMESPACE" >/dev/null; then
+            echo "Configure o secret ghcr-secret no namespace $NAMESPACE antes do deploy." >&2
+            exit 1
+          fi
           kubectl apply -f k8s/01-config/
           kubectl apply -f k8s/02-app/
           kubectl apply -f k8s/03-database/
