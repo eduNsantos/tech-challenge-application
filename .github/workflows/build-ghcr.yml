@@ -68,7 +68,7 @@ jobs:
         if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.K8S_REPO_TOKEN }}
+          token: ${{ secrets.GHCR_TOKEN }}
           repository: edunsantos/tech-challenge-kubernetes
           event-type: deploy-eks
           client-payload: |
