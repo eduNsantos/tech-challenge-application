@@ -68,7 +68,7 @@ jobs:
         kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
 
         echo "=== OTIMIZANDO MANIFESTOS PARA O AMBIENTE DE CI ==="
-        MYSQL_FILE=$(ls k8s/03-database/* 2>/dev/null | head -n 1)
+        MYSQL_FILE=$(ls k8s/03-database/* 2>/dev/null | grep deployment | head -n 1)
         echo "Arquivo do MySQL encontrado: $MYSQL_FILE"
 
         # Configura readiness probe com valores adequados para CI (remove liveness que causa reinicio)
@@ -88,11 +88,34 @@ jobs:
         yq eval '.spec.template.spec.containers[0].image = env(CI_IMAGE)' -i k8s/02-app/migrate-job.yaml
         yq eval '.spec.template.spec.containers[0].imagePullPolicy = "IfNotPresent"' -i k8s/02-app/migrate-job.yaml
 
-        echo "Aplicando todos os manifestos no Kubernetes..."
+        echo "=== APLICANDO MANIFESTOS EM ORDEM CORRETA ==="
+        echo "1. Namespaces"
         kubectl apply -f k8s/00-namespaces/
+        
+        echo "2. PersistentVolume e PersistentVolumeClaim (devem vir antes da secret)"
+        kubectl apply -f k8s/03-database/mysql-pv.yaml
+        kubectl apply -f k8s/03-database/mysql-pvc.yaml
+        
+        echo "3. Config e Secrets"
         kubectl apply -f k8s/01-config/
-        kubectl apply -f k8s/02-app/
-        kubectl apply -f k8s/03-database/
+        
+        echo "4. Aguardando PVC estar bound"
+        kubectl wait --namespace postech --for=jsonpath='{.status.phase}'=Bound pvc/mysql-pvc --timeout=60s || {
+          echo "PVC ainda aguardando PV"
+          kubectl describe pvc -n postech mysql-pvc || true
+        }
+        
+        echo "5. Database (MySQL)"
+        kubectl apply -f k8s/03-database/mysql-deployment.yaml
+        kubectl apply -f k8s/03-database/mysql-service.yaml
+        
+        echo "6. App e migrações"
+        kubectl apply -f k8s/02-app/app-deployment.yaml
+        kubectl apply -f k8s/02-app/app-hpa.yaml
+        kubectl apply -f k8s/02-app/app-service.yaml
+        kubectl apply -f k8s/02-app/migrate-job.yaml
+        kubectl apply -f k8s/02-app/swagger-deployment.yaml
+        kubectl apply -f k8s/02-app/swagger-service.yaml
 
         echo "=== AGUARDANDO O POD DO MYSQL SER CRIADO ==="
         for i in $(seq 1 30); do
@@ -104,6 +127,7 @@ jobs:
           if [ "$i" -eq 30 ]; then
             echo "Timeout aguardando pod do MySQL ser criado"
             kubectl get pods -n postech || true
+            kubectl get pvc -n postech || true
             exit 1
           fi
           sleep 1
@@ -113,6 +137,7 @@ jobs:
         kubectl wait --namespace postech --for=condition=ready pod -l app=mysql --timeout=120s 2>&1 || {
           echo "Pod ainda não está ready, aguardando processo do MySQL iniciar..."
           kubectl describe pod -n postech -l app=mysql || true
+          kubectl logs -n postech "$MYSQL_POD" --tail=50 || true
         }
 
         MYSQL_POD=$(kubectl get pods -n postech -l app=mysql -o jsonpath='{.items[0].metadata.name}')
