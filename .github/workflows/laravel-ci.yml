@@ -71,13 +71,11 @@ jobs:
         MYSQL_FILE=$(ls k8s/03-database/* 2>/dev/null | head -n 1)
         echo "Arquivo do MySQL encontrado: $MYSQL_FILE"
 
-        # Remove as probes do MySQL para evitar reinícios por falso-positivo no ambiente do CI
+        # Configura readiness probe com valores adequados para CI (remove liveness que causa reinicio)
         yq eval 'del(.spec.template.spec.containers[0].livenessProbe)' -i "$MYSQL_FILE"
-        yq eval 'del(.spec.template.spec.containers[0].readinessProbe)' -i "$MYSQL_FILE"
-
-        # Aumenta o tempo limite de readiness para o MySQL
-        yq eval '.spec.template.spec.containers[0].readinessProbe.initialDelaySeconds = 30' -i "$MYSQL_FILE" || true
-        yq eval '.spec.template.spec.containers[0].readinessProbe.timeoutSeconds = 10' -i "$MYSQL_FILE" || true
+        yq eval '.spec.template.spec.containers[0].readinessProbe.initialDelaySeconds = 10' -i "$MYSQL_FILE"
+        yq eval '.spec.template.spec.containers[0].readinessProbe.timeoutSeconds = 5' -i "$MYSQL_FILE"
+        yq eval '.spec.template.spec.containers[0].readinessProbe.periodSeconds = 5' -i "$MYSQL_FILE"
 
         # Remove o init container do Laravel para gerenciarmos a espera de forma direta
         yq eval 'del(.spec.template.spec.initContainers)' -i k8s/02-app/app-deployment.yaml
