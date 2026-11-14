@@ -24,7 +24,7 @@ Homestead.yaml
 Thumbs.db
 /zap/reports
 # Kubernetes secrets com valores reais
-k8s/secret.yaml
+k8s/01-config/secret.yaml
 
 # Terraform
 infra/.terraform/

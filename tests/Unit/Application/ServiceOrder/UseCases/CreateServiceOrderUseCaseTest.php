@@ -18,10 +18,12 @@ use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
+use App\Domain\ServiceOrderService\Entities\ServiceOrderService as ServiceOrderServiceEntity;
 use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
 use App\Domain\Vehicle\Entities\Vehicle;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use App\Domain\Vehicle\ValueObjects\Plate;
+use App\Infrastructure\Messaging\ServiceOrderCreatedOutbox;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Mockery;
@@ -31,12 +33,21 @@ use Tests\TestCase;
 class CreateServiceOrderUseCaseTest extends TestCase
 {
     private ServiceOrderRepositoryInterface&MockInterface $serviceOrderRepository;
+
     private CustomerRepositoryInterface&MockInterface $customerRepository;
+
     private ServiceRepositoryInterface&MockInterface $serviceRepository;
+
     private ItemRepositoryInterface&MockInterface $itemRepository;
+
     private ServiceOrderItemInterface&MockInterface $serviceOrderItemRepository;
+
     private ServiceOrderServiceInterface&MockInterface $serviceOrderServiceRepository;
+
     private VehicleRepositoryInterface&MockInterface $vehicleRepository;
+
+    private ServiceOrderCreatedOutbox&MockInterface $outbox;
+
     private PaymentGatewayInterface&MockInterface $gateway;
     private CreateServiceOrderUseCase $useCase;
 
@@ -54,6 +65,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->serviceOrderItemRepository = Mockery::mock(ServiceOrderItemInterface::class);
         $this->serviceOrderServiceRepository = Mockery::mock(ServiceOrderServiceInterface::class);
         $this->vehicleRepository = Mockery::mock(VehicleRepositoryInterface::class);
+        $this->outbox = Mockery::mock(ServiceOrderCreatedOutbox::class)->shouldIgnoreMissing();
         $this->gateway = Mockery::mock(PaymentGatewayInterface::class);
 
         $this->useCase = new CreateServiceOrderUseCase(
@@ -64,6 +76,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
             $this->serviceOrderItemRepository,
             $this->serviceOrderServiceRepository,
             $this->vehicleRepository,
+            $this->outbox,
             new ServiceOrderPaymentRequester($this->gateway)
         );
     }
@@ -123,7 +136,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->itemRepository->shouldReceive('findById')->with('item-1')->once()->andReturn($this->makeItem());
 
         $this->serviceOrderRepository->shouldReceive('save')->once();
-        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once();
+        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once()->andReturn(new ServiceOrderServiceEntity('sos-1', 'so-1', 'svc-1', 1, 1.0, null, null));
         $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();
 
         $result = $this->useCase->execute($this->makeDTO());
@@ -154,7 +167,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->itemRepository->shouldReceive('findById')->with('item-1')->once()->andReturn($this->makeItem());
 
         $this->serviceOrderRepository->shouldReceive('save')->once();
-        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once();
+        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once()->andReturn(new ServiceOrderServiceEntity('sos-1', 'so-1', 'svc-1', 1, 1.0, null, null));
         $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();
 
         $result = $this->useCase->execute($this->makeDTO());
@@ -171,7 +184,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->itemRepository->shouldReceive('findById')->with('item-1')->once()->andReturn($this->makeItem('item-1', 50.0));
 
         $this->serviceOrderRepository->shouldReceive('save')->once();
-        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once();
+        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once()->andReturn(new ServiceOrderServiceEntity('sos-1', 'so-1', 'svc-1', 1, 1.0, null, null));
         $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();
 
         $result = $this->useCase->execute($this->makeDTO());
@@ -188,7 +201,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->itemRepository->shouldReceive('findById')->with('item-1')->once()->andReturn($this->makeItem('item-1', 50.0));
 
         $this->serviceOrderRepository->shouldReceive('save')->once();
-        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once();
+        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once()->andReturn(new ServiceOrderServiceEntity('sos-1', 'so-1', 'svc-1', 1, 1.0, null, null));
         $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();
 
         $result = $this->useCase->execute($this->makeDTO([
@@ -209,7 +222,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->itemRepository->shouldReceive('findById')->once()->andReturn($this->makeItem());
 
         $this->serviceOrderRepository->shouldReceive('save')->once();
-        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once();
+        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once()->andReturn(new ServiceOrderServiceEntity('sos-1', 'so-1', 'svc-1', 1, 1.0, null, null));
         $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();
 
         $this->gateway->shouldNotReceive('requestPaymentLink');
@@ -229,7 +242,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->itemRepository->shouldReceive('findById')->once()->andReturn($this->makeItem());
 
         $this->serviceOrderRepository->shouldReceive('save')->once();
-        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once();
+        $this->serviceOrderServiceRepository->shouldReceive('createServiceOrderService')->once()->andReturn(new ServiceOrderServiceEntity('sos-1', 'so-1', 'svc-1', 1, 1.0, null, null));
         $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();
 
         $sent = null;
@@ -308,5 +321,4 @@ class CreateServiceOrderUseCaseTest extends TestCase
 
         $this->useCase->execute($this->makeDTO(['customerId' => '']));
     }
-
 }

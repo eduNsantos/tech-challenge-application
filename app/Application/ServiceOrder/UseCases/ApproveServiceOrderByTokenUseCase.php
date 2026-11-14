@@ -2,63 +2,70 @@
 
 namespace App\Application\ServiceOrder\UseCases;
 
-use App\Domain\ServiceOrder\Entities\ServiceOrder;
-use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
+use App\Domain\Item\Entities\StockMovement;
 use App\Domain\Item\Interfaces\ItemRepositoryInterface;
 use App\Domain\Item\Interfaces\StockMovementRepositoryInterface;
-use App\Domain\Item\Entities\StockMovement;
 use App\Domain\Item\ValueObjects\MovementType;
+use App\Domain\ServiceOrder\Entities\ServiceOrder;
+use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
+use App\Infrastructure\Messaging\ServiceOrderApprovalOutbox;
+use Illuminate\Support\Facades\DB;
 
 class ApproveServiceOrderByTokenUseCase
 {
     public function __construct(
         private ServiceOrderRepositoryInterface $serviceOrderRepository,
         private ItemRepositoryInterface $itemRepository,
-        private StockMovementRepositoryInterface $stockMovementRepository
+        private StockMovementRepositoryInterface $stockMovementRepository,
+        private ServiceOrderApprovalOutbox $approvalOutbox
     ) {}
 
     public function execute(string $token): ServiceOrder
     {
-        $serviceOrder = $this->serviceOrderRepository->findByApprovalToken($token);
+        return DB::transaction(function () use ($token): ServiceOrder {
+            $serviceOrder = $this->serviceOrderRepository->findByApprovalTokenForUpdate($token);
 
-        if (!$serviceOrder) {
-            throw new \DomainException('Token de aprovação inválido ou expirado.');
-        }
-
-        if ($serviceOrder->status !== ServiceOrder::STATUS_AGUARDANDO_APROVACAO) {
-            throw new \DomainException('Esta ordem de serviço não está aguardando aprovação.');
-        }
-
-        $serviceOrder->approveQuote();
-
-        foreach ($serviceOrder->items as $item) {
-            $part = $this->itemRepository->findById($item['item_id']);
-
-            if (!$part) {
-                continue;
+            if (! $serviceOrder) {
+                throw new \DomainException('Token de aprovação inválido ou expirado.');
             }
 
-            $previous = $part->stockQuantity;
-            $quantity = (int) $item['quantity'];
-            $part->removeStock($quantity);
-            $this->itemRepository->update($part);
+            if ($serviceOrder->status !== ServiceOrder::STATUS_AGUARDANDO_APROVACAO) {
+                throw new \DomainException('Esta ordem de serviço não está aguardando aprovação.');
+            }
 
-            $movement = StockMovement::record(
-                itemId: $part->id,
-                movementType: new MovementType(MovementType::WITHDRAWAL),
-                quantity: $quantity,
-                previousQuantity: $previous,
-                currentQuantity: $part->stockQuantity,
-                reason: "Aprovação de orçamento OS #{$serviceOrder->id}",
-                notes: null,
-                serviceOrderId: $serviceOrder->id
-            );
+            $previousStatus = $serviceOrder->status;
+            $serviceOrder->approveQuote();
 
-            $this->stockMovementRepository->save($movement);
-        }
+            foreach ($serviceOrder->items as $item) {
+                $part = $this->itemRepository->findById($item['item_id']);
 
-        $this->serviceOrderRepository->update($serviceOrder);
+                if (! $part) {
+                    continue;
+                }
 
-        return $serviceOrder;
+                $previous = $part->stockQuantity;
+                $quantity = (int) $item['quantity'];
+                $part->removeStock($quantity);
+                $this->itemRepository->update($part);
+
+                $movement = StockMovement::record(
+                    itemId: $part->id,
+                    movementType: new MovementType(MovementType::WITHDRAWAL),
+                    quantity: $quantity,
+                    previousQuantity: $previous,
+                    currentQuantity: $part->stockQuantity,
+                    reason: "Aprovação de orçamento OS #{$serviceOrder->id}",
+                    notes: null,
+                    serviceOrderId: $serviceOrder->id
+                );
+
+                $this->stockMovementRepository->save($movement);
+            }
+
+            $this->serviceOrderRepository->update($serviceOrder);
+            $this->approvalOutbox->record($serviceOrder, $previousStatus);
+
+            return $serviceOrder;
+        });
     }
 }

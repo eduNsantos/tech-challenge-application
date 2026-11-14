@@ -45,7 +45,7 @@ jobs:
             type=ref,event=branch
             type=ref,event=tag
             type=sha
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -65,7 +65,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Dispatch deployment to Kubernetes repo
-        if: github.event_name != 'pull_request'
+        if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.K8S_REPO_TOKEN }}
@@ -80,6 +80,7 @@ jobs:
 
 
       - name: Trigger tech-challenge-lambda-functions CI/CD
+        if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.LAMBDA_REPO_TOKEN }}

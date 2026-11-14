@@ -357,3 +357,31 @@ make infra-apply IMAGE_TAG=sha-abc1234
 | `make k8s-status` | Mostra pods e services do namespace |
 | `make k8s-urls` | Exibe as URLs de acesso (requer `minikube tunnel` rodando) |
 | `make k8s-tunnel` | Abre o túnel do Minikube (`minikube tunnel`, roda em foreground)
+
+## Integração com o microsserviço de serviços
+
+Com `SERVICES_MS_ENABLED=true`, a criação da O.S. grava um evento `ServiceOrderCreated` na outbox, na mesma transação da O.S. e de seus serviços. O publisher envia a mensagem para a fila FIFO; o consumidor da fila de retorno aplica mudanças de status. O contrato transporta somente os serviços, sem peças/itens.
+
+Configure no ambiente do monólito:
+
+```env
+SERVICES_MS_ENABLED=true
+AWS_DEFAULT_REGION=us-east-1
+SQS_SERVICE_ORDERS_CREATED_URL=<URL-da-fila-services-ms-service-orders-created.fifo>
+SQS_SERVICE_ORDER_STATUS_CHANGED_URL=<URL-da-fila-services-ms-service-order-status-changed.fifo>
+```
+
+Garanta que a identidade IAM usada pelo pod permita `sqs:SendMessage` na fila de criação e `sqs:ReceiveMessage` e `sqs:DeleteMessage` na fila de retorno. Não injete access keys nem `AWS_SESSION_TOKEN` nos Secrets dos pods. A alternativa temporária do Learner Lab usa a role dos nodes e não isola as permissões por pod; substitua-a por EKS Pod Identity ou IRSA antes de produção.
+
+Depois de aplicar as migrations, faça primeiro uma simulação e depois o backfill das O.S. existentes:
+
+```bash
+php artisan migrate --force
+php artisan services-ms:backfill-service-orders --dry-run
+php artisan services-ms:backfill-service-orders
+php artisan outbox:publish --once
+```
+
+O backfill ignora O.S. que já têm um evento `ServiceOrderCreated` na outbox e pode ser repetido com segurança. Os manifests dos workers ficam em `tech-challenge-kubernetes/k8s/04-services-ms/`; o workflow EKS os aplica junto da aplicação, usando a imagem versionada e o ConfigMap do cluster.
+
+As decisões de aprovação/rejeição também entram na outbox na mesma transação do monólito e são enviadas à fila FIFO de criação, no mesmo grupo da O.S. O MS consome `ServiceOrderApprovalChanged` em ordem: aprovação leva a `em_execucao` e rejeição a `em_diagnostico`. Outras alterações de status feitas diretamente no monólito ainda não são replicadas ao MS.

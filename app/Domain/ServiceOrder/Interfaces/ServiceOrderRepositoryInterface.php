@@ -20,6 +20,7 @@ interface ServiceOrderRepositoryInterface
 
     public function findByApprovalToken(string $token): ?ServiceOrder;
 
+    public function findByApprovalTokenForUpdate(string $token): ?ServiceOrder;
     public function findByPaymentOrderId(string $paymentOrderId): ?ServiceOrder;
 
     public function findByPaymentCallbackToken(string $token): ?ServiceOrder;

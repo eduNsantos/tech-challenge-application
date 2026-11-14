@@ -1,5 +1,12 @@
 terraform {
-  required_version = ">= 1.6.0"
+  required_version = ">= 1.10.0"
+
+  backend "s3" {
+    bucket       = "techchallenge-tfstate-477478162709-eks"
+    key          = "application/terraform.tfstate"
+    region       = "us-east-1"
+    use_lockfile = true
+  }
 
   required_providers {
     kubernetes = {

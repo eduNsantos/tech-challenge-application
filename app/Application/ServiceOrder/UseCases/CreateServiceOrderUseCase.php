@@ -16,6 +16,7 @@ use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
 use App\Support\Observability\BusinessTelemetry;
 use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
+use App\Infrastructure\Messaging\ServiceOrderCreatedOutbox;
 use Illuminate\Support\Facades\DB;
 
 class CreateServiceOrderUseCase
@@ -28,6 +29,7 @@ class CreateServiceOrderUseCase
         private ServiceOrderItemInterface $serviceOrderItemRepository,
         private ServiceOrderServiceInterface $serviceOrderServiceRepository,
         private VehicleRepositoryInterface $vehicleRepository,
+        private ServiceOrderCreatedOutbox $outbox,
         private ServiceOrderPaymentRequester $paymentRequester
     ) {}
 
@@ -62,8 +64,10 @@ class CreateServiceOrderUseCase
         DB::transaction(function () use ($serviceOrder, $items, $services, $customer, $dto): void {
             $this->serviceOrderRepository->save($serviceOrder);
 
+            $createdServices = [];
+
             foreach ($services as $service) {
-                $this->serviceOrderServiceRepository->createServiceOrderService(
+                $created = $this->serviceOrderServiceRepository->createServiceOrderService(
                     new CreateServiceOrderServiceDTO(
                         $serviceOrder->id,
                         (string) $service['service_id'],
@@ -73,6 +77,8 @@ class CreateServiceOrderUseCase
                         null
                     )
                 );
+
+                $createdServices[] = ['id' => $created->id] + $service;
             }
 
             foreach ($items as $item) {
@@ -86,6 +92,7 @@ class CreateServiceOrderUseCase
                 );
             }
 
+            $this->outbox->record($serviceOrder, $createdServices);
             // Último passo da transação: se o payment-service falhar, a OS não é gravada
             if ($dto->sendQuote) {
                 $this->paymentRequester->request($serviceOrder, $customer);
