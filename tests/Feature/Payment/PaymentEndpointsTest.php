@@ -83,6 +83,28 @@ class PaymentEndpointsTest extends TestCase
         return $id;
     }
 
+    private function createItem(string $name, float $price, float $stock): string
+    {
+        $id = Str::uuid()->toString();
+
+        DB::table('items')->insert([
+            'id' => $id,
+            'name' => $name,
+            'code' => strtoupper(Str::random(8)),
+            'type' => 'part',
+            'measure_unit' => 'un',
+            'stock_quantity' => $stock,
+            'minimum_quantity' => 0,
+            'unit_price' => $price,
+            'created_user_id' => $this->user->id,
+            'updated_user_id' => $this->user->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $id;
+    }
+
     /**
      * OS em aguardando_aprovacao com cobrança aberta no payment-service.
      *
@@ -184,6 +206,92 @@ class PaymentEndpointsTest extends TestCase
         $sent = $this->paymentGateway->lastRequest();
         $this->assertSame(self::VALID_CNPJ, $sent['customer']['cpf']);
         $this->assertSame('CNPJ', $sent['customer']['document_type']);
+    }
+
+    public function test_sending_quote_on_create_with_insufficient_stock_returns_422_without_payment_link(): void
+    {
+        $serviceId = $this->createService('Troca de Oleo', 89.9);
+        $itemId = $this->createItem('Filtro de oleo', 25.9, 1);
+
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', [
+                'customer_id' => $this->customerId,
+                'vehicle_id' => $this->vehicleId,
+                'services' => [['service_id' => $serviceId, 'quantity' => 1]],
+                'items' => [['item_id' => $itemId, 'quantity' => 2]],
+                'send_quote' => true,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', "Estoque insuficiente para a peca 'Filtro de oleo'. Disponivel: 1, necessario: 2.");
+
+        $this->assertNull($this->paymentGateway->lastRequest());
+        $this->assertDatabaseCount('service_orders', 0);
+    }
+
+    public function test_sending_quote_on_update_with_insufficient_stock_returns_422_without_payment_link(): void
+    {
+        $serviceId = $this->createService('Troca de Oleo', 89.9);
+        $itemId = $this->createItem('Filtro de oleo', 25.9, 0);
+
+        $osId = (string) $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', [
+                'customer_id' => $this->customerId,
+                'vehicle_id' => $this->vehicleId,
+                'services' => [['service_id' => $serviceId, 'quantity' => 1]],
+                'items' => [['item_id' => $itemId, 'quantity' => 2]],
+                'send_quote' => false,
+            ])
+            ->assertCreated()
+            ->json('service_order.id');
+
+        $this->actingAs($this->user, 'api')
+            ->putJson("/api/service-order/{$osId}", ['send_quote' => true])
+            ->assertStatus(422)
+            ->assertJsonPath('message', "Estoque insuficiente para a peca 'Filtro de oleo'. Disponivel: 0, necessario: 2.");
+
+        $this->assertNull($this->paymentGateway->lastRequest());
+        $this->assertDatabaseHas('service_orders', ['id' => $osId, 'status' => 'recebida', 'payment_order_id' => null]);
+    }
+
+    public function test_sending_quote_with_sufficient_stock_requests_payment_link_without_withdrawing_stock(): void
+    {
+        $serviceId = $this->createService('Troca de Oleo', 89.9);
+        $itemId = $this->createItem('Filtro de oleo', 25.9, 2);
+
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', [
+                'customer_id' => $this->customerId,
+                'vehicle_id' => $this->vehicleId,
+                'services' => [['service_id' => $serviceId, 'quantity' => 1]],
+                'items' => [['item_id' => $itemId, 'quantity' => 2]],
+                'send_quote' => true,
+            ])
+            ->assertCreated();
+
+        $this->assertSame(14170, $this->paymentGateway->lastRequest()['amount_cents']);
+        // A baixa só acontece na aprovação do orçamento
+        $this->assertEquals(2, DB::table('items')->where('id', $itemId)->value('stock_quantity'));
+    }
+
+    public function test_sending_quote_sums_fractional_lines_of_same_item_without_float_error(): void
+    {
+        $serviceId = $this->createService('Troca de Oleo', 89.9);
+        $itemId = $this->createItem('Oleo a granel', 40.0, 0.3);
+
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/service-order', [
+                'customer_id' => $this->customerId,
+                'vehicle_id' => $this->vehicleId,
+                'services' => [['service_id' => $serviceId, 'quantity' => 1]],
+                'items' => [
+                    ['item_id' => $itemId, 'quantity' => 0.1],
+                    ['item_id' => $itemId, 'quantity' => 0.2],
+                ],
+                'send_quote' => true,
+            ])
+            ->assertCreated();
+
+        $this->assertNotNull($this->paymentGateway->lastRequest());
     }
 
     public function test_payment_service_failure_returns_502_and_does_not_create_order(): void
