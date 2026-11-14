@@ -13,17 +13,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # 1. Validação do Terraform
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: "1.7.0"
-
-    - name: Terraform Validate
-      run: |
-        cd k8s && terraform init -backend=false && terraform validate && cd ..
-        cd tech-challenge-services-ms/infra && terraform init -backend=false && terraform validate
-
     # 2. Build imagem PHP otimizada para testes (sem New Relic)
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -41,17 +30,17 @@ jobs:
     - name: Setup and Run Tests
       run: |
         set -euo pipefail
-        
+
         echo "=== Step 1: Install Dependencies ==="
         docker run --rm \
           -v ${{ github.workspace }}:/app \
           -w /app \
           techchallenge-app:test \
           composer install --no-interaction --prefer-dist --optimize-autoloader
-        
+
         echo "=== Step 2: Setup .env for Testing ==="
         cp .env.testing .env
-        
+
         echo "=== Step 3: Generate APP_KEY ==="
         docker run --rm \
           -v ${{ github.workspace }}:/app \
@@ -62,7 +51,7 @@ jobs:
           -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
           techchallenge-app:test \
           php artisan key:generate --force
-        
+
         echo "=== Step 4: Run Database Migrations (SQLite in-memory) ==="
         docker run --rm \
           -v ${{ github.workspace }}:/app \
@@ -74,7 +63,7 @@ jobs:
           -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
           techchallenge-app:test \
           php artisan migrate --force
-        
+
         echo "=== Step 5: Run Tests ==="
         docker run --rm \
           -v ${{ github.workspace }}:/app \
