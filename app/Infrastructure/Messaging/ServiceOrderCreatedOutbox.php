@@ -40,13 +40,18 @@ class ServiceOrderCreatedOutbox
             ], $services),
         ];
 
-        DB::table('outbox')->insert([
+        $id = DB::table('outbox')->insertGetId([
             'event_id' => $eventId,
             'type' => 'ServiceOrderCreated',
             'group_id' => $serviceOrder->id,
             'payload' => json_encode($payload, JSON_THROW_ON_ERROR),
             'created_at' => now(),
             'updated_at' => now(),
+        ]);
+
+        $payload['sequence'] = $id;
+        DB::table('outbox')->where('id', $id)->update([
+            'payload' => json_encode($payload, JSON_THROW_ON_ERROR),
         ]);
     }
 }

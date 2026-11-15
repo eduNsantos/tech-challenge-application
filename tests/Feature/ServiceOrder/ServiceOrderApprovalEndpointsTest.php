@@ -116,7 +116,7 @@ class ServiceOrderApprovalEndpointsTest extends TestCase
         ]);
 
         $event = json_decode(DB::table('outbox')->where('group_id', $osId)->first()->payload, true);
-        $this->assertSame('ServiceOrderApprovalChanged', $event['type']);
+        $this->assertSame('ServiceOrderStatusChanged', $event['type']);
         $this->assertSame('aguardando_aprovacao', $event['previous_status']);
         $this->assertSame('em_diagnostico', $event['status']);
     }

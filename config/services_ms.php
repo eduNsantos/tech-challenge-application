@@ -9,5 +9,6 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
         'service_orders_created_url' => env('SQS_SERVICE_ORDERS_CREATED_URL'),
         'service_order_status_changed_url' => env('SQS_SERVICE_ORDER_STATUS_CHANGED_URL'),
+        'service_order_execution_url' => env('SQS_SERVICE_ORDER_EXECUTION_URL'),
     ],
 ];

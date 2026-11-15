@@ -385,7 +385,12 @@ kubectl logs -n postech -l app=postech-app -c app -f --prefix=true
 
 ## Integração com o microsserviço de serviços
 
-Com `SERVICES_MS_ENABLED=true`, a criação da O.S. grava um evento `ServiceOrderCreated` na outbox, na mesma transação da O.S. e de seus serviços. O publisher envia a mensagem para a fila FIFO; o consumidor da fila de retorno aplica mudanças de status. O contrato transporta somente os serviços, sem peças/itens.
+A aplicação é dona do status da O.S. Com `SERVICES_MS_ENABLED=true`:
+
+- A criação da O.S. grava `ServiceOrderCreated` na outbox, na mesma transação da O.S. e de seus serviços. O contrato transporta somente os serviços, sem peças/itens.
+- Toda mudança de status gravada pelo repositório grava `ServiceOrderStatusChanged` na outbox, na mesma transação. Isso inclui aprovação, rejeição e alteração manual. O campo `sequence` é o id da linha na outbox. O MS usa esse valor para descartar eventos antigos.
+- O worker `outbox:publish` envia os eventos de criação para `service-orders-created.fifo` e os de status para `service-order-status-changed.fifo`.
+- O worker `sqs:consume-service-execution` consome `service-order-execution.fifo`. Quando o MS conclui o último serviço, a aplicação muda a O.S. para `finalizada`, se ela ainda estiver em `em_execucao` e se o evento se referir ao último status publicado. Essa mudança dispara as notificações normais e volta ao MS como `ServiceOrderStatusChanged`. O início da execução não altera o status, pois a aprovação já leva a O.S. para `em_execucao`.
 
 Configure no ambiente do monólito:
 
@@ -394,9 +399,10 @@ SERVICES_MS_ENABLED=true
 AWS_DEFAULT_REGION=us-east-1
 SQS_SERVICE_ORDERS_CREATED_URL=<URL-da-fila-services-ms-service-orders-created.fifo>
 SQS_SERVICE_ORDER_STATUS_CHANGED_URL=<URL-da-fila-services-ms-service-order-status-changed.fifo>
+SQS_SERVICE_ORDER_EXECUTION_URL=<URL-da-fila-services-ms-service-order-execution.fifo>
 ```
 
-Garanta que a identidade IAM usada pelo pod permita `sqs:SendMessage` na fila de criação e `sqs:ReceiveMessage` e `sqs:DeleteMessage` na fila de retorno. Não injete access keys nem `AWS_SESSION_TOKEN` nos Secrets dos pods. A alternativa temporária do Learner Lab usa a role dos nodes e não isola as permissões por pod; substitua-a por EKS Pod Identity ou IRSA antes de produção.
+Garanta que a identidade IAM usada pelo pod permita `sqs:SendMessage` nas filas de criação e de status, e `sqs:ReceiveMessage` e `sqs:DeleteMessage` na fila de execução. Não injete access keys nem `AWS_SESSION_TOKEN` nos Secrets dos pods. A alternativa temporária do Learner Lab usa a role dos nodes e não isola as permissões por pod; substitua-a por EKS Pod Identity ou IRSA antes de produção.
 
 Depois de aplicar as migrations, faça primeiro uma simulação e depois o backfill das O.S. existentes:
 
@@ -404,9 +410,10 @@ Depois de aplicar as migrations, faça primeiro uma simulação e depois o backf
 php artisan migrate --force
 php artisan services-ms:backfill-service-orders --dry-run
 php artisan services-ms:backfill-service-orders
+php artisan services-ms:sync-service-order-status
 php artisan outbox:publish --once
 ```
 
-O backfill ignora O.S. que já têm um evento `ServiceOrderCreated` na outbox e pode ser repetido com segurança. Os manifests dos workers ficam em `tech-challenge-kubernetes/k8s/04-services-ms/`; o workflow EKS os aplica junto da aplicação, usando a imagem versionada e o ConfigMap do cluster.
+O backfill ignora O.S. que já têm um evento `ServiceOrderCreated` na outbox e pode ser repetido com segurança. O `sync-service-order-status` publica o status atual de cada O.S. já enviada ao MS. Ele é necessário uma vez para O.S. importadas antes de a aplicação ser dona do status, porque o MS recusa início/fim delas até receber um status com sequência. Repetir o comando é seguro. A ordem do corte está no README do Services MS. Os manifests dos workers ficam em `tech-challenge-kubernetes/k8s/04-services-ms/`; o workflow EKS os aplica junto da aplicação, usando a imagem versionada e o ConfigMap do cluster.
 
-As decisões de aprovação/rejeição também entram na outbox na mesma transação do monólito e são enviadas à fila FIFO de criação, no mesmo grupo da O.S. O MS consome `ServiceOrderApprovalChanged` em ordem: aprovação leva a `em_execucao` e rejeição a `em_diagnostico`. Outras alterações de status feitas diretamente no monólito ainda não são replicadas ao MS.
+O evento legado `ServiceOrderApprovalChanged` não é mais gerado; aprovação e rejeição chegam ao MS como `ServiceOrderStatusChanged`.

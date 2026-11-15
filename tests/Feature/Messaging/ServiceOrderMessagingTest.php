@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Messaging;
 
-use App\Application\ServiceOrder\ProcessServiceOrderStatusChanged;
-use App\Domain\ServiceOrder\Events\ServiceOrderStatusChanged;
+use App\Application\ServiceOrder\DTOs\UpdateServiceOrderStatusDTO;
+use App\Application\ServiceOrder\ProcessServiceOrderExecution;
+use App\Application\ServiceOrder\UseCases\UpdateServiceOrderStatusUseCase;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -87,19 +89,6 @@ class ServiceOrderMessagingTest extends TestCase
             ->json('service_order.id');
     }
 
-    private function statusPayload(string $orderId, string $status, array $overrides = []): array
-    {
-        return array_merge([
-            'event_id' => (string) Str::uuid(),
-            'type' => 'ServiceOrderStatusChanged',
-            'version' => 1,
-            'occurred_at' => now()->addMinute()->toIso8601String(),
-            'service_order_id' => $orderId,
-            'status' => $status,
-            'previous_status' => 'recebida',
-        ], $overrides);
-    }
-
     public function test_records_created_event_in_outbox_with_services_only(): void
     {
         config(['services_ms.enabled' => true]);
@@ -112,6 +101,7 @@ class ServiceOrderMessagingTest extends TestCase
 
         $payload = json_decode($row->payload, true);
         $this->assertSame('ServiceOrderCreated', $payload['type']);
+        $this->assertSame($row->id, $payload['sequence']);
         $this->assertSame(1, $payload['version']);
         $this->assertSame($orderId, $payload['service_order']['id']);
         $this->assertSame($this->customerId, $payload['service_order']['customer_id']);
@@ -135,6 +125,34 @@ class ServiceOrderMessagingTest extends TestCase
         $this->assertSame(0, DB::table('outbox')->count());
     }
 
+    public function test_status_changes_are_published_and_execution_completion_is_applied_once(): void
+    {
+        config(['services_ms.enabled' => true]);
+        Event::fake();
+        $orderId = $this->createServiceOrder();
+        app(UpdateServiceOrderStatusUseCase::class)->execute(
+            new UpdateServiceOrderStatusDTO($orderId, 'em_execucao')
+        );
+        $row = DB::table('outbox')->where('type', 'ServiceOrderStatusChanged')->first();
+        $status = json_decode($row->payload, true);
+        $this->assertSame('recebida', $status['previous_status']);
+        $this->assertSame('em_execucao', $status['status']);
+        $this->assertSame($row->id, $status['sequence']);
+
+        $event = [
+            'event_id' => (string) Str::uuid(),
+            'type' => 'ServiceOrderExecutionFinished',
+            'version' => 1,
+            'service_order_id' => $orderId,
+            'status_sequence' => $status['sequence'],
+        ];
+        $processor = app(ProcessServiceOrderExecution::class);
+        $this->assertTrue($processor->handle($event));
+        $this->assertFalse($processor->handle($event));
+        $this->assertDatabaseHas('service_orders', ['id' => $orderId, 'status' => 'finalizada']);
+        $this->assertSame(2, DB::table('outbox')->where('type', 'ServiceOrderStatusChanged')->count());
+    }
+
     public function test_backfill_is_idempotent_and_skips_orders_already_in_outbox(): void
     {
         config(['services_ms.enabled' => true]);
@@ -146,70 +164,106 @@ class ServiceOrderMessagingTest extends TestCase
         $this->assertSame(1, DB::table('outbox')->where('type', 'ServiceOrderCreated')->count());
     }
 
-    public function test_applies_status_change_and_dispatches_event(): void
+    private function executionEvent(string $orderId, string $type, int $sequence): array
     {
-        $orderId = $this->createServiceOrder();
-        Event::fake([ServiceOrderStatusChanged::class]);
-
-        $applied = app(ProcessServiceOrderStatusChanged::class)
-            ->handle($this->statusPayload($orderId, 'em_execucao'));
-
-        $this->assertTrue($applied);
-        $this->assertSame('em_execucao', DB::table('service_orders')->where('id', $orderId)->value('status'));
-        Event::assertDispatched(ServiceOrderStatusChanged::class, fn ($e) => $e->oldStatus === 'recebida');
+        return [
+            'event_id' => (string) Str::uuid(),
+            'type' => $type,
+            'version' => 1,
+            'service_order_id' => $orderId,
+            'status_sequence' => $sequence,
+        ];
     }
 
-    public function test_keeps_service_ids_when_applying_status(): void
+    private function startExecution(string $orderId): int
     {
-        $orderId = $this->createServiceOrder();
-        $before = DB::table('service_order_services')->where('service_order_id', $orderId)->pluck('id');
+        app(UpdateServiceOrderStatusUseCase::class)->execute(
+            new UpdateServiceOrderStatusDTO($orderId, 'em_execucao')
+        );
 
-        app(ProcessServiceOrderStatusChanged::class)->handle($this->statusPayload($orderId, 'em_execucao'));
-
-        $this->assertEquals($before, DB::table('service_order_services')->where('service_order_id', $orderId)->pluck('id'));
+        return (int) DB::table('outbox')->where('group_id', $orderId)->max('id');
     }
 
-    public function test_ignores_duplicate_event(): void
+    public function test_execution_started_does_not_change_status(): void
     {
+        config(['services_ms.enabled' => true]);
+        Event::fake();
         $orderId = $this->createServiceOrder();
-        $payload = $this->statusPayload($orderId, 'em_execucao');
-        $processor = app(ProcessServiceOrderStatusChanged::class);
+        $sequence = $this->startExecution($orderId);
 
-        $this->assertTrue($processor->handle($payload));
-        $this->assertFalse($processor->handle($payload));
-    }
-
-    public function test_ignores_stale_event(): void
-    {
-        $orderId = $this->createServiceOrder();
-
-        $applied = app(ProcessServiceOrderStatusChanged::class)
-            ->handle($this->statusPayload($orderId, 'em_execucao', ['occurred_at' => now()->subHour()->toIso8601String()]));
+        $applied = app(ProcessServiceOrderExecution::class)
+            ->handle($this->executionEvent($orderId, 'ServiceOrderExecutionStarted', $sequence));
 
         $this->assertFalse($applied);
-        $this->assertSame('recebida', DB::table('service_orders')->where('id', $orderId)->value('status'));
+        $this->assertDatabaseHas('service_orders', ['id' => $orderId, 'status' => 'em_execucao']);
     }
 
-    public function test_ignores_unknown_service_order(): void
+    public function test_ignores_execution_finished_computed_from_an_outdated_status(): void
     {
-        $applied = app(ProcessServiceOrderStatusChanged::class)
-            ->handle($this->statusPayload((string) Str::uuid(), 'em_execucao'));
+        config(['services_ms.enabled' => true]);
+        Event::fake();
+        $orderId = $this->createServiceOrder();
+        $sequence = $this->startExecution($orderId);
+
+        $applied = app(ProcessServiceOrderExecution::class)
+            ->handle($this->executionEvent($orderId, 'ServiceOrderExecutionFinished', $sequence - 1));
 
         $this->assertFalse($applied);
+        $this->assertDatabaseHas('service_orders', ['id' => $orderId, 'status' => 'em_execucao']);
     }
 
-    public function test_rejects_invalid_payload(): void
+    public function test_execution_event_for_unknown_order_is_retried(): void
+    {
+        $this->expectException(ModelNotFoundException::class);
+
+        app(ProcessServiceOrderExecution::class)
+            ->handle($this->executionEvent((string) Str::uuid(), 'ServiceOrderExecutionFinished', 1));
+    }
+
+    public function test_rejects_invalid_execution_event(): void
     {
         $this->expectException(InvalidArgumentException::class);
 
-        app(ProcessServiceOrderStatusChanged::class)->handle(['event_id' => 'x']);
+        app(ProcessServiceOrderExecution::class)->handle(['event_id' => 'x']);
     }
 
-    public function test_rejects_unsupported_status_event_contract(): void
+    public function test_status_sync_publishes_current_status_of_imported_orders(): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        config(['services_ms.enabled' => true]);
+        $imported = $this->createServiceOrder();
+        config(['services_ms.enabled' => false]);
+        $this->createServiceOrder();
+        config(['services_ms.enabled' => true]);
 
-        app(ProcessServiceOrderStatusChanged::class)
-            ->handle($this->statusPayload((string) Str::uuid(), 'em_execucao', ['version' => 2]));
+        Artisan::call('services-ms:sync-service-order-status');
+
+        $rows = DB::table('outbox')->where('type', 'ServiceOrderStatusChanged')->get();
+        $this->assertCount(1, $rows);
+        $payload = json_decode($rows[0]->payload, true);
+        $this->assertSame($imported, $payload['service_order_id']);
+        $this->assertSame('recebida', $payload['status']);
+        $this->assertSame($rows[0]->id, $payload['sequence']);
+    }
+
+    public function test_backfill_queues_orders_created_while_integration_was_disabled(): void
+    {
+        config(['services_ms.enabled' => false]);
+        $first = $this->createServiceOrder();
+        $second = $this->createServiceOrder();
+        config(['services_ms.enabled' => true]);
+
+        Artisan::call('services-ms:backfill-service-orders', ['--chunk' => 1]);
+
+        $this->assertEqualsCanonicalizing(
+            [$first, $second],
+            DB::table('outbox')->where('type', 'ServiceOrderCreated')->pluck('group_id')->all()
+        );
+    }
+
+    public function test_status_sync_requires_integration_enabled(): void
+    {
+        config(['services_ms.enabled' => false]);
+
+        $this->assertSame(1, Artisan::call('services-ms:sync-service-order-status'));
     }
 }

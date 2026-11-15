@@ -53,6 +53,7 @@ class PublishOutbox extends Command
             $url = match ($event->type) {
                 'ServiceOrderCreated' => config('services_ms.sqs.service_orders_created_url'),
                 'ServiceOrderApprovalChanged' => config('services_ms.sqs.service_orders_created_url'),
+                'ServiceOrderStatusChanged' => config('services_ms.sqs.service_order_status_changed_url'),
                 default => null,
             };
 

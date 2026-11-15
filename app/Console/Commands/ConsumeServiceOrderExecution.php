@@ -2,25 +2,25 @@
 
 namespace App\Console\Commands;
 
-use App\Application\ServiceOrder\ProcessServiceOrderStatusChanged;
+use App\Application\ServiceOrder\ProcessServiceOrderExecution;
 use Aws\Sqs\SqsClient;
 use Illuminate\Console\Command;
 use InvalidArgumentException;
 use JsonException;
 use Throwable;
 
-class ConsumeServiceOrderStatusChanged extends Command
+class ConsumeServiceOrderExecution extends Command
 {
-    protected $signature = 'sqs:consume-status-changes {--once : Process a single poll and exit}';
+    protected $signature = 'sqs:consume-service-execution {--once : Process a single poll and exit}';
 
-    protected $description = 'Consume ServiceOrderStatusChanged events from the SQS FIFO queue';
+    protected $description = 'Consume service execution events from the SQS FIFO queue';
 
-    public function handle(ProcessServiceOrderStatusChanged $processor): int
+    public function handle(ProcessServiceOrderExecution $processor): int
     {
-        $url = config('services_ms.sqs.service_order_status_changed_url');
+        $url = config('services_ms.sqs.service_order_execution_url');
 
         if (! $url) {
-            $this->error('SQS_SERVICE_ORDER_STATUS_CHANGED_URL is not configured.');
+            $this->error('SQS_SERVICE_ORDER_EXECUTION_URL is not configured.');
 
             return self::FAILURE;
         }
@@ -30,7 +30,7 @@ class ConsumeServiceOrderStatusChanged extends Command
         do {
             $result = $client->receiveMessage([
                 'QueueUrl' => $url,
-                'MaxNumberOfMessages' => 10,
+                'MaxNumberOfMessages' => 1,
                 'WaitTimeSeconds' => 20,
             ]);
 
@@ -42,7 +42,7 @@ class ConsumeServiceOrderStatusChanged extends Command
         return self::SUCCESS;
     }
 
-    private function process(SqsClient $client, string $url, ProcessServiceOrderStatusChanged $processor, array $message): void
+    private function process(SqsClient $client, string $url, ProcessServiceOrderExecution $processor, array $message): void
     {
         try {
             $payload = json_decode($message['Body'], true, 512, JSON_THROW_ON_ERROR);
@@ -50,7 +50,7 @@ class ConsumeServiceOrderStatusChanged extends Command
             $this->info(($processed ? 'Applied ' : 'Skipped ').($payload['event_id'] ?? ''));
         } catch (JsonException|InvalidArgumentException $e) {
             // Mensagem inválida nunca terá sucesso: não apaga, e o redrive a envia para a DLQ.
-            logger()->error('Invalid ServiceOrderStatusChanged message', ['error' => $e->getMessage(), 'message_id' => $message['MessageId'] ?? null]);
+            logger()->error('Invalid service order execution message', ['error' => $e->getMessage(), 'message_id' => $message['MessageId'] ?? null]);
 
             return;
         } catch (Throwable $e) {

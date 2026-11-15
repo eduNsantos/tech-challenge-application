@@ -11,7 +11,6 @@ use App\Domain\Item\ValueObjects\ItemType;
 use App\Domain\Item\ValueObjects\MeasureUnit;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
-use App\Infrastructure\Messaging\ServiceOrderApprovalOutbox;
 use Illuminate\Support\Facades\DB;
 use Mockery;
 use Mockery\MockInterface;
@@ -25,8 +24,6 @@ class ApproveServiceOrderByTokenUseCaseTest extends TestCase
 
     private StockMovementRepositoryInterface&MockInterface $stockMovementRepository;
 
-    private ServiceOrderApprovalOutbox&MockInterface $approvalOutbox;
-
     private ApproveServiceOrderByTokenUseCase $useCase;
 
     protected function setUp(): void
@@ -36,14 +33,12 @@ class ApproveServiceOrderByTokenUseCaseTest extends TestCase
         $this->serviceOrderRepository = Mockery::mock(ServiceOrderRepositoryInterface::class);
         $this->itemRepository = Mockery::mock(ItemRepositoryInterface::class);
         $this->stockMovementRepository = Mockery::mock(StockMovementRepositoryInterface::class);
-        $this->approvalOutbox = Mockery::mock(ServiceOrderApprovalOutbox::class);
         DB::shouldReceive('transaction')->andReturnUsing(static fn ($callback) => $callback());
 
         $this->useCase = new ApproveServiceOrderByTokenUseCase(
             $this->serviceOrderRepository,
             $this->itemRepository,
-            $this->stockMovementRepository,
-            $this->approvalOutbox
+            $this->stockMovementRepository
         );
     }
 
@@ -135,7 +130,6 @@ class ApproveServiceOrderByTokenUseCaseTest extends TestCase
         $this->itemRepository->shouldReceive('update')->once();
         $this->stockMovementRepository->shouldReceive('save')->once();
         $this->serviceOrderRepository->shouldReceive('update')->once();
-        $this->approvalOutbox->shouldReceive('record')->once()->with($serviceOrder, ServiceOrder::STATUS_AGUARDANDO_APROVACAO);
 
         $result = $this->useCase->execute($token);
 
@@ -163,7 +157,6 @@ class ApproveServiceOrderByTokenUseCaseTest extends TestCase
         $this->itemRepository->shouldNotReceive('update');
         $this->stockMovementRepository->shouldNotReceive('save');
         $this->serviceOrderRepository->shouldReceive('update')->once();
-        $this->approvalOutbox->shouldReceive('record')->once()->with($so, ServiceOrder::STATUS_AGUARDANDO_APROVACAO);
 
         $result = $this->useCase->execute($token);
 
@@ -189,7 +182,6 @@ class ApproveServiceOrderByTokenUseCaseTest extends TestCase
         $this->itemRepository->shouldNotReceive('update');
         $this->stockMovementRepository->shouldNotReceive('save');
         $this->serviceOrderRepository->shouldReceive('update')->once();
-        $this->approvalOutbox->shouldReceive('record')->once()->with($serviceOrder, ServiceOrder::STATUS_AGUARDANDO_APROVACAO);
 
         $result = $this->useCase->execute($token);
 
