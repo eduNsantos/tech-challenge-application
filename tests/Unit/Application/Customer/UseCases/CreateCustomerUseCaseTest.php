@@ -5,7 +5,9 @@ namespace Tests\Unit\Application\Customer\UseCases;
 use App\Application\Customer\DTOs\CreateCustomerDTO;
 use App\Application\Customer\UseCases\CreateCustomerUseCase;
 use App\Domain\Customer\Entities\Customer;
+use App\Domain\Customer\Events\CustomerCreated;
 use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
+use Illuminate\Support\Facades\Event;
 use Mockery;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -18,6 +20,7 @@ class CreateCustomerUseCaseTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Event::fake([CustomerCreated::class]);
         $this->repository = Mockery::mock(CustomerRepositoryInterface::class);
         $this->useCase = new CreateCustomerUseCase($this->repository);
     }
@@ -47,6 +50,7 @@ class CreateCustomerUseCaseTest extends TestCase
         $this->assertSame('João', $result->name);
         $this->assertSame('joao@example.com', $result->email);
         $this->assertSame('52998224725', $result->document);
+        Event::assertDispatched(CustomerCreated::class);
     }
 
     public function test_throws_exception_if_document_already_registered(): void

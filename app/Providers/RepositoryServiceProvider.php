@@ -11,13 +11,11 @@ use App\Infrastructure\Payment\HttpPaymentGateway;
 use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
-use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use App\Infrastructure\Persistence\Eloquent\Repositories\CustomerRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\ItemRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\NotificationRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceOrderRepositoryEloquent;
-use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceOrderServiceRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\ServiceOrderItemRepositoryEloquent;
 use App\Infrastructure\Persistence\Eloquent\Repositories\StockMovementRepositoryEloquent;
@@ -66,11 +64,6 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(
             ServiceOrderItemInterface::class,
             ServiceOrderItemRepositoryEloquent::class
-        );
-
-        $this->app->bind(
-            ServiceOrderServiceInterface::class,
-            ServiceOrderServiceRepositoryEloquent::class
         );
 
         $this->app->bind(

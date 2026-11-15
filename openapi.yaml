@@ -39,8 +39,6 @@ tags:
       Operação principal do sistema — abre, acompanha e encerra o atendimento de um veículo.
       Fluxo de status: recebida → em_diagnostico → aguardando_aprovacao → em_execucao → finalizada → entregue.
       A aprovação do orçamento dispara a baixa automática de estoque das peças (requer autenticação)
-  - name: Serviços de Ordem
-    description: Controle de execução individual de serviços dentro de uma OS — iniciar e finalizar (requer autenticação)
   - name: Clientes
     description: Operações de gerenciamento de clientes (requer autenticação)
   - name: Pagamentos
@@ -1491,102 +1489,6 @@ paths:
         '422':
           $ref: '#/components/responses/ErroNegocio'
 
-  # ─── Serviços de Ordem ───────────────────────────────────────────────────────
-
-  /service-order-service/metrics/average-execution-time:
-    get:
-      tags:
-        - Serviços de Ordem
-      summary: Tempo médio de execução por serviço
-      description: |-
-        Retorna o tempo médio de execução agrupado por tipo de serviço.
-
-        **Requer autenticação.**
-      operationId: service-order-service-average-execution-time
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Métricas retornadas com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  metrics:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/AverageExecutionTimeMetric'
-                  message:
-                    type: string
-                    example: Tempo medio por servico obtido com sucesso
-        '401':
-          $ref: '#/components/responses/NaoAutenticado'
-
-  /service-order-service/{id}/start:
-    patch:
-      tags:
-        - Serviços de Ordem
-      summary: Iniciar execução do serviço
-      description: |-
-        Registra o início da execução de um serviço dentro de uma OS.
-
-        **Requer autenticação.**
-      operationId: service-order-service-start
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/PathId'
-      responses:
-        '200':
-          description: Serviço iniciado com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  service_order_service:
-                    $ref: '#/components/schemas/ServiceOrderService'
-                  message:
-                    type: string
-                    example: Servico iniciado com sucesso
-        '401':
-          $ref: '#/components/responses/NaoAutenticado'
-        '422':
-          $ref: '#/components/responses/ErroNegocio'
-
-  /service-order-service/{id}/finish:
-    patch:
-      tags:
-        - Serviços de Ordem
-      summary: Finalizar execução do serviço
-      description: |-
-        Registra a conclusão da execução de um serviço dentro de uma OS.
-
-        **Requer autenticação.**
-      operationId: service-order-service-finish
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/PathId'
-      responses:
-        '200':
-          description: Serviço finalizado com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  service_order_service:
-                    $ref: '#/components/schemas/ServiceOrderService'
-                  message:
-                    type: string
-                    example: Servico finalizado com sucesso
-        '401':
-          $ref: '#/components/responses/NaoAutenticado'
-        '422':
-          $ref: '#/components/responses/ErroNegocio'
-
   # ─── Clientes ────────────────────────────────────────────────────────────────
 
   /customer:
@@ -2778,71 +2680,6 @@ components:
           format: date-time
           nullable: true
           example: '2026-04-08T14:31:00.000000Z'
-
-    # ── Serviços de Ordem ────────────────────────────────────────────────────
-
-    ServiceOrderService:
-      type: object
-      description: Registro de execução de um serviço vinculado a uma OS
-      properties:
-        id:
-          type: string
-          format: uuid
-          example: "s1o2s3e4-r5v6-7890-ice0-rder12345678"
-        service_order_id:
-          type: string
-          format: uuid
-          example: "b1c2d3e4-f5a6-7890-bcde-f01234567890"
-        service_id:
-          type: string
-          format: uuid
-          example: "550e8400-e29b-41d4-a716-446655440010"
-        quantity:
-          type: number
-          format: float
-          example: 1
-        price:
-          type: number
-          format: float
-          example: 199.90
-        started_at:
-          type: string
-          format: date-time
-          nullable: true
-          example: null
-        finished_at:
-          type: string
-          format: date-time
-          nullable: true
-          example: null
-        started_user_id:
-          type: integer
-          nullable: true
-          example: null
-        finished_user_id:
-          type: integer
-          nullable: true
-          example: null
-
-    AverageExecutionTimeMetric:
-      type: object
-      description: Tempo médio de execução agrupado por serviço
-      properties:
-        service_id:
-          type: string
-          format: uuid
-          example: "550e8400-e29b-41d4-a716-446655440010"
-        service_name:
-          type: string
-          example: Troca de óleo
-        average_execution_time_seconds:
-          type: number
-          format: float
-          description: Tempo médio de execução em segundos
-          example: 3600.0
-        total_executions:
-          type: integer
-          example: 5
 
   responses:
     NaoAutenticado:

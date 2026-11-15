@@ -121,18 +121,12 @@ class DevDataSeeder extends Seeder
             sendQuote: false,
         ));
 
-        $serviceOrderServiceId = (string) (DB::table('service_order_services')
-            ->where('service_order_id', $serviceOrder->id)
-            ->where('service_id', $service->id)
-            ->value('id') ?? 'COLE_O_ID_GERADO_PELO_DEVDATASEEDER');
-
         $this->updateBrunoFolderVars(
             vehicleId: $vehicle->id,
             serviceId: $service->id,
             itemId: $item->id,
             customerId: $customer->id,
-            serviceOrderId: $serviceOrder->id,
-            serviceOrderServiceId: $serviceOrderServiceId
+            serviceOrderId: $serviceOrder->id
         );
 
         // ------------------------------------------------------------------ //
@@ -151,7 +145,6 @@ class DevDataSeeder extends Seeder
                 ['Customer ID',       $customer->id],
                 ['Item ID',           $item->id],
                 ['Service Order ID',  $serviceOrder->id],
-                ['Order Service ID',  $serviceOrderServiceId],
             ]
         );
         $this->command->newLine();
@@ -162,8 +155,7 @@ class DevDataSeeder extends Seeder
         string $serviceId,
         string $itemId,
         string $customerId,
-        string $serviceOrderId,
-        string $serviceOrderServiceId
+        string $serviceOrderId
     ): void {
         $filePath = base_path('bruno/TechChallengeAuth/Authenticated/folder.bru');
 
@@ -183,7 +175,6 @@ class DevDataSeeder extends Seeder
             . "  itemId: {$itemId}\n"
             . "  customerId: {$customerId}\n"
             . "  serviceOrderId: {$serviceOrderId}\n"
-            . "  serviceOrderServiceId: {$serviceOrderServiceId}\n"
             . "  notificationId: COLE_O_ID_DA_NOTIFICACAO\n"
             . "}";
 
