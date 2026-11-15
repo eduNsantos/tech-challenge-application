@@ -42,7 +42,7 @@ resource "kubernetes_deployment_v1" "app" {
           name              = "app"
           image             = "${var.image_repository}:${var.image_tag}"
           image_pull_policy = "Always"
-          command           = ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+          command           = ["/bin/sh", "-c", "mkdir -p storage/logs && exec php artisan serve --host=0.0.0.0 --port=8000 >/dev/null"]
 
           port {
             container_port = 8000
