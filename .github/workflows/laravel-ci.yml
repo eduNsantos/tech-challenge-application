@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches: [ "main" ]
+  # Check obrigatório (laravel-tests) da regra de proteção da main
   pull_request:
     branches: [ "main" ]
 
@@ -174,3 +175,6 @@ jobs:
           DB_HOST=mysql \
           DB_PORT=3306 \
           php -d newrelic.enabled=0 ./vendor/bin/phpunit --no-configuration tests/
+        # 3. Testes BDD (Behat) do fluxo completo da O.S. — SQLite em memória, sem depender do MySQL
+        kubectl exec -n postech "$APP_POD" -c app -- \
+          php -d newrelic.enabled=0 ./vendor/bin/behat --no-colors --format=progress

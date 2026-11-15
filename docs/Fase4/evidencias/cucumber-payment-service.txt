@@ -1,0 +1,136 @@
+
+Funcionalidade: SAGA de pagamento orquestrada pelo Step Functions
+
+  @caminho-feliz
+  Cenário: Pagamento aprovado conclui a saga e avisa o application                      # features/saga_pagamento.feature:16
+    ✔ Dado que o Mercado Pago está disponível                                           # features/step_definitions/saga.steps.js:6
+    ✔ E que o application está no ar                                                    # features/step_definitions/saga.steps.js:10
+    ✔ Quando o application solicita a cobrança de 600 centavos para o CPF "52998224725" # features/step_definitions/saga.steps.js:31
+    ✔ Então a API deve aceitar o pedido com status "QUEUED"                             # features/step_definitions/saga.steps.js:48
+    ✔ Quando o trigger consome a fila de pedidos                                        # features/step_definitions/saga.steps.js:44
+    ✔ Então a saga deve ficar aguardando o pagamento                                    # features/step_definitions/saga.steps.js:88
+    ✔ E o pedido deve estar com status "WAITING_PAYMENT" no DynamoDB                    # features/step_definitions/saga.steps.js:138
+    ✔ E o application deve receber o link de pagamento                                  # features/step_definitions/saga.steps.js:161
+    ✔ Quando o Mercado Pago notifica o pagamento com status "approved"                  # features/step_definitions/saga.steps.js:58
+    ✔ Então o webhook deve responder 200                                                # features/step_definitions/saga.steps.js:82
+    ✔ E a saga deve terminar com sucesso                                                # features/step_definitions/saga.steps.js:93
+    ✔ E o pedido deve estar com status "PAID" no DynamoDB                               # features/step_definitions/saga.steps.js:138
+    ✔ E o application deve receber o resultado "PAID"                                   # features/step_definitions/saga.steps.js:173
+    ✔ E a saga deve ter passado pelos estados:                                          # features/step_definitions/saga.steps.js:106
+        | Registrar          |
+        | IniciarTentativas  |
+        | GerarLink          |
+        | NotificarEAguardar |
+        | PagamentoAprovado  |
+
+  @compensacao
+  Cenário: Pagamento recusado encerra a saga sem aprovar a O.S.        # features/saga_pagamento.feature:36
+    ✔ Dado que o Mercado Pago está disponível                          # features/step_definitions/saga.steps.js:6
+    ✔ E que o application está no ar                                   # features/step_definitions/saga.steps.js:10
+    ✔ Dado uma saga aguardando o pagamento de 600 centavos             # features/step_definitions/saga.steps.js:22
+    ✔ Quando o Mercado Pago notifica o pagamento com status "rejected" # features/step_definitions/saga.steps.js:58
+    ✔ Então a saga deve terminar com falha "PaymentRejected"           # features/step_definitions/saga.steps.js:97
+    ✔ E o pedido deve estar com status "REJECTED" no DynamoDB          # features/step_definitions/saga.steps.js:138
+    ✔ E o application deve receber o resultado "REJECTED"              # features/step_definitions/saga.steps.js:173
+    ✔ E nenhuma mensagem deve ir para a DLQ                            # features/step_definitions/saga.steps.js:148
+
+  @compensacao
+  Cenário: Sem pagamento dentro do prazo a compensação expira a cobrança # features/saga_pagamento.feature:45
+    ✔ Dado que o Mercado Pago está disponível                            # features/step_definitions/saga.steps.js:6
+    ✔ E que o application está no ar                                     # features/step_definitions/saga.steps.js:10
+    ✔ Dado uma saga aguardando o pagamento de 600 centavos               # features/step_definitions/saga.steps.js:22
+    ✔ Quando o prazo de pagamento se esgota                              # features/step_definitions/saga.steps.js:76
+    ✔ Então a saga deve terminar com falha "SagaFailed"                  # features/step_definitions/saga.steps.js:97
+    ✔ E o pedido deve estar com status "EXPIRED" no DynamoDB             # features/step_definitions/saga.steps.js:138
+    ✔ E o application deve receber o resultado "EXPIRED"                 # features/step_definitions/saga.steps.js:173
+    ✔ E a DLQ deve receber o pedido com o erro "States.HeartbeatTimeout" # features/step_definitions/saga.steps.js:152
+    ✔ E a saga deve ter passado pelos estados:                           # features/step_definitions/saga.steps.js:106
+        | Registrar          |
+        | IniciarTentativas  |
+        | GerarLink          |
+        | NotificarEAguardar |
+        | Cancelar           |
+        | EnviarParaDLQ      |
+        | SagaFalhou         |
+
+  Cenário: Pagamento pendente (PIX/boleto) mantém a saga aguardando   # features/saga_pagamento.feature:61
+    ✔ Dado que o Mercado Pago está disponível                         # features/step_definitions/saga.steps.js:6
+    ✔ E que o application está no ar                                  # features/step_definitions/saga.steps.js:10
+    ✔ Dado uma saga aguardando o pagamento de 600 centavos            # features/step_definitions/saga.steps.js:22
+    ✔ Quando o Mercado Pago notifica o pagamento com status "pending" # features/step_definitions/saga.steps.js:58
+    ✔ Então o webhook deve responder 200                              # features/step_definitions/saga.steps.js:82
+    ✔ E a saga deve ficar aguardando o pagamento                      # features/step_definitions/saga.steps.js:88
+    ✔ E o pedido deve estar com status "WAITING_PAYMENT" no DynamoDB  # features/step_definitions/saga.steps.js:138
+    ✔ E o application não deve receber resultado do pagamento         # features/step_definitions/saga.steps.js:180
+
+  @falha
+  Cenário: Documento inválido falha no registro sem gerar cobrança                      # features/saga_pagamento.feature:70
+    ✔ Dado que o Mercado Pago está disponível                                           # features/step_definitions/saga.steps.js:6
+    ✔ E que o application está no ar                                                    # features/step_definitions/saga.steps.js:10
+    ✔ Quando o application solicita a cobrança de 600 centavos para o CPF "11111111111" # features/step_definitions/saga.steps.js:31
+    ✔ E o trigger consome a fila de pedidos                                             # features/step_definitions/saga.steps.js:44
+    ✔ Então a saga deve terminar com falha "SagaFailed"                                 # features/step_definitions/saga.steps.js:97
+    ✔ E o erro registrado na saga deve ser "InvalidDocument"                            # features/step_definitions/saga.steps.js:102
+    ✔ E o Mercado Pago não deve ser chamado                                             # features/step_definitions/saga.steps.js:122
+    ✔ E nenhum pedido deve estar gravado no DynamoDB                                    # features/step_definitions/saga.steps.js:144
+    ✔ E nenhuma mensagem deve ir para a DLQ                                             # features/step_definitions/saga.steps.js:148
+
+  @retry
+  Cenário: Instabilidade curta do Mercado Pago é absorvida pelo Retry do passo GerarLink # features/saga_pagamento.feature:80
+    ✔ Dado que o Mercado Pago está disponível                                            # features/step_definitions/saga.steps.js:6
+    ✔ E que o application está no ar                                                     # features/step_definitions/saga.steps.js:10
+    ✔ Dado que o Mercado Pago vai falhar nas próximas 2 chamadas                         # features/step_definitions/saga.steps.js:14
+    ✔ Quando o application solicita a cobrança de 600 centavos para o CPF "52998224725"  # features/step_definitions/saga.steps.js:31
+    ✔ E o trigger consome a fila de pedidos                                              # features/step_definitions/saga.steps.js:44
+    ✔ Então a saga deve ficar aguardando o pagamento                                     # features/step_definitions/saga.steps.js:88
+    ✔ E o Mercado Pago deve ter sido chamado 3 vezes                                     # features/step_definitions/saga.steps.js:118
+    ✔ E a saga não deve ter aguardado nova tentativa diária                              # features/step_definitions/saga.steps.js:126
+
+  @retry
+  Cenário: Mercado Pago fora do ar no primeiro dia gera o link na nova tentativa diária # features/saga_pagamento.feature:89
+    ✔ Dado que o Mercado Pago está disponível                                           # features/step_definitions/saga.steps.js:6
+    ✔ E que o application está no ar                                                    # features/step_definitions/saga.steps.js:10
+    ✔ Dado que o Mercado Pago vai falhar nas próximas 4 chamadas                        # features/step_definitions/saga.steps.js:14
+    ✔ Quando o application solicita a cobrança de 600 centavos para o CPF "52998224725" # features/step_definitions/saga.steps.js:31
+    ✔ E o trigger consome a fila de pedidos                                             # features/step_definitions/saga.steps.js:44
+    ✔ Então a saga deve ficar aguardando o pagamento                                    # features/step_definitions/saga.steps.js:88
+    ✔ E o Mercado Pago deve ter sido chamado 5 vezes                                    # features/step_definitions/saga.steps.js:118
+    ✔ E a saga deve ter aguardado 1 nova tentativa diária                               # features/step_definitions/saga.steps.js:130
+    ✔ E o application deve receber o link de pagamento                                  # features/step_definitions/saga.steps.js:161
+
+  @retry @falha
+  Cenário: Mercado Pago fora do ar em todas as tentativas envia o pedido para a DLQ     # features/saga_pagamento.feature:99
+    ✔ Dado que o Mercado Pago está disponível                                           # features/step_definitions/saga.steps.js:6
+    ✔ E que o application está no ar                                                    # features/step_definitions/saga.steps.js:10
+    ✔ Dado que o Mercado Pago está fora do ar                                           # features/step_definitions/saga.steps.js:18
+    ✔ Quando o application solicita a cobrança de 600 centavos para o CPF "52998224725" # features/step_definitions/saga.steps.js:31
+    ✔ E o trigger consome a fila de pedidos                                             # features/step_definitions/saga.steps.js:44
+    ✔ Então a saga deve terminar com falha "SagaFailed"                                 # features/step_definitions/saga.steps.js:97
+    ✔ E o Mercado Pago deve ter sido chamado 16 vezes                                   # features/step_definitions/saga.steps.js:118
+    ✔ E a saga deve ter aguardado 3 novas tentativas diárias                            # features/step_definitions/saga.steps.js:130
+    ✔ E a DLQ deve receber o pedido com o erro "MercadoPagoError"                       # features/step_definitions/saga.steps.js:152
+    ✔ E o pedido deve estar com status "PENDING" no DynamoDB                            # features/step_definitions/saga.steps.js:138
+    ✔ E o application não deve receber o link de pagamento                              # features/step_definitions/saga.steps.js:169
+
+  @idempotencia
+  Cenário: Pedido duplicado não inicia uma segunda saga                      # features/saga_pagamento.feature:111
+    ✔ Dado que o Mercado Pago está disponível                                # features/step_definitions/saga.steps.js:6
+    ✔ E que o application está no ar                                         # features/step_definitions/saga.steps.js:10
+    ✔ Quando o application solicita a mesma cobrança de 600 centavos 2 vezes # features/step_definitions/saga.steps.js:36
+    ✔ E o trigger consome a fila de pedidos                                  # features/step_definitions/saga.steps.js:44
+    ✔ Então apenas 1 saga deve ter sido iniciada                             # features/step_definitions/saga.steps.js:110
+    ✔ E o trigger não deve devolver mensagens para a fila                    # features/step_definitions/saga.steps.js:114
+
+  @seguranca
+  Cenário: Webhook com assinatura inválida é rejeitado                               # features/saga_pagamento.feature:118
+    ✔ Dado que o Mercado Pago está disponível                                        # features/step_definitions/saga.steps.js:6
+    ✔ E que o application está no ar                                                 # features/step_definitions/saga.steps.js:10
+    ✔ Dado uma saga aguardando o pagamento de 600 centavos                           # features/step_definitions/saga.steps.js:22
+    ✔ Quando alguém envia um webhook de pagamento "approved" com assinatura inválida # features/step_definitions/saga.steps.js:70
+    ✔ Então o webhook deve responder 401                                             # features/step_definitions/saga.steps.js:82
+    ✔ E a saga deve ficar aguardando o pagamento                                     # features/step_definitions/saga.steps.js:88
+    ✔ E o pedido deve estar com status "WAITING_PAYMENT" no DynamoDB                 # features/step_definitions/saga.steps.js:138
+
+10 scenarios (10 passed)
+109 steps (109 passed)
+0m 0.039s (0m 0.017s executing your code)
