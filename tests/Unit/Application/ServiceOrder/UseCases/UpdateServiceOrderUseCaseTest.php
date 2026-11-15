@@ -54,7 +54,7 @@ class UpdateServiceOrderUseCaseTest extends TestCase
             $this->itemRepository,
             $this->stockMovementRepository,
             $this->vehicleRepository,
-            new ServiceOrderPaymentRequester(Mockery::mock(PaymentGatewayInterface::class))
+            new ServiceOrderPaymentRequester(Mockery::mock(PaymentGatewayInterface::class), $this->itemRepository)
         );
     }
 
