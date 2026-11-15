@@ -147,6 +147,7 @@ O projeto usa um `Makefile` para centralizar os comandos de teste, coverage e an
 |---|---|
 | `make help` | Lista todos os targets disponíveis |
 | `make test` | Roda a suíte de testes **sem** gerar relatório de coverage (mais rápido) |
+| `make bdd` | Roda os testes BDD (Behat) do fluxo completo da O.S. |
 | `make coverage` | Roda os testes e gera `coverage.xml` via PCOV |
 | `make scan` | Roda o SonarQube Scanner (requer `SONAR_TOKEN` e SonarQube em pé) |
 | `make ci` | `coverage` + `scan` em sequência — ideal para pipelines de CI |
@@ -167,6 +168,17 @@ make coverage
 ```
 
 Os testes rodam dentro do container `app-test` definido em `docker-compose.test.yml`, usando um banco MySQL efêmero em tmpfs.
+
+### Testes BDD (fluxo completo da O.S.)
+
+```bash
+make bdd                  # ou: vendor/bin/behat
+```
+
+Cenários em Gherkin (português) em `tests/Bdd/features/saga_ordem_de_servico.feature`, executados com Behat.
+Eles cobrem a O.S. da abertura à entrega, passando pelo payment-service e pelo services-ms (simulados), além de
+compensação, rollback e idempotência da Saga. Usam SQLite em memória, não precisam do MySQL e também rodam no CI.
+Detalhes, cenários da SAGA do payment-service e evidências: [`docs/Fase4/testes-bdd.md`](docs/Fase4/testes-bdd.md).
 
 ### Análise de cobertura com SonarQube
 

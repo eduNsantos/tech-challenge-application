@@ -164,6 +164,10 @@ Ao criar um novo domínio, siga esta ordem:
 
 - `tests/Unit/` — testes de Entidades e Value Objects (sem banco, sem HTTP)
 - `tests/Feature/` — testes de endpoints (usa banco de testes ou mocks)
+- `tests/Bdd/` — BDD com Behat (`behat.php` na raiz): `features/*.feature` em português, steps em
+  `Context/ServiceOrderSagaContext.php`. `Support/LaravelHarness.php` estende `Tests\TestCase` (SQLite em memória,
+  `FakePaymentGateway`) e define o ambiente de teste, porque o Behat não lê o `phpunit.xml`. Nada em `tests/Bdd`
+  pode terminar em `Test.php`. Rodar: `make bdd` ou `vendor/bin/behat`. Doc: `docs/Fase4/testes-bdd.md`
 - Factories em `database/factories/`
 - Use Mockery para mockar repositorios em testes de UseCase
 

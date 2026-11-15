@@ -1,4 +1,4 @@
-.PHONY: help test coverage scan all up down bootstrap \
+.PHONY: help test bdd coverage scan all up down bootstrap \
 	minikube-start minikube-stop infra-init infra-plan infra-apply infra-destroy infra-reset \
 	k8s-up k8s-down k8s-urls k8s-tunnel k8s-status
 
@@ -71,6 +71,11 @@ test: ## Roda a suíte de testes sem gerar coverage (mais rápido)
 		php artisan migrate --force && \
 		vendor/bin/phpunit --no-coverage"
 	$(COMPOSE_TEST) down
+
+bdd: ## Roda os testes BDD (Behat) do fluxo completo da O.S.
+	$(COMPOSE_TEST) run --rm --no-deps app-test sh -c "\
+		composer install --no-interaction --no-progress -q && \
+		php -d newrelic.enabled=0 vendor/bin/behat"
 
 coverage: ## Roda os testes e gera coverage.xml (PCOV)
 	$(COMPOSE_TEST) up --build --abort-on-container-exit app-test
