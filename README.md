@@ -41,6 +41,39 @@ Pipeline de build e deploy em Kubernetes herdado da fase 2 (GitHub Actions → G
 
 ![Pipeline de build e deploy](docs/Fase2/workflow.png)
 
+## Saga da O.S.
+
+A O.S. passa por três serviços: abertura e orçamento (este), pagamento (payment-service) e execução (Services MS). A consistência entre eles segue o Saga Pattern em dois níveis:
+
+- **Entre os serviços, coreografia.** Cada serviço reage a eventos e callbacks dos outros, sem um coordenador central. A O.S. tem um único dono do status (este serviço), então não há decisão a centralizar. As filas FIFO por O.S. e a outbox garantem ordem e entrega sem acoplar os deploys.
+- **Dentro do pagamento, orquestração.** O payment-service coordena seus passos com Step Functions, porque o Mercado Pago não emite eventos de saga e alguém precisa controlar prazo, novas tentativas e cancelamento. Veja [`docs/saga-architecture.md`](https://github.com/eduNsantos/tech-challenge-payment/blob/main/docs/saga-architecture.md) no repositório do payment.
+
+### Passos e tratamento de falha
+
+| # | Passo | Serviço | Tipo | Se falhar |
+|---|---|---|---|---|
+| 1 | Abrir a O.S. | este | Compensável | Transação local: O.S., serviços e outbox são gravados juntos ou nada é gravado |
+| 2 | Enviar o orçamento e gerar a cobrança | este + payment | Compensável | Falha no payment-service ou estoque insuficiente desfaz a operação; nenhuma cobrança fica pendente |
+| 3 | Pagamento | payment | **Pivô** | `REJECTED` ou `EXPIRED`: a O.S. volta para `em_diagnostico`, sem baixa de estoque, e um novo orçamento abre outra cobrança. Dentro do payment, falta de pagamento no prazo cancela a cobrança e falha permanente vai para a DLQ |
+| 4 | Aprovar, baixar estoque e enviar para execução | este | Repetível | Mesma transação do status; o evento sai pela outbox até ser entregue |
+| 5 | Executar os serviços | Services MS | Repetível | Nova tentativa automática (abaixo) |
+| 6 | Finalizar a O.S. | este | Repetível | Mesma estratégia do passo 5 |
+
+### Por que a execução não é compensada
+
+O pagamento (passo 3) é o pivô da saga: antes dele, toda falha é desfeita; depois dele, o cliente já pagou e os passos seguintes precisam chegar ao fim. Compensar a execução significaria estornar o pagamento e devolver peças já baixadas por uma falha técnica. Por isso os passos 4 a 6 usam **recuperação para frente**: são repetidos até concluir.
+
+- As mensagens com falha voltam à fila e, após 3 recebimentos, vão para a DLQ.
+- A Lambda `services-ms-dlq-redriver` devolve a mensagem da DLQ para a fila a cada 15 minutos, até 4 vezes. Com os padrões, são 15 tentativas em cerca de 1 hora. Isso cobre falhas temporárias como banco indisponível ou deploy fora de ordem.
+- Reenviar é seguro: os consumidores são idempotentes (`processed_messages` e `sequence`), e eventos de status antigos são ignorados.
+- Esgotadas as tentativas, a mensagem fica na DLQ para análise manual e o Services MS registra a métrica `messaging.dead_letter.redrives{outcome=exhausted}`. A fila FIFO segura as mensagens seguintes da mesma O.S., então a ordem não se perde.
+
+Fora do escopo: uma falha de negócio na execução (por exemplo, o reparo não poder ser feito) não tem evento próprio. Hoje o atendente trata manualmente, alterando o status da O.S.
+
+### Cobertura por testes
+
+Os cenários `@compensacao`, `@rollback` e `@idempotencia` de `tests/Bdd/features/saga_ordem_de_servico.feature` exercitam os passos 1 a 3 e 6 deste serviço. Os cenários da saga do pagamento ficam em `src/features/saga_pagamento.feature` no payment-service. Veja [Testes BDD](#testes-bdd-fluxo-completo-da-os).
+
 ## Stack
 - PHP 8.4
 - Laravel 13
