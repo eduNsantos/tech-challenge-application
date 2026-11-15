@@ -433,7 +433,7 @@ SQS_SERVICE_ORDER_EXECUTION_URL=<URL-da-fila-services-ms-service-order-execution
 Os workers rodam em Lambda com PHP 8.4 via [Bref 3](https://bref.sh) (`bref/laravel-bridge` 3.x, compatível com Laravel 13). O código das Lambdas fica aqui (`app/Lambda`, `scripts/build-lambda.sh`). O Terraform e o deploy ficam no `tech-challenge-kubernetes` (`app-lambda/`): o workflow `deploy-eks.yml` monta o pacote dentro da mesma imagem GHCR implantada no EKS, depois das migrations.
 
 - Cada Lambda tem uma role própria: o publisher só faz `sqs:SendMessage` nas filas de criação e de status; o consumer só recebe e apaga mensagens da fila de execução. As filas pertencem ao Services MS e são lidas por data source.
-- Consumer: as falhas voltam por `batchItemFailures` e, após 3 recebimentos, vão para a DLQ. Em FIFO, o processamento para na primeira falha do lote e devolve também as mensagens seguintes.
+- Consumer: as falhas voltam por `batchItemFailures` e, após 3 recebimentos, vão para a DLQ. Em FIFO, o processamento para na primeira falha do lote e devolve também as mensagens seguintes. A DLQ `service-order-execution-dlq.fifo` não é o fim: a Lambda `services-ms-dlq-redriver` do Services MS devolve a mensagem para a fila a cada 15 minutos, até 4 vezes (padrões). Esgotadas as tentativas, ela fica na DLQ para análise manual. Veja "Falha na execução → nova tentativa" no README do Services MS.
 - Publisher: publica em ciclos até 10 s antes do timeout (60 s). Um `GET_LOCK` no MySQL garante um único publisher.
 - As Lambdas rodam fora da VPC e acessam o RDS público do laboratório (`techchallenge-rds`).
 - Pacote: `scripts/build-lambda.sh` monta `build/lambda` sem as dependências de dev. O `composer.json` mantém só o serviço SQS do `aws-sdk-php`.
