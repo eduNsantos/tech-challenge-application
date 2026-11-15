@@ -185,6 +185,29 @@ php artisan test --coverage
 - `tests/Unit/Domain/{Dominio}/ValueObjects/` — testa validacoes e casos invalidos dos value objects
 - `tests/Unit/Application/{Dominio}/UseCases/` — testa casos de uso com repositorio mockado (Mockery)
 - `tests/Feature/{Dominio}/` — testa endpoints HTTP completos com banco real
+- `tests/Bdd/features/*.feature` — fluxos completos em Gherkin (Behat); ver skill `test-bdd`
+
+---
+
+## test-bdd
+
+Roda e estende os testes BDD do fluxo completo da O.S. (Behat + Gherkin em português).
+
+```bash
+make bdd                                   # Docker, PHP 8.4 (igual ao CI)
+vendor/bin/behat                           # local, PHP >= 8.3
+vendor/bin/behat --tags @compensacao       # @caminho-feliz, @rollback, @idempotencia
+vendor/bin/behat --dry-run --append-snippets   # gera o esqueleto de passos novos no contexto
+```
+
+**Checklist para um cenário novo:**
+- [ ] Reaproveitar as frases de `tests/Bdd/features/saga_ordem_de_servico.feature`
+- [ ] Step novo em `tests/Bdd/Context/ServiceOrderSagaContext.php` com atributo `#[Given]`, `#[When]` ou `#[Then]` (padrão turnip `:arg`)
+- [ ] Entrar pela mesma porta da produção: endpoint `/api/...`, Lambda (`ServiceOrderExecutionHandler`) ou outbox
+- [ ] Helper protegido do `TestCase` → expor com um wrapper público em `Support/LaravelHarness.php`
+- [ ] Nenhum arquivo em `tests/Bdd` pode terminar em `Test.php` (o PHPUnit tentaria executá-lo)
+- [ ] Quebrar a regra de propósito e conferir que o cenário falha
+- [ ] Atualizar a tabela de cenários em `docs/Fase4/testes-bdd.md`
 
 ---
 

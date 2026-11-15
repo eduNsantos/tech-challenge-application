@@ -1,0 +1,106 @@
+Funcionalidade: Saga da ordem de serviço entre os microsserviços
+  Como oficina mecânica
+  Quero que a O.S. avance entre application, payment-service e services-ms
+  Para que orçamento, pagamento e execução fiquem consistentes, com compensação quando algo falha
+  
+  O application coordena a O.S. por eventos (coreografia):
+  - pede a cobrança ao payment-service e recebe o link e o resultado por callback;
+  - publica ServiceOrderCreated/ServiceOrderStatusChanged para o services-ms (outbox);
+  - recebe ServiceOrderExecutionFinished do services-ms (fila FIFO service-order-execution).
+  Os serviços externos são simulados: o FakePaymentGateway registra os pedidos de cobrança
+  e as respostas do payment-service e do services-ms são enviadas como chegariam de verdade.
+
+  Contexto:                                                               # tests/Bdd/features/saga_ordem_de_servico.feature:14
+    Dado que a oficina tem um atendente e um mecânico cadastrados         # Tests\Bdd\Context\ServiceOrderSagaContext::workshopStaff()
+    E o cliente "Cliente BDD" com CPF "52998224725"                       # Tests\Bdd\Context\ServiceOrderSagaContext::customer()
+    E o veículo de placa "BDD1A23"                                        # Tests\Bdd\Context\ServiceOrderSagaContext::vehicle()
+    E o serviço "Troca de óleo" custando R$ 5,00                          # Tests\Bdd\Context\ServiceOrderSagaContext::service()
+    E a peça "Filtro de óleo" custando R$ 0,50 com 10 unidades em estoque # Tests\Bdd\Context\ServiceOrderSagaContext::part()
+    E a integração com o services-ms está habilitada                      # Tests\Bdd\Context\ServiceOrderSagaContext::servicesMsEnabled()
+
+  @caminho-feliz
+  Cenário: Pagamento aprovado leva a O.S. da abertura até a entrega                                  # tests/Bdd/features/saga_ordem_de_servico.feature:23
+    Quando o atendente abre uma O.S. com 1 "Troca de óleo" e 2 "Filtro de óleo"                      # Tests\Bdd\Context\ServiceOrderSagaContext::openServiceOrder()
+    Então a O.S. deve estar com status "recebida"                                                    # Tests\Bdd\Context\ServiceOrderSagaContext::assertStatus()
+    E o mecânico deve ser notificado com o assunto "Nova ordem de serviço aberta"                    # Tests\Bdd\Context\ServiceOrderSagaContext::mechanicNotified()
+    E o services-ms deve receber o evento "ServiceOrderCreated"                                      # Tests\Bdd\Context\ServiceOrderSagaContext::eventPublished()
+    Quando o mecânico envia o orçamento para aprovação                                               # Tests\Bdd\Context\ServiceOrderSagaContext::sendQuote()
+    Então a O.S. deve estar com status "aguardando_aprovacao"                                        # Tests\Bdd\Context\ServiceOrderSagaContext::assertStatus()
+    E o payment-service deve receber uma cobrança de 600 centavos                                    # Tests\Bdd\Context\ServiceOrderSagaContext::paymentRequested()
+    Quando o payment-service devolve o link de pagamento                                             # Tests\Bdd\Context\ServiceOrderSagaContext::paymentLinkReady()
+    Então o cliente deve ser notificado com o assunto "Orçamento da sua ordem de serviço disponível" # Tests\Bdd\Context\ServiceOrderSagaContext::customerNotified()
+    Quando o payment-service informa o resultado "PAID" do pagamento                                 # Tests\Bdd\Context\ServiceOrderSagaContext::paymentResult()
+    Então a O.S. deve estar com status "em_execucao"                                                 # Tests\Bdd\Context\ServiceOrderSagaContext::assertStatus()
+    E o estoque da peça "Filtro de óleo" deve ser 8                                                  # Tests\Bdd\Context\ServiceOrderSagaContext::assertStock()
+    E o services-ms deve receber o evento "ServiceOrderStatusChanged" com status "em_execucao"       # Tests\Bdd\Context\ServiceOrderSagaContext::eventPublishedWithStatus()
+    Quando o services-ms informa o início da execução                                                # Tests\Bdd\Context\ServiceOrderSagaContext::executionStarted()
+    Então a O.S. deve estar com status "em_execucao"                                                 # Tests\Bdd\Context\ServiceOrderSagaContext::assertStatus()
+    Quando o services-ms informa o fim da execução                                                   # Tests\Bdd\Context\ServiceOrderSagaContext::executionFinished()
+    Então a O.S. deve estar com status "finalizada"                                                  # Tests\Bdd\Context\ServiceOrderSagaContext::assertStatus()
+    E o cliente deve ser notificado com o assunto "Sua ordem de serviço foi concluída"               # Tests\Bdd\Context\ServiceOrderSagaContext::customerNotified()
+    E o services-ms deve receber o evento "ServiceOrderStatusChanged" com status "finalizada"        # Tests\Bdd\Context\ServiceOrderSagaContext::eventPublishedWithStatus()
+    Quando o atendente registra a entrega do veículo                                                 # Tests\Bdd\Context\ServiceOrderSagaContext::deliverVehicle()
+    Então a O.S. deve estar com status "entregue"                                                    # Tests\Bdd\Context\ServiceOrderSagaContext::assertStatus()
+
+  @compensacao
+  Esquema do Cenário: Pagamento não concluído compensa a aprovação e devolve a O.S. ao diagnóstico # tests/Bdd/features/saga_ordem_de_servico.feature:47
+    Dado uma O.S. aguardando pagamento com 1 "Troca de óleo" e 2 "Filtro de óleo"                  # Tests\Bdd\Context\ServiceOrderSagaContext::serviceOrderAwaitingPayment()
+    Quando o payment-service informa o resultado "<resultado>" do pagamento                        # Tests\Bdd\Context\ServiceOrderSagaContext::paymentResult()
+    Então a O.S. deve estar com status "em_diagnostico"                                            # Tests\Bdd\Context\ServiceOrderSagaContext::assertStatus()
+    E o estoque da peça "Filtro de óleo" deve ser 10                                               # Tests\Bdd\Context\ServiceOrderSagaContext::assertStock()
+    E nenhuma baixa de estoque deve ter sido registrada                                            # Tests\Bdd\Context\ServiceOrderSagaContext::noStockWithdrawal()
+    E o services-ms deve receber o evento "ServiceOrderStatusChanged" com status "em_diagnostico"  # Tests\Bdd\Context\ServiceOrderSagaContext::eventPublishedWithStatus()
+    Quando o payment-service reenvia o mesmo resultado "<resultado>"                               # Tests\Bdd\Context\ServiceOrderSagaContext::paymentResultAgain()
+    Então a requisição deve falhar com status 422                                                  # Tests\Bdd\Context\ServiceOrderSagaContext::requestFailed()
+    E a O.S. deve estar com status "em_diagnostico"                                                # Tests\Bdd\Context\ServiceOrderSagaContext::assertStatus()
+
+    Exemplos:
+      | resultado |
+      | REJECTED  |
+      | EXPIRED   |
+
+  @compensacao
+  Cenário: Novo orçamento após a recusa abre uma nova cobrança e pode ser pago           # tests/Bdd/features/saga_ordem_de_servico.feature:64
+    Dado uma O.S. aguardando pagamento com 1 "Troca de óleo" e 2 "Filtro de óleo"        # Tests\Bdd\Context\ServiceOrderSagaContext::serviceOrderAwaitingPayment()
+    E o payment-service informa o resultado "REJECTED" do pagamento                      # Tests\Bdd\Context\ServiceOrderSagaContext::paymentResult()
+    Quando o mecânico envia o orçamento para aprovação                                   # Tests\Bdd\Context\ServiceOrderSagaContext::sendQuote()
+    Então o payment-service deve ter recebido 2 cobranças com identificadores diferentes # Tests\Bdd\Context\ServiceOrderSagaContext::paymentRequestsWithDistinctIds()
+    Quando o payment-service devolve o link de pagamento                                 # Tests\Bdd\Context\ServiceOrderSagaContext::paymentLinkReady()
+    E o payment-service informa o resultado "PAID" do pagamento                          # Tests\Bdd\Context\ServiceOrderSagaContext::paymentResult()
+    Então a O.S. deve estar com status "em_execucao"                                     # Tests\Bdd\Context\ServiceOrderSagaContext::assertStatus()
+    E o estoque da peça "Filtro de óleo" deve ser 8                                      # Tests\Bdd\Context\ServiceOrderSagaContext::assertStock()
+
+  @rollback
+  Cenário: Falha no payment-service desfaz a abertura da O.S.                                           # tests/Bdd/features/saga_ordem_de_servico.feature:75
+    Dado que o payment-service está indisponível                                                        # Tests\Bdd\Context\ServiceOrderSagaContext::paymentServiceUnavailable()
+    Quando o atendente abre uma O.S. com 1 "Troca de óleo" e 2 "Filtro de óleo" já enviando o orçamento # Tests\Bdd\Context\ServiceOrderSagaContext::openServiceOrderSendingQuote()
+    Então a requisição deve falhar com status 502                                                       # Tests\Bdd\Context\ServiceOrderSagaContext::requestFailed()
+    E nenhuma ordem de serviço deve ter sido gravada                                                    # Tests\Bdd\Context\ServiceOrderSagaContext::noServiceOrder()
+    E nenhum evento deve ter sido publicado para o services-ms                                          # Tests\Bdd\Context\ServiceOrderSagaContext::noEventPublished()
+
+  @rollback
+  Cenário: Estoque insuficiente impede gerar a cobrança                                                  # tests/Bdd/features/saga_ordem_de_servico.feature:83
+    Quando o atendente abre uma O.S. com 1 "Troca de óleo" e 20 "Filtro de óleo" já enviando o orçamento # Tests\Bdd\Context\ServiceOrderSagaContext::openServiceOrderSendingQuote()
+    Então a requisição deve falhar com status 422                                                        # Tests\Bdd\Context\ServiceOrderSagaContext::requestFailed()
+    E a resposta deve conter a mensagem "Estoque insuficiente"                                           # Tests\Bdd\Context\ServiceOrderSagaContext::responseMessage()
+    E nenhuma cobrança deve ter sido enviada ao payment-service                                          # Tests\Bdd\Context\ServiceOrderSagaContext::noPaymentRequested()
+    E nenhuma ordem de serviço deve ter sido gravada                                                     # Tests\Bdd\Context\ServiceOrderSagaContext::noServiceOrder()
+
+  @idempotencia
+  Cenário: Mensagem duplicada do services-ms é processada uma única vez                            # tests/Bdd/features/saga_ordem_de_servico.feature:91
+    Dado uma O.S. em execução com 1 "Troca de óleo" e 2 "Filtro de óleo"                           # Tests\Bdd\Context\ServiceOrderSagaContext::serviceOrderInExecution()
+    Quando o services-ms informa o fim da execução                                                 # Tests\Bdd\Context\ServiceOrderSagaContext::executionFinished()
+    E o services-ms reenvia a mesma mensagem de fim da execução                                    # Tests\Bdd\Context\ServiceOrderSagaContext::executionFinishedAgain()
+    Então a O.S. deve estar com status "finalizada"                                                # Tests\Bdd\Context\ServiceOrderSagaContext::assertStatus()
+    E o cliente deve ter recebido 1 notificação com o assunto "Sua ordem de serviço foi concluída" # Tests\Bdd\Context\ServiceOrderSagaContext::customerNotifiedTimes()
+
+  @idempotencia
+  Cenário: Fim de execução calculado sobre um status antigo é ignorado      # tests/Bdd/features/saga_ordem_de_servico.feature:99
+    Dado uma O.S. em execução com 1 "Troca de óleo" e 2 "Filtro de óleo"    # Tests\Bdd\Context\ServiceOrderSagaContext::serviceOrderInExecution()
+    E o atendente volta a O.S. para "em_diagnostico"                        # Tests\Bdd\Context\ServiceOrderSagaContext::changeStatusTo()
+    Quando o services-ms informa o fim da execução com a sequência anterior # Tests\Bdd\Context\ServiceOrderSagaContext::executionFinishedWithStaleSequence()
+    Então a O.S. deve estar com status "em_diagnostico"                     # Tests\Bdd\Context\ServiceOrderSagaContext::assertStatus()
+
+8 scenarios (8 passed)
+114 steps (114 passed)
+0m0.32s (52.32Mb)
