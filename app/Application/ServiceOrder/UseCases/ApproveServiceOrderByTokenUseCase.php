@@ -8,7 +8,6 @@ use App\Domain\Item\Interfaces\StockMovementRepositoryInterface;
 use App\Domain\Item\ValueObjects\MovementType;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
-use App\Infrastructure\Messaging\ServiceOrderApprovalOutbox;
 use Illuminate\Support\Facades\DB;
 
 class ApproveServiceOrderByTokenUseCase
@@ -16,8 +15,7 @@ class ApproveServiceOrderByTokenUseCase
     public function __construct(
         private ServiceOrderRepositoryInterface $serviceOrderRepository,
         private ItemRepositoryInterface $itemRepository,
-        private StockMovementRepositoryInterface $stockMovementRepository,
-        private ServiceOrderApprovalOutbox $approvalOutbox
+        private StockMovementRepositoryInterface $stockMovementRepository
     ) {}
 
     public function execute(string $token): ServiceOrder
@@ -33,7 +31,6 @@ class ApproveServiceOrderByTokenUseCase
                 throw new \DomainException('Esta ordem de serviço não está aguardando aprovação.');
             }
 
-            $previousStatus = $serviceOrder->status;
             $serviceOrder->approveQuote();
 
             foreach ($serviceOrder->items as $item) {
@@ -63,7 +60,6 @@ class ApproveServiceOrderByTokenUseCase
             }
 
             $this->serviceOrderRepository->update($serviceOrder);
-            $this->approvalOutbox->record($serviceOrder, $previousStatus);
 
             return $serviceOrder;
         });

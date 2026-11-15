@@ -23,6 +23,7 @@ data:
   AWS_DEFAULT_REGION: "us-east-1"
   SQS_SERVICE_ORDERS_CREATED_URL: "https://sqs.us-east-1.amazonaws.com/674343198060/services-ms-service-orders-created.fifo"
   SQS_SERVICE_ORDER_STATUS_CHANGED_URL: "https://sqs.us-east-1.amazonaws.com/674343198060/services-ms-service-order-status-changed.fifo"
+  SQS_SERVICE_ORDER_EXECUTION_URL: "https://sqs.us-east-1.amazonaws.com/674343198060/services-ms-service-order-execution.fifo"
   QUEUE_CONNECTION: "database"
   CACHE_STORE: "database"
   MAIL_MAILER: "log"

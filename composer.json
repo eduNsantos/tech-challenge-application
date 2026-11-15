@@ -8,6 +8,8 @@
     "require": {
         "php": "^8.2",
         "aws/aws-sdk-php": "^3.402",
+        "bref/bref": "^3",
+        "bref/laravel-bridge": "^3",
         "laravel/framework": "^13.0",
         "laravel/sanctum": "*",
         "laravel/tinker": "^3.0"
@@ -51,6 +53,7 @@
             "@php artisan config:clear --ansi",
             "@php artisan test"
         ],
+        "pre-autoload-dump": "Aws\\Script\\Composer\\Composer::removeUnusedServices",
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
@@ -73,7 +76,10 @@
     "extra": {
         "laravel": {
             "dont-discover": []
-        }
+        },
+        "aws/aws-sdk-php": [
+            "Sqs"
+        ]
     },
     "config": {
         "optimize-autoloader": true,

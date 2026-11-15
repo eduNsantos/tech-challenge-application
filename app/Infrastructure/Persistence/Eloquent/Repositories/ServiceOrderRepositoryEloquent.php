@@ -4,6 +4,7 @@ namespace App\Infrastructure\Persistence\Eloquent\Repositories;
 
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
+use App\Infrastructure\Messaging\ServiceOrderStatusOutbox;
 use App\Infrastructure\Persistence\Eloquent\Models\ServiceOrderItemModel;
 use App\Infrastructure\Persistence\Eloquent\Models\ServiceOrderModel;
 use App\Infrastructure\Persistence\Eloquent\Models\ServiceOrderServiceModel;
@@ -13,6 +14,8 @@ use Illuminate\Support\Str;
 
 class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
 {
+    public function __construct(private ServiceOrderStatusOutbox $statusOutbox) {}
+
     public function save(ServiceOrder $serviceOrder): void
     {
         ServiceOrderModel::create([
@@ -135,6 +138,11 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
     public function update(ServiceOrder $serviceOrder): void
     {
         DB::transaction(function () use ($serviceOrder): void {
+            $previousStatus = ServiceOrderModel::query()
+                ->whereKey($serviceOrder->id)
+                ->lockForUpdate()
+                ->value('status');
+
             $actorId = Auth::id()
                 ?? ServiceOrderModel::query()->where('id', $serviceOrder->id)->value('updated_user_id')
                 ?? ServiceOrderModel::query()->where('id', $serviceOrder->id)->value('created_user_id')
@@ -159,6 +167,10 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
 
             $this->syncServices($serviceOrder);
             $this->syncItems($serviceOrder);
+
+            if ($previousStatus !== null && $previousStatus !== $serviceOrder->status) {
+                $this->statusOutbox->record($serviceOrder->id, $serviceOrder->status, $previousStatus);
+            }
         });
     }
 

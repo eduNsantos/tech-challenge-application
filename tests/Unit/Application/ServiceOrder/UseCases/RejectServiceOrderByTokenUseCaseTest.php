@@ -5,7 +5,6 @@ namespace Tests\Unit\Application\ServiceOrder\UseCases;
 use App\Application\ServiceOrder\UseCases\RejectServiceOrderByTokenUseCase;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
-use App\Infrastructure\Messaging\ServiceOrderApprovalOutbox;
 use Illuminate\Support\Facades\DB;
 use Mockery;
 use Mockery\MockInterface;
@@ -15,8 +14,6 @@ class RejectServiceOrderByTokenUseCaseTest extends TestCase
 {
     private ServiceOrderRepositoryInterface&MockInterface $serviceOrderRepository;
 
-    private ServiceOrderApprovalOutbox&MockInterface $approvalOutbox;
-
     private RejectServiceOrderByTokenUseCase $useCase;
 
     protected function setUp(): void
@@ -24,12 +21,10 @@ class RejectServiceOrderByTokenUseCaseTest extends TestCase
         parent::setUp();
 
         $this->serviceOrderRepository = Mockery::mock(ServiceOrderRepositoryInterface::class);
-        $this->approvalOutbox = Mockery::mock(ServiceOrderApprovalOutbox::class);
         DB::shouldReceive('transaction')->andReturnUsing(static fn ($callback) => $callback());
 
         $this->useCase = new RejectServiceOrderByTokenUseCase(
-            $this->serviceOrderRepository,
-            $this->approvalOutbox
+            $this->serviceOrderRepository
         );
     }
 
@@ -97,7 +92,6 @@ class RejectServiceOrderByTokenUseCaseTest extends TestCase
             ->andReturn($serviceOrder);
 
         $this->serviceOrderRepository->shouldReceive('update')->once();
-        $this->approvalOutbox->shouldReceive('record')->once()->with($serviceOrder, ServiceOrder::STATUS_AGUARDANDO_APROVACAO);
 
         $result = $this->useCase->execute($token);
 

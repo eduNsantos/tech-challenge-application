@@ -4,14 +4,12 @@ namespace App\Application\ServiceOrder\UseCases;
 
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
-use App\Infrastructure\Messaging\ServiceOrderApprovalOutbox;
 use Illuminate\Support\Facades\DB;
 
 class RejectServiceOrderByTokenUseCase
 {
     public function __construct(
-        private ServiceOrderRepositoryInterface $serviceOrderRepository,
-        private ServiceOrderApprovalOutbox $approvalOutbox
+        private ServiceOrderRepositoryInterface $serviceOrderRepository
     ) {}
 
     public function execute(string $token): ServiceOrder
@@ -27,10 +25,8 @@ class RejectServiceOrderByTokenUseCase
                 throw new \DomainException('Esta ordem de servico nao esta aguardando aprovacao.');
             }
 
-            $previousStatus = $serviceOrder->status;
             $serviceOrder->rejectQuote();
             $this->serviceOrderRepository->update($serviceOrder);
-            $this->approvalOutbox->record($serviceOrder, $previousStatus);
 
             return $serviceOrder;
         });

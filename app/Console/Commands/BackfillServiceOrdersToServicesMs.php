@@ -74,7 +74,7 @@ class BackfillServiceOrdersToServicesMs extends Command
                     $outbox->record($this->toEntity($order), $services);
                     $queued++;
                 }
-            }, 'service_orders.id');
+            }, 'service_orders.id', 'id');
 
         $this->info(($this->option('dry-run') ? 'Would queue ' : 'Queued ').$queued.' service orders.');
 
