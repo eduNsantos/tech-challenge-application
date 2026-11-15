@@ -389,8 +389,8 @@ A aplicação é dona do status da O.S. Com `SERVICES_MS_ENABLED=true`:
 
 - A criação da O.S. grava `ServiceOrderCreated` na outbox, na mesma transação da O.S. e de seus serviços. O contrato transporta somente os serviços, sem peças/itens.
 - Toda mudança de status gravada pelo repositório grava `ServiceOrderStatusChanged` na outbox, na mesma transação. Isso inclui aprovação, rejeição e alteração manual. O campo `sequence` é o id da linha na outbox. O MS usa esse valor para descartar eventos antigos.
-- O worker `outbox:publish` envia os eventos de criação para `service-orders-created.fifo` e os de status para `service-order-status-changed.fifo`.
-- O worker `sqs:consume-service-execution` consome `service-order-execution.fifo`. Quando o MS conclui o último serviço, a aplicação muda a O.S. para `finalizada`, se ela ainda estiver em `em_execucao` e se o evento se referir ao último status publicado. Essa mudança dispara as notificações normais e volta ao MS como `ServiceOrderStatusChanged`. O início da execução não altera o status, pois a aprovação já leva a O.S. para `em_execucao`.
+- A Lambda `postech-outbox-publisher` (`App\Lambda\PublishOutboxHandler`, agendada pelo EventBridge a cada minuto) envia os eventos de criação para `service-orders-created.fifo` e os de status para `service-order-status-changed.fifo`.
+- A Lambda `postech-execution-consumer` (`App\Lambda\ServiceOrderExecutionHandler`, acionada pela fila) consome `service-order-execution.fifo`. Quando o MS conclui o último serviço, a aplicação muda a O.S. para `finalizada`, se ela ainda estiver em `em_execucao` e se o evento se referir ao último status publicado. Essa mudança dispara as notificações normais e volta ao MS como `ServiceOrderStatusChanged`. O início da execução não altera o status, pois a aprovação já leva a O.S. para `em_execucao`.
 
 Configure no ambiente do monólito:
 
@@ -402,7 +402,16 @@ SQS_SERVICE_ORDER_STATUS_CHANGED_URL=<URL-da-fila-services-ms-service-order-stat
 SQS_SERVICE_ORDER_EXECUTION_URL=<URL-da-fila-services-ms-service-order-execution.fifo>
 ```
 
-Garanta que a identidade IAM usada pelo pod permita `sqs:SendMessage` nas filas de criação e de status, e `sqs:ReceiveMessage` e `sqs:DeleteMessage` na fila de execução. Não injete access keys nem `AWS_SESSION_TOKEN` nos Secrets dos pods. A alternativa temporária do Learner Lab usa a role dos nodes e não isola as permissões por pod; substitua-a por EKS Pod Identity ou IRSA antes de produção.
+### Lambdas (publisher e consumer)
+
+Os workers rodam em Lambda com PHP 8.4 via [Bref 3](https://bref.sh) (`bref/laravel-bridge` 3.x, compatível com Laravel 13). O código das Lambdas fica aqui (`app/Lambda`, `scripts/build-lambda.sh`). O Terraform e o deploy ficam no `tech-challenge-kubernetes` (`app-lambda/`): o workflow `deploy-eks.yml` monta o pacote dentro da mesma imagem GHCR implantada no EKS, depois das migrations.
+
+- Cada Lambda tem uma role própria: o publisher só faz `sqs:SendMessage` nas filas de criação e de status; o consumer só recebe e apaga mensagens da fila de execução. As filas pertencem ao Services MS e são lidas por data source.
+- Consumer: as falhas voltam por `batchItemFailures` e, após 3 recebimentos, vão para a DLQ. Em FIFO, o processamento para na primeira falha do lote e devolve também as mensagens seguintes.
+- Publisher: publica em ciclos até 10 s antes do timeout (60 s). Um `GET_LOCK` no MySQL garante um único publisher.
+- As Lambdas rodam fora da VPC e acessam o RDS público do laboratório (`techchallenge-rds`).
+- Pacote: `scripts/build-lambda.sh` monta `build/lambda` sem as dependências de dev. O `composer.json` mantém só o serviço SQS do `aws-sdk-php`.
+- O script precisa estar na imagem: imagens anteriores a esta mudança não têm `scripts/build-lambda.sh`, e o deploy das Lambdas falha com uma mensagem explícita.
 
 Depois de aplicar as migrations, faça primeiro uma simulação e depois o backfill das O.S. existentes:
 
@@ -411,9 +420,10 @@ php artisan migrate --force
 php artisan services-ms:backfill-service-orders --dry-run
 php artisan services-ms:backfill-service-orders
 php artisan services-ms:sync-service-order-status
-php artisan outbox:publish --once
 ```
 
-O backfill ignora O.S. que já têm um evento `ServiceOrderCreated` na outbox e pode ser repetido com segurança. O `sync-service-order-status` publica o status atual de cada O.S. já enviada ao MS. Ele é necessário uma vez para O.S. importadas antes de a aplicação ser dona do status, porque o MS recusa início/fim delas até receber um status com sequência. Repetir o comando é seguro. A ordem do corte está no README do Services MS. Os manifests dos workers ficam em `tech-challenge-kubernetes/k8s/04-services-ms/`; o workflow EKS os aplica junto da aplicação, usando a imagem versionada e o ConfigMap do cluster.
+Os eventos gravados pelo backfill e pelo sync são publicados pela Lambda `postech-outbox-publisher` em até um minuto.
+
+O backfill ignora O.S. que já têm um evento `ServiceOrderCreated` na outbox e pode ser repetido com segurança. O `sync-service-order-status` publica o status atual de cada O.S. já enviada ao MS. Ele é necessário uma vez para O.S. importadas antes de a aplicação ser dona do status, porque o MS recusa início/fim delas até receber um status com sequência. Repetir o comando é seguro. A ordem do corte está no README do Services MS. O workflow `deploy-eks.yml` do `tech-challenge-kubernetes` remove os workers antigos do EKS (`postech-outbox-publisher` e `postech-execution-consumer`) antes do `terraform apply`.
 
 O evento legado `ServiceOrderApprovalChanged` não é mais gerado; aprovação e rejeição chegam ao MS como `ServiceOrderStatusChanged`.

@@ -38,3 +38,4 @@ infra/*_override.tf
 infra/*_override.tf.json
 infra/terraform.tfvars
 infra/terraform.tfvars.json
+/build

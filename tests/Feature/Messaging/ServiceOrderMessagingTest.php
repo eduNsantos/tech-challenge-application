@@ -5,6 +5,8 @@ namespace Tests\Feature\Messaging;
 use App\Application\ServiceOrder\DTOs\UpdateServiceOrderStatusDTO;
 use App\Application\ServiceOrder\ProcessServiceOrderExecution;
 use App\Application\ServiceOrder\UseCases\UpdateServiceOrderStatusUseCase;
+use App\Lambda\ServiceOrderExecutionHandler;
+use Bref\Context\Context;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -265,5 +267,46 @@ class ServiceOrderMessagingTest extends TestCase
         config(['services_ms.enabled' => false]);
 
         $this->assertSame(1, Artisan::call('services-ms:sync-service-order-status'));
+    }
+
+    private function sqsEvent(array $bodies): array
+    {
+        return ['Records' => array_map(fn ($body, $i) => [
+            'messageId' => "msg-{$i}",
+            'receiptHandle' => "handle-{$i}",
+            'body' => is_string($body) ? $body : json_encode($body),
+            'attributes' => ['ApproximateReceiveCount' => '1'],
+            'messageAttributes' => [],
+            'eventSource' => 'aws:sqs',
+        ], $bodies, array_keys($bodies))];
+    }
+
+    public function test_execution_lambda_applies_events_and_returns_failures_in_order(): void
+    {
+        config(['services_ms.enabled' => true]);
+        Event::fake();
+        $orderId = $this->createServiceOrder();
+        $sequence = $this->startExecution($orderId);
+        $context = new Context('request', (int) (microtime(true) * 1000) + 30_000, 'arn:test', '');
+        $handler = app(ServiceOrderExecutionHandler::class);
+
+        $this->assertNull($handler->handle($this->sqsEvent([
+            $this->executionEvent($orderId, 'ServiceOrderExecutionFinished', $sequence),
+        ]), $context));
+        $this->assertDatabaseHas('service_orders', ['id' => $orderId, 'status' => 'finalizada']);
+
+        // Na primeira falha (JSON inválido), o restante do lote FIFO também volta para a fila.
+        $this->assertSame(['batchItemFailures' => [
+            ['itemIdentifier' => 'msg-0'],
+            ['itemIdentifier' => 'msg-1'],
+        ]], $handler->handle($this->sqsEvent([
+            'not-json',
+            $this->executionEvent($orderId, 'ServiceOrderExecutionStarted', $sequence),
+        ]), $context));
+
+        // O.S. desconhecida: a mensagem volta para a fila para nova tentativa.
+        $this->assertSame(['batchItemFailures' => [['itemIdentifier' => 'msg-0']]], $handler->handle($this->sqsEvent([
+            $this->executionEvent((string) Str::uuid(), 'ServiceOrderExecutionFinished', 1),
+        ]), $context));
     }
 }
