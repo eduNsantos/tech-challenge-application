@@ -72,7 +72,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
             $this->serviceOrderItemRepository,
             $this->vehicleRepository,
             $this->outbox,
-            new ServiceOrderPaymentRequester($this->gateway)
+            new ServiceOrderPaymentRequester($this->gateway, $this->itemRepository)
         );
     }
 
@@ -229,7 +229,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
         $this->vehicleRepository->shouldReceive('findById')->with('veh-1')->once()->andReturn($this->makeVehicle());
         $this->serviceRepository->shouldReceive('findById')->once()->andReturn($this->makeService());
-        $this->itemRepository->shouldReceive('findById')->once()->andReturn($this->makeItem());
+        $this->itemRepository->shouldReceive('findById')->twice()->andReturn($this->makeItem()); // resolve + checagem de estoque
 
         $this->serviceOrderRepository->shouldReceive('save')->once();
         $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();
@@ -256,7 +256,7 @@ class CreateServiceOrderUseCaseTest extends TestCase
         $this->customerRepository->shouldReceive('findById')->with('cust-1')->once()->andReturn($this->makeCustomer());
         $this->vehicleRepository->shouldReceive('findById')->with('veh-1')->once()->andReturn($this->makeVehicle());
         $this->serviceRepository->shouldReceive('findById')->once()->andReturn($this->makeService());
-        $this->itemRepository->shouldReceive('findById')->once()->andReturn($this->makeItem());
+        $this->itemRepository->shouldReceive('findById')->twice()->andReturn($this->makeItem()); // resolve + checagem de estoque
 
         $this->serviceOrderRepository->shouldReceive('save')->once();
         $this->serviceOrderItemRepository->shouldReceive('createServiceOrderItem')->once();

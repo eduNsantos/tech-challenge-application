@@ -4,6 +4,7 @@ namespace App\Application\Payment\Services;
 
 use App\Domain\Customer\Entities\Customer;
 use App\Domain\Customer\ValueObjects\Document;
+use App\Domain\Item\Interfaces\ItemRepositoryInterface;
 use App\Domain\Payment\Interfaces\PaymentGatewayInterface;
 use App\Domain\ServiceOrder\Entities\ServiceOrder;
 use App\Support\Observability\BusinessTelemetry;
@@ -16,7 +17,8 @@ class ServiceOrderPaymentRequester
     public const SOURCE_SERVICE = 'tech-challenge-application';
 
     public function __construct(
-        private PaymentGatewayInterface $paymentGateway
+        private PaymentGatewayInterface $paymentGateway,
+        private ItemRepositoryInterface $itemRepository
     ) {}
 
     public function request(ServiceOrder $serviceOrder, Customer $customer): void
@@ -24,6 +26,8 @@ class ServiceOrderPaymentRequester
         if ($serviceOrder->paymentOrderId === null || $serviceOrder->paymentCallbackToken === null) {
             throw new \DomainException('Ordem de servico sem cobranca aberta para o orcamento.');
         }
+
+        $this->ensureStockAvailable($serviceOrder);
 
         $items = $this->buildItems($serviceOrder);
         $amountCents = array_sum(array_map(
@@ -70,6 +74,39 @@ class ServiceOrderPaymentRequester
             'payment_order_id' => $serviceOrder->paymentOrderId,
             'amount_cents' => $amountCents,
         ]);
+    }
+
+    /**
+     * A aprovação do pagamento baixa as peças do estoque; sem saldo, o cliente pagaria
+     * por uma OS que não pode ser aprovada. Por isso o link só é gerado com estoque suficiente.
+     */
+    private function ensureStockAvailable(ServiceOrder $serviceOrder): void
+    {
+        $required = [];
+
+        foreach ($serviceOrder->items as $part) {
+            $itemId = $part['item_id'] ?? null;
+            $quantity = (float) ($part['quantity'] ?? 0);
+
+            if ($itemId && $quantity > 0) {
+                // 3 casas = precisão de items.stock_quantity; evita 0.1 + 0.2 > 0.3 em float
+                $required[$itemId] = round(($required[$itemId] ?? 0.0) + $quantity, 3);
+            }
+        }
+
+        foreach ($required as $itemId => $quantity) {
+            $item = $this->itemRepository->findById((string) $itemId);
+
+            if (!$item) {
+                throw new \DomainException("Peca '{$itemId}' nao encontrada.");
+            }
+
+            if ($quantity > round($item->stockQuantity, 3)) {
+                throw new \DomainException(
+                    "Estoque insuficiente para a peca '{$item->name}'. Disponivel: {$item->stockQuantity}, necessario: {$quantity}."
+                );
+            }
+        }
     }
 
     public function callbackUrl(string $token): string
