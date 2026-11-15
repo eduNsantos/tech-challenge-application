@@ -38,6 +38,10 @@ spec:
         - name: app
           image: ghcr.io/edunsantos/tech-challenge-application:latest
           imagePullPolicy: Always
+          command:
+            - /bin/sh
+            - -c
+            - mkdir -p storage/logs && exec php artisan serve --host=0.0.0.0 --port=8000 >/dev/null
           ports:
             - containerPort: 8000
           envFrom:

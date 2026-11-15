@@ -240,6 +240,23 @@ Todo o provisionamento — desde o namespace até o Job de migration — é feit
 - Terraform >= 1.6
 - Um Personal Access Token do GitHub (classic) com escopo `read:packages`, para puxar a imagem do GHCR
 
+Para o deploy por manifestos (`deploy-minikube.yml` ou `kubectl apply`), crie
+previamente o Secret `ghcr-secret` no namespace `postech`, fora do repositório.
+Por exemplo, usando um arquivo Docker config protegido que contenha somente as
+credenciais necessárias ao GHCR:
+
+```bash
+kubectl create namespace postech --dry-run=client -o yaml | kubectl apply -f -
+kubectl create secret generic ghcr-secret -n postech \
+  --type=kubernetes.io/dockerconfigjson \
+  --from-file=.dockerconfigjson=/caminho/seguro/config.json
+```
+
+O arquivo deve conter a autenticação no campo `auths` para `ghcr.io`; uma
+configuração que dependa apenas de um credential helper não é suficiente.
+Não versione o arquivo Docker config nem um manifesto contendo credenciais.
+O workflow de deploy exige que o Secret já exista e não o substitui.
+
 ### Passo a passo
 
 **1. Suba o cluster**
@@ -357,6 +374,14 @@ make infra-apply IMAGE_TAG=sha-abc1234
 | `make k8s-status` | Mostra pods e services do namespace |
 | `make k8s-urls` | Exibe as URLs de acesso (requer `minikube tunnel` rodando) |
 | `make k8s-tunnel` | Abre o túnel do Minikube (`minikube tunnel`, roda em foreground)
+
+Os logs do container da aplicação mostram os eventos Laravel gravados em
+`storage/logs/laravel.log`; as linhas de conexão HTTP do `artisan serve` são
+suprimidas. Para acompanhar os logs no Kubernetes:
+
+```bash
+kubectl logs -n postech -l app=postech-app -c app -f --prefix=true
+```
 
 ## Integração com o microsserviço de serviços
 

@@ -25,6 +25,7 @@ Thumbs.db
 /zap/reports
 # Kubernetes secrets com valores reais
 k8s/01-config/secret.yaml
+k8s/01-config/ghcr-secret.yaml
 
 # Terraform
 infra/.terraform/
