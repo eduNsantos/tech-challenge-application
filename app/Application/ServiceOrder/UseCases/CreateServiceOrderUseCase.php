@@ -5,7 +5,6 @@ namespace App\Application\ServiceOrder\UseCases;
 use App\Application\Payment\Services\ServiceOrderPaymentRequester;
 use App\Application\ServiceOrder\DTOs\CreateServiceOrderDTO;
 use App\Application\ServiceOrderItem\DTOs\CreateServiceOrderItemDTO;
-use App\Application\ServiceOrderService\DTOs\CreateServiceOrderServiceDTO;
 use App\Domain\Customer\Interfaces\CustomerRepositoryInterface;
 use App\Domain\Item\Interfaces\ItemRepositoryInterface;
 use App\Domain\Service\Interfaces\ServiceRepositoryInterface;
@@ -14,10 +13,10 @@ use App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface;
 use App\Domain\ServiceOrder\Events\ServiceOrderCreated;
 use App\Domain\ServiceOrderItem\Interfaces\ServiceOrderItemInterface;
 use App\Support\Observability\BusinessTelemetry;
-use App\Domain\ServiceOrderService\Interfaces\ServiceOrderServiceInterface;
 use App\Domain\Vehicle\Interfaces\VehicleRepositoryInterface;
 use App\Infrastructure\Messaging\ServiceOrderCreatedOutbox;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CreateServiceOrderUseCase
 {
@@ -27,7 +26,6 @@ class CreateServiceOrderUseCase
         private ServiceRepositoryInterface $serviceRepository,
         private ItemRepositoryInterface $itemRepository,
         private ServiceOrderItemInterface $serviceOrderItemRepository,
-        private ServiceOrderServiceInterface $serviceOrderServiceRepository,
         private VehicleRepositoryInterface $vehicleRepository,
         private ServiceOrderCreatedOutbox $outbox,
         private ServiceOrderPaymentRequester $paymentRequester
@@ -64,23 +62,6 @@ class CreateServiceOrderUseCase
         DB::transaction(function () use ($serviceOrder, $items, $services, $customer, $dto): void {
             $this->serviceOrderRepository->save($serviceOrder);
 
-            $createdServices = [];
-
-            foreach ($services as $service) {
-                $created = $this->serviceOrderServiceRepository->createServiceOrderService(
-                    new CreateServiceOrderServiceDTO(
-                        $serviceOrder->id,
-                        (string) $service['service_id'],
-                        (int) $service['quantity'],
-                        (float) $service['unit_price'],
-                        null,
-                        null
-                    )
-                );
-
-                $createdServices[] = ['id' => $created->id] + $service;
-            }
-
             foreach ($items as $item) {
                 $this->serviceOrderItemRepository->createServiceOrderItem(
                     new CreateServiceOrderItemDTO(
@@ -92,7 +73,7 @@ class CreateServiceOrderUseCase
                 );
             }
 
-            $this->outbox->record($serviceOrder, $createdServices);
+            $this->outbox->record($serviceOrder, $services);
             // Último passo da transação: se o payment-service falhar, a OS não é gravada
             if ($dto->sendQuote) {
                 $this->paymentRequester->request($serviceOrder, $customer);
@@ -118,6 +99,7 @@ class CreateServiceOrderUseCase
             }
 
             return [
+                'id'         => (string) Str::uuid(),
                 'service_id' => $service->id,
                 'name'       => $service->name,
                 'quantity'   => (float) $item['quantity'],

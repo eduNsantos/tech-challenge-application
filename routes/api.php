@@ -4,7 +4,6 @@ use App\Support\Observability\BusinessTelemetry;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Presentation\Http\Controllers\ServiceOrderController;
-use App\Presentation\Http\Controllers\ServiceOrderServiceController;
 use App\Presentation\Http\Controllers\ItemController;
 use App\Presentation\Http\Controllers\NotificationController;
 use App\Presentation\Http\Controllers\StockController;
@@ -145,15 +144,6 @@ Route::group([
     Route::delete('/{id}/services/{serviceId}', [ServiceOrderController::class, 'removeService']);
     Route::delete('/{id}/items/{itemId}', [ServiceOrderController::class, 'removeItem']);
     Route::delete('/{id}', [ServiceOrderController::class, 'destroy']);
-});
-
-Route::group([
-    'middleware' => 'auth:api',
-    'prefix' => 'service-order-service'
-], function () {
-    Route::get('/metrics/average-execution-time', [ServiceOrderServiceController::class, 'averageExecutionTime']);
-    Route::patch('/{id}/start', [ServiceOrderServiceController::class, 'start']);
-    Route::patch('/{id}/finish', [ServiceOrderServiceController::class, 'finish']);
 });
 
 Route::group([

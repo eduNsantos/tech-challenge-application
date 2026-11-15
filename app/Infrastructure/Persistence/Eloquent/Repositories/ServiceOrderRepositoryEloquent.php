@@ -18,6 +18,14 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
 
     public function save(ServiceOrder $serviceOrder): void
     {
+        DB::transaction(function () use ($serviceOrder): void {
+            $this->createServiceOrder($serviceOrder);
+            $this->syncServices($serviceOrder);
+        });
+    }
+
+    private function createServiceOrder(ServiceOrder $serviceOrder): void
+    {
         ServiceOrderModel::create([
             'id' => $serviceOrder->id,
             'customer_id' => $serviceOrder->customerId,
@@ -50,12 +58,14 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
             ->join('services', 'service_order_services.service_id', '=', 'services.id')
             ->where('service_order_services.service_order_id', $id)
             ->get([
+                'service_order_services.id',
                 'service_order_services.service_id',
                 'service_order_services.quantity',
                 'service_order_services.price as price',
                 'services.name as name',
             ])
             ->map(static fn ($service) => [
+                'id' => $service->id,
                 'service_id' => $service->service_id,
                 'quantity' => (float) $service->quantity,
                 'unit_price' => (float) $service->price,
@@ -182,7 +192,7 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
 
         foreach ($serviceOrder->services as $service) {
             ServiceOrderServiceModel::query()->create([
-                'id' => Str::uuid()->toString(),
+                'id' => $service['id'] ?? Str::uuid()->toString(),
                 'service_order_id' => $serviceOrder->id,
                 'service_id' => $service['service_id'],
                 'quantity' => (int) ($service['quantity'] ?? 0),
