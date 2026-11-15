@@ -19,7 +19,7 @@ data:
   DB_PORT: "3306"
   DB_DATABASE: "techchallenge"
   DB_USERNAME: "techchallenge"
-  SERVICES_MS_ENABLED: "false"
+  SERVICES_MS_ENABLED: "true"
   AWS_DEFAULT_REGION: "us-east-1"
   SQS_SERVICE_ORDERS_CREATED_URL: "https://sqs.us-east-1.amazonaws.com/674343198060/services-ms-service-orders-created.fifo"
   SQS_SERVICE_ORDER_STATUS_CHANGED_URL: "https://sqs.us-east-1.amazonaws.com/674343198060/services-ms-service-order-status-changed.fifo"
