@@ -1,29 +1,45 @@
 # TechChallenge API
-API de autenticação construída com Laravel 13, JWT e MySQL, com ambiente de desenvolvimento via Docker Compose e documentação OpenAPI.
+Serviço de Ordem de Serviço da oficina (fase 4 do POS Tech Challenge), construído com Laravel 13, JWT e MySQL, com ambiente local via Docker Compose, deploy no EKS e documentação OpenAPI.
 
-## Descrição da solução e objetivos da fase 2
+## Descrição da solução e papel na fase 4
 
-Esta entrega consolida uma API Laravel com autenticação JWT e duas estratégias de execução:
+Na fase 4 a oficina passou a operar como um conjunto de microsserviços, cada um com repositório, infraestrutura e banco próprios. Este repositório é o **serviço de Ordem de Serviço (OS Service)**: cadastro de clientes, veículos, peças e serviços, abertura da O.S., orçamento e **dono do status da O.S.** Ele conversa com os outros serviços só por API e mensageria, sem acessar o banco de nenhum deles.
 
-- Ambiente local com Docker Compose para desenvolvimento e testes rápidos.
-- Ambiente Kubernetes (Minikube) provisionado via Terraform para validar deploy, escalabilidade e operação em cluster.
+| Serviço | Repositório | Responsabilidade | Banco |
+|---|---|---|---|
+| OS Service (este) | `tech-challenge-application` | Autenticação JWT, cadastros, abertura da O.S., orçamento, status e notificações | RDS MySQL (`techchallenge-rds`) |
+| Billing / Pagamento | [`tech-challenge-payment`](https://github.com/eduNsantos/tech-challenge-payment) | Cobrança via Mercado Pago, orquestrada por Saga (Step Functions) | DynamoDB |
+| Execução | `tech-challenge-services-ms` | Fila de execução, início e fim de cada serviço da O.S. | RDS MySQL próprio (`services_ms`) |
 
-Objetivos principais desta fase:
+Como este serviço se comunica com os demais:
 
-- Padronizar build e publicação de imagem Docker para o GHCR.
-- Automatizar deploy e infraestrutura Kubernetes usando Terraform.
-- Garantir rastreabilidade de mudanças por tags de imagem e pipeline CI/CD.
-- Manter documentação executável para setup local e execução em cluster.
+- **Pagamento (síncrono + callback):** o envio do orçamento chama `POST /orders` no payment-service, que devolve o link de pagamento e o resultado por callback. Veja [Integração com o payment-service](#integração-com-o-payment-service).
+- **Execução (assíncrono, SQS FIFO + outbox):** criação e mudanças de status da O.S. vão para o Services MS por filas. Cada início e fim de serviço, e o fim da execução, voltam pela fila `service-order-execution.fifo`. Veja [Integração com o microsserviço de serviços](#integração-com-o-microsserviço-de-serviços).
 
-## Guia rápido desta documentação
+Execução e deploy:
 
-- Execução local: veja a seção `Início rápido (do zero)` e `Configuração do ambiente`.
-- Deploy em Kubernetes: veja a seção `Ambiente Kubernetes (Minikube + Terraform)`.
-- Provisionamento com Terraform: veja a seção `Passo a passo` dentro de `Ambiente Kubernetes (Minikube + Terraform)`.
+- Local: Docker Compose (veja `Início rápido (do zero)` e `Configuração do ambiente`).
+- Produção: EKS, com imagem publicada no GHCR por este repositório e deploy feito pelo workflow `deploy-eks.yml` do `tech-challenge-kubernetes`. As Lambdas de outbox e de consumo rodam via Bref (veja [Lambdas](#lambdas-publisher-e-consumer)).
+- Observabilidade: New Relic, mantido da fase 3.
+- Kubernetes local: o ambiente Minikube + Terraform da fase 2 continua disponível para validar manifestos (veja `Ambiente Kubernetes (Minikube + Terraform)`).
 
-## Desenho da arquitetura proposta
+## Desenho da arquitetura
 
-![Arquitetura proposta da solução](docs/Fase2/workflow.png)
+```
+                 Cliente / Atendente ──JWT──> OS Service (este repo, EKS) ──> RDS MySQL
+                                                │        ▲
+             POST /orders + callback/notification│        │ POST /api/payment/{notification,callback}
+                                                ▼        │
+                                   payment-service (API Gateway → Step Functions/Saga → Mercado Pago, DynamoDB)
+
+ OS Service ── outbox ──> λ postech-outbox-publisher ──> SQS service-orders-created.fifo ───────┐
+                                                     └─> SQS service-order-status-changed.fifo ─┤──> Services MS
+ OS Service <── λ postech-execution-consumer <── SQS service-order-execution.fifo <─────────────┘
+```
+
+Pipeline de build e deploy em Kubernetes herdado da fase 2 (GitHub Actions → GHCR → cluster):
+
+![Pipeline de build e deploy](docs/Fase2/workflow.png)
 
 ## Stack
 - PHP 8.4
@@ -192,7 +208,7 @@ make ci
 
 ## Integração com o payment-service
 
-O envio de orçamento chama o [tech-challenge-payment-service](../tech-challenge-payment-service):
+O envio de orçamento chama o [tech-challenge-payment](https://github.com/eduNsantos/tech-challenge-payment):
 
 1. `POST {PAYMENT_SERVICE_URL}/orders` com `callback_url` e `notification_url` (montados a partir do `APP_URL`)
 2. o link de pagamento volta em `POST /api/payment/notification` → e-mail do orçamento ao cliente
@@ -390,7 +406,17 @@ A aplicação é dona do status da O.S. Com `SERVICES_MS_ENABLED=true`:
 - A criação da O.S. grava `ServiceOrderCreated` na outbox, na mesma transação da O.S. e de seus serviços. O contrato transporta somente os serviços, sem peças/itens.
 - Toda mudança de status gravada pelo repositório grava `ServiceOrderStatusChanged` na outbox, na mesma transação. Isso inclui aprovação, rejeição e alteração manual. O campo `sequence` é o id da linha na outbox. O MS usa esse valor para descartar eventos antigos.
 - A Lambda `postech-outbox-publisher` (`App\Lambda\PublishOutboxHandler`, agendada pelo EventBridge a cada minuto) envia os eventos de criação para `service-orders-created.fifo` e os de status para `service-order-status-changed.fifo`.
-- A Lambda `postech-execution-consumer` (`App\Lambda\ServiceOrderExecutionHandler`, acionada pela fila) consome `service-order-execution.fifo`. Quando o MS conclui o último serviço, a aplicação muda a O.S. para `finalizada`, se ela ainda estiver em `em_execucao` e se o evento se referir ao último status publicado. Essa mudança dispara as notificações normais e volta ao MS como `ServiceOrderStatusChanged`. O início da execução não altera o status, pois a aprovação já leva a O.S. para `em_execucao`.
+- A Lambda `postech-execution-consumer` (`App\Lambda\ServiceOrderExecutionHandler`, acionada pela fila) consome `service-order-execution.fifo`. Essa fila recebe quatro tipos de evento, todos com o id da O.S. como grupo FIFO:
+
+  | Evento | Quando o MS envia | O que a aplicação faz |
+  |---|---|---|
+  | `ServiceOrderServiceStarted` | Todo início de serviço | Grava `started_at` e `started_user_id` em `service_order_services` |
+  | `ServiceOrderServiceFinished` | Todo fim de serviço | Grava `finished_at` e `finished_user_id` em `service_order_services` |
+  | `ServiceOrderExecutionStarted` | Primeiro início da O.S. | Nada (a O.S. já está em `em_execucao`) |
+  | `ServiceOrderExecutionFinished` | Fim do último serviço | Muda a O.S. para `finalizada` (regras abaixo) |
+
+  Os eventos de serviço não alteram o status. O serviço é localizado por `service_order_service_id`, que é o mesmo id de `service_order_services` enviado no `ServiceOrderCreated`. Se o serviço não existir mais na O.S., o evento é ignorado com um log de aviso, para não travar o grupo FIFO. Esses campos aparecem em `GET /api/service-order/{id}` (`service_order.services[].started_at` e `finished_at`) e são preservados quando a O.S. é atualizada. `started_user_id`/`finished_user_id` vêm do claim `sub` do JWT do mecânico e não têm FK para `users`.
+- Quando o MS conclui o último serviço, a aplicação muda a O.S. para `finalizada`, se ela ainda estiver em `em_execucao` e se o evento se referir ao último status publicado. Essa mudança dispara as notificações normais e volta ao MS como `ServiceOrderStatusChanged`. O início da execução não altera o status, pois a aprovação já leva a O.S. para `em_execucao`.
 
 Configure no ambiente do monólito:
 

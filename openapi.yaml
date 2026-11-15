@@ -1826,6 +1826,18 @@ components:
           format: float
           description: Preço unitário no momento da criação da OS (snapshot)
           example: 150.00
+        started_at:
+          type: string
+          nullable: true
+          readOnly: true
+          description: Início do serviço, recebido do Services MS pela fila service-order-execution
+          example: "2026-11-16 10:00:00"
+        finished_at:
+          type: string
+          nullable: true
+          readOnly: true
+          description: Fim do serviço, recebido do Services MS pela fila service-order-execution
+          example: null
 
     ServiceOrderPart:
       type: object

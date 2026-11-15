@@ -222,6 +222,87 @@ class ServiceOrderMessagingTest extends TestCase
             ->handle($this->executionEvent((string) Str::uuid(), 'ServiceOrderExecutionFinished', 1));
     }
 
+    private function serviceEvent(string $orderId, string $type, int $sequence, array $data): array
+    {
+        return $this->executionEvent($orderId, $type, $sequence) + $data + [
+            'service_order_service_id' => DB::table('service_order_services')->where('service_order_id', $orderId)->value('id'),
+            'user_id' => (string) $this->user->id,
+        ];
+    }
+
+    public function test_service_start_and_finish_from_services_ms_update_the_service(): void
+    {
+        config(['services_ms.enabled' => true]);
+        Event::fake();
+        $orderId = $this->createServiceOrder();
+        $sequence = $this->startExecution($orderId);
+        $processor = app(ProcessServiceOrderExecution::class);
+
+        $started = $this->serviceEvent($orderId, 'ServiceOrderServiceStarted', $sequence, ['started_at' => '2026-11-16T10:00:00+00:00']);
+        $this->assertTrue($processor->handle($started));
+        $this->assertFalse($processor->handle($started));
+
+        $this->assertTrue($processor->handle(
+            $this->serviceEvent($orderId, 'ServiceOrderServiceFinished', $sequence, ['finished_at' => '2026-11-16T10:30:00+00:00'])
+        ));
+
+        $row = DB::table('service_order_services')->where('service_order_id', $orderId)->first();
+        $this->assertSame($this->user->id, (int) $row->started_user_id);
+        $this->assertSame($this->user->id, (int) $row->finished_user_id);
+        $this->assertNotNull($row->started_at);
+        $this->assertNotNull($row->finished_at);
+        // Evento de serviço não muda o status da O.S.; quem faz isso é o ServiceOrderExecutionFinished.
+        $this->assertDatabaseHas('service_orders', ['id' => $orderId, 'status' => 'em_execucao']);
+
+        $this->actingAs($this->user, 'api')
+            ->getJson("/api/service-order/{$orderId}")
+            ->assertOk()
+            ->assertJsonPath('service_order.services.0.started_at', $row->started_at)
+            ->assertJsonPath('service_order.services.0.finished_at', $row->finished_at);
+    }
+
+    public function test_service_execution_survives_later_service_order_updates(): void
+    {
+        config(['services_ms.enabled' => true]);
+        Event::fake();
+        $orderId = $this->createServiceOrder();
+        $sequence = $this->startExecution($orderId);
+        app(ProcessServiceOrderExecution::class)->handle(
+            $this->serviceEvent($orderId, 'ServiceOrderServiceStarted', $sequence, ['started_at' => '2026-11-16T10:00:00+00:00'])
+        );
+
+        $repository = app(\App\Domain\ServiceOrder\Interfaces\ServiceOrderRepositoryInterface::class);
+        $repository->update($repository->findById($orderId));
+
+        $this->assertNotNull(DB::table('service_order_services')->where('service_order_id', $orderId)->value('started_at'));
+    }
+
+    public function test_service_event_for_service_removed_from_order_is_ignored(): void
+    {
+        config(['services_ms.enabled' => true]);
+        $orderId = $this->createServiceOrder();
+        $sequence = $this->startExecution($orderId);
+
+        $applied = app(ProcessServiceOrderExecution::class)->handle(
+            $this->serviceEvent($orderId, 'ServiceOrderServiceStarted', $sequence, [
+                'started_at' => '2026-11-16T10:00:00+00:00',
+                'service_order_service_id' => (string) Str::uuid(),
+            ])
+        );
+
+        $this->assertFalse($applied);
+        $this->assertDatabaseHas('processed_messages', ['type' => 'ServiceOrderServiceStarted']);
+    }
+
+    public function test_rejects_service_event_without_service_id(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        app(ProcessServiceOrderExecution::class)->handle(
+            $this->executionEvent((string) Str::uuid(), 'ServiceOrderServiceStarted', 1) + ['started_at' => '2026-11-16T10:00:00+00:00']
+        );
+    }
+
     public function test_rejects_invalid_execution_event(): void
     {
         $this->expectException(InvalidArgumentException::class);
