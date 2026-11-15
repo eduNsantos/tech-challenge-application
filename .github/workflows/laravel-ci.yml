@@ -5,6 +5,9 @@ on:
   workflow_dispatch:
   push:
     branches: [ "main" ]
+  # Check obrigatório (laravel-tests) da regra de proteção da main
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   laravel-tests:
