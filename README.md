@@ -278,6 +278,14 @@ Detalhes, cenários da SAGA do payment-service e evidências: [`docs/Fase4/teste
 
 ### Análise de cobertura com SonarQube
 
+Última análise da `main` (projeto `tech-challenge`, perfil *Sonar way*, 5,8 mil linhas em `app/`):
+
+| Quality Gate | Cobertura | Duplicação | Segurança | Confiabilidade | Manutenibilidade |
+|---|---|---|---|---|---|
+| ✅ Passed | **93,2%** | 1,4% | A (0 issues) | A (0 issues) | A (0 issues) |
+
+![Dashboard do SonarQube](docs/Fase4/sonarqube-fase4.png)
+
 O SonarQube é configurado no `docker-compose.yml`. Na primeira execução, acesse `http://localhost:9000` para criar um projeto e gerar um token de acesso.
 
 ```bash
