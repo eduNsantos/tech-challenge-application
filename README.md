@@ -105,6 +105,22 @@ WHERE service_order_id = '<id da O.S.>' OR context.service_order_id = '<id da O.
 SINCE 7 days ago LIMIT MAX
 ```
 
+### Dashboard "Trace distribuído"
+
+[`docs/Fase4/observabilidade/newrelic-trace-distribuido.json`](docs/Fase4/observabilidade/newrelic-trace-distribuido.json) se importa do mesmo jeito. Ele usa os spans (`Span`) dos dois serviços com agente New Relic, **Tech Challenge POS** e **payment-service**, que propagam o trace W3C nas chamadas HTTP entre si:
+
+- **Visão geral**: quantidade de traces e quantos cruzam app ↔ payment, latência p50/p95 das entradas, erros, quem chama quem (incluindo o Mercado Pago), operações mais lentas e os traces mais lentos, com `trace.id`.
+- **Trace de uma O.S.**: preencha *Id da O.S.*. Os traces são achados pelo `trace.id` que o agente PHP grava nos logs com `context.service_order_id`. A página mostra todos os spans desses traces, inclusive os do payment-service, as chamadas externas e os logs.
+
+Os spans de um trace da O.S. direto no NRQL:
+
+```sql
+SELECT timestamp, trace.id, appName, name, span.kind, duration.ms, http.url, error.class
+FROM Span
+WHERE trace.id IN (SELECT uniques(trace.id) FROM Log WHERE context.service_order_id = '<id da O.S.>')
+SINCE 7 days ago LIMIT MAX
+```
+
 ## Stack
 - PHP 8.4
 - Laravel 13

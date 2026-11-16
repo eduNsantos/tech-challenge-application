@@ -1,0 +1,523 @@
+{
+  "name": "Trace distribuído",
+  "description": "Spans app (Tech Challenge POS) ↔ payment-service via W3C trace context; filtro por O.S. via trace.id dos logs",
+  "permissions": "PUBLIC_READ_WRITE",
+  "pages": [
+    {
+      "name": "Visão geral",
+      "description": "Todos os traces app ↔ payment",
+      "widgets": [
+        {
+          "title": "Como usar",
+          "layout": {
+            "column": 1,
+            "row": 1,
+            "width": 4,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.markdown"
+          },
+          "rawConfiguration": {
+            "text": "### Trace distribuído — visão geral\nSpans dos dois serviços com agente New Relic: **Tech Challenge POS** (app no EKS, agente PHP) e **payment-service** (Lambdas, agente Node.js). Os dois propagam headers W3C, então as chamadas HTTP app → payment (gerar link, cancelar) e payment → app (`/api/payment/callback/{token}`, `/api/payment/notification`) entram no mesmo trace.\n\nO **services-ms** não gera spans: conversa por SQS/Step Functions e usa correlação por `service_order_id` (dashboard *Jornada da O.S.*).\n\nPara abrir um trace: copie o `trace.id` de uma tabela e procure em **APM → Distributed tracing**."
+          }
+        },
+        {
+          "title": "Traces",
+          "layout": {
+            "column": 5,
+            "row": 1,
+            "width": 2,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.billboard"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT uniqueCount(trace.id) AS 'Traces' FROM Span WHERE appName IN ('Tech Challenge POS', 'payment-service') SINCE 1 day ago COMPARE WITH 1 day ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Traces que cruzam app e payment",
+          "layout": {
+            "column": 7,
+            "row": 1,
+            "width": 3,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.billboard"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT uniqueCount(trace.id) AS 'Traces app ↔ payment' FROM Span WHERE appName = 'Tech Challenge POS' AND trace.id IN (SELECT uniques(trace.id) FROM Span WHERE appName = 'payment-service') SINCE 1 day ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Spans com erro",
+          "layout": {
+            "column": 10,
+            "row": 1,
+            "width": 3,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.billboard"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT percentage(count(*), WHERE error.class IS NOT NULL) AS '% spans com erro', filter(count(*), WHERE error.class IS NOT NULL) AS 'Spans com erro' FROM Span WHERE appName IN ('Tech Challenge POS', 'payment-service') SINCE 1 day ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Latência das entradas (p50 / p95) por serviço",
+          "layout": {
+            "column": 1,
+            "row": 4,
+            "width": 6,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.line"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT percentile(duration.ms, 50, 95) FROM Span WHERE appName IN ('Tech Challenge POS', 'payment-service') AND nr.entryPoint IS TRUE FACET appName TIMESERIES SINCE 1 day ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            },
+            "legend": {
+              "enabled": true
+            }
+          }
+        },
+        {
+          "title": "Erros por serviço",
+          "layout": {
+            "column": 7,
+            "row": 4,
+            "width": 6,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.line"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT count(*) FROM Span WHERE appName IN ('Tech Challenge POS', 'payment-service') AND error.class IS NOT NULL FACET appName, error.class TIMESERIES SINCE 1 day ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            },
+            "legend": {
+              "enabled": true
+            }
+          }
+        },
+        {
+          "title": "Chamadas entre serviços e externas (quem chama quem)",
+          "layout": {
+            "column": 1,
+            "row": 7,
+            "width": 7,
+            "height": 4
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT count(*) AS 'Chamadas', average(duration.ms) AS 'Média (ms)', percentile(duration.ms, 95) AS 'p95 (ms)', percentage(count(*), WHERE error.class IS NOT NULL OR numeric(http.statusCode) >= 400) AS '% erro' FROM Span WHERE appName IN ('Tech Challenge POS', 'payment-service') AND span.kind = 'client' AND http.url IS NOT NULL FACET appName AS 'Origem', capture(http.url, r'https?://(?P<host>[^/:?]+).*') AS 'Destino' SINCE 1 day ago LIMIT 50"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Tempo por destino externo",
+          "layout": {
+            "column": 8,
+            "row": 7,
+            "width": 5,
+            "height": 4
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.bar"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT sum(duration.ms) / 1000 AS 'Segundos' FROM Span WHERE appName IN ('Tech Challenge POS', 'payment-service') AND span.kind = 'client' AND http.url IS NOT NULL FACET capture(http.url, r'https?://(?P<host>[^/:?]+).*') SINCE 1 day ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Fluxo de pagamento — entradas por etapa",
+          "layout": {
+            "column": 1,
+            "row": 11,
+            "width": 6,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.line"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT count(*) FROM Span WHERE nr.entryPoint IS TRUE AND (appName = 'payment-service' OR (appName = 'Tech Challenge POS' AND (name LIKE '%payment%' OR name LIKE '%service-order%'))) FACET appName, name TIMESERIES SINCE 1 day ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            },
+            "legend": {
+              "enabled": true
+            }
+          }
+        },
+        {
+          "title": "Operações mais lentas (média por span)",
+          "layout": {
+            "column": 7,
+            "row": 11,
+            "width": 6,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.bar"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT average(duration.ms) AS 'Média (ms)' FROM Span WHERE appName IN ('Tech Challenge POS', 'payment-service') FACET appName, name SINCE 1 day ago LIMIT 15"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Traces mais lentos (copie o trace.id)",
+          "layout": {
+            "column": 1,
+            "row": 14,
+            "width": 12,
+            "height": 5
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT max(duration.ms) AS 'Duração do maior span (ms)', uniqueCount(appName) AS 'Serviços', uniques(appName) AS 'Quais', count(*) AS 'Spans', filter(count(*), WHERE error.class IS NOT NULL) AS 'Erros', min(timestamp) AS 'Início' FROM Span WHERE appName IN ('Tech Challenge POS', 'payment-service') FACET trace.id SINCE 1 day ago LIMIT 50"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Trace de uma O.S.",
+      "description": "Filtre pelo id da O.S.",
+      "widgets": [
+        {
+          "title": "Como usar",
+          "layout": {
+            "column": 1,
+            "row": 1,
+            "width": 6,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.markdown"
+          },
+          "rawConfiguration": {
+            "text": "### Trace de uma O.S.\nPreencha **Id da O.S.** no topo. Os traces são achados pelos logs da aplicação que têm `context.service_order_id` — o agente PHP grava o `trace.id` em cada log. A partir deles, aparecem todos os spans do trace, inclusive os do payment-service.\n\nPassos do services-ms (sem spans) estão no dashboard *Jornada da O.S.*."
+          }
+        },
+        {
+          "title": "Traces da O.S.",
+          "layout": {
+            "column": 7,
+            "row": 1,
+            "width": 2,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.billboard"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT uniqueCount(trace.id) AS 'Traces' FROM Span WHERE trace.id IN (SELECT uniques(trace.id) FROM Log WHERE context.service_order_id = {{service_order_id}} AND trace.id IS NOT NULL) SINCE 30 days ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Spans",
+          "layout": {
+            "column": 9,
+            "row": 1,
+            "width": 2,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.billboard"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT count(*) AS 'Spans', filter(count(*), WHERE error.class IS NOT NULL) AS 'Com erro' FROM Span WHERE trace.id IN (SELECT uniques(trace.id) FROM Log WHERE context.service_order_id = {{service_order_id}} AND trace.id IS NOT NULL) SINCE 30 days ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Tempo por serviço",
+          "layout": {
+            "column": 11,
+            "row": 1,
+            "width": 2,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.pie"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT sum(duration.ms) FROM Span WHERE trace.id IN (SELECT uniques(trace.id) FROM Log WHERE context.service_order_id = {{service_order_id}} AND trace.id IS NOT NULL) AND nr.entryPoint IS TRUE FACET appName SINCE 30 days ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Traces da O.S. (um por linha)",
+          "layout": {
+            "column": 1,
+            "row": 4,
+            "width": 12,
+            "height": 4
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT min(timestamp) AS 'Início', latest(name) AS 'Operação', uniques(appName) AS 'Serviços', count(*) AS 'Spans', max(duration.ms) AS 'Maior span (ms)', filter(count(*), WHERE error.class IS NOT NULL) AS 'Erros' FROM Span WHERE trace.id IN (SELECT uniques(trace.id) FROM Log WHERE context.service_order_id = {{service_order_id}} AND trace.id IS NOT NULL) FACET trace.id SINCE 30 days ago LIMIT 100"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Spans em ordem (app e payment)",
+          "layout": {
+            "column": 1,
+            "row": 8,
+            "width": 12,
+            "height": 6
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT timestamp, trace.id, appName AS 'Serviço', name AS 'Operação', span.kind, duration.ms, http.url, http.statusCode, error.class, error.message FROM Span WHERE trace.id IN (SELECT uniques(trace.id) FROM Log WHERE context.service_order_id = {{service_order_id}} AND trace.id IS NOT NULL) SINCE 30 days ago LIMIT MAX"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Chamadas externas na O.S.",
+          "layout": {
+            "column": 1,
+            "row": 14,
+            "width": 6,
+            "height": 4
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT count(*) AS 'Chamadas', average(duration.ms) AS 'Média (ms)', latest(http.statusCode) AS 'Último status' FROM Span WHERE trace.id IN (SELECT uniques(trace.id) FROM Log WHERE context.service_order_id = {{service_order_id}} AND trace.id IS NOT NULL) AND span.kind = 'client' FACET appName AS 'Origem', capture(http.url, r'https?://(?P<host>[^/:?]+).*') AS 'Destino' SINCE 30 days ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Logs nos traces da O.S.",
+          "layout": {
+            "column": 7,
+            "row": 14,
+            "width": 6,
+            "height": 4
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT timestamp, entity.name, trace.id, level, message FROM Log WHERE trace.id IN (SELECT uniques(trace.id) FROM Log WHERE context.service_order_id = {{service_order_id}} AND trace.id IS NOT NULL) SINCE 30 days ago LIMIT MAX"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "name": "service_order_id",
+      "items": null,
+      "defaultValues": [
+        {
+          "value": {
+            "string": "cole-o-id-da-os"
+          }
+        }
+      ],
+      "nrqlQuery": null,
+      "options": {
+        "ignoreTimeRange": true
+      },
+      "title": "Id da O.S.",
+      "type": "STRING",
+      "isMultiSelection": false,
+      "replacementStrategy": "STRING"
+    }
+  ]
+}
