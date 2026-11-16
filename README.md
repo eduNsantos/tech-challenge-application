@@ -284,7 +284,12 @@ Detalhes, cenários da SAGA do payment-service e evidências: [`docs/Fase4/teste
 |---|---|---|---|---|---|
 | ✅ Passed | **93,2%** | 1,4% | A (0 issues) | A (0 issues) | A (0 issues) |
 
-![Dashboard do SonarQube](docs/Fase4/sonarqube-fase4.png)
+![Dashboard do SonarQube](docs/Fase4/sonarqube/sonarqube-fase4.png)
+
+Evidências dos três microsserviços em [`docs/Fase4/sonarqube/`](docs/Fase4/sonarqube/):
+[OS Service](docs/Fase4/sonarqube/sonarqube-fase4.png) (93,2%) ·
+[payment-service](docs/Fase4/sonarqube/sonarqube-fase4-payment.png) (85,8%) ·
+[services-ms](docs/Fase4/sonarqube/sonarqube-fase4-services-ms.png) (88,6%).
 
 O SonarQube é configurado no `docker-compose.yml`. Na primeira execução, acesse `http://localhost:9000` para criar um projeto e gerar um token de acesso.
 
