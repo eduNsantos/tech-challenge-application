@@ -74,6 +74,37 @@ Fora do escopo: uma falha de negócio na execução (por exemplo, o reparo não 
 
 Os cenários `@compensacao`, `@rollback` e `@idempotencia` de `tests/Bdd/features/saga_ordem_de_servico.feature` exercitam os passos 1 a 3 e 6 deste serviço. Os cenários da saga do pagamento ficam em `src/features/saga_pagamento.feature` no payment-service. Veja [Testes BDD](#testes-bdd-fluxo-completo-da-os).
 
+## Rastreamento da O.S. entre os serviços
+
+Os três serviços enviam ao New Relic (conta `8497993`) eventos de cada passo com o mesmo atributo, **`service_order_id`**. Com ele, uma consulta segue uma O.S. da abertura à entrega, incluindo as falhas e recuperações da saga.
+
+| Serviço | Onde fica no New Relic | Atributo | O que registra |
+|---|---|---|---|
+| application (este) | eventos `ServiceOrderCreated` e `ServiceOrderStatusDuration` | `service_order_id` | abertura e cada mudança de status |
+| application (este) | `Log`, encaminhado pelo agente PHP | `context.service_order_id` | orçamento enviado, pagamento pedido e resultado, notificações (`context.event`) |
+| payment-service | evento `PaymentSaga` | `service_order_id` (de `metadata.service_order_id` do pedido) | cada passo da saga de pagamento: `QUEUED` → `PENDING` → `LINK_CREATED` → `WAITING_PAYMENT` → `PAID`/`REJECTED`/`EXPIRED` |
+| services-ms | `Log` com `journey.source = 'services-ms'` (OpenTelemetry) | `service_order_id` | O.S. recebida, status sincronizado, início/fim de serviço e da execução, eventos publicados, reenvios da DLQ |
+
+**Por que correlação por O.S. e não um trace W3C único.** Os serviços conversam por filas SQS e o pagamento passa pelo Step Functions. Nesses pontos o contexto de trace não atravessa sozinho; seria preciso levar o `traceparent` em cada mensagem e instrumentar as Lambdas Bref, que não têm agente New Relic. O id da O.S. já está em todas as mensagens e é o que o atendimento usa para investigar um caso. Por isso ele serve de chave de correlação. As chamadas HTTP entre a aplicação e o payment-service ainda aparecem em *Distributed tracing*, porque os dois agentes do New Relic propagam os headers W3C.
+
+**Limitação.** O consumer da fila de execução roda em Lambda, sem agente New Relic. Por isso, as mudanças de status que ele aplica (`em_execucao`, `finalizada`) não aparecem do lado da aplicação. Os passos equivalentes aparecem pelo services-ms (`execution_started`, `execution_finished`, `event_published`).
+
+### Dashboard "Jornada da O.S."
+
+[`docs/Fase4/observabilidade/newrelic-jornada-os.json`](docs/Fase4/observabilidade/newrelic-jornada-os.json). Para importar, abra o New Relic → **Dashboards** → **Import dashboard** e cole o JSON. Ele tem duas páginas:
+
+- **Jornada de uma O.S.**: preencha o filtro *Id da O.S.* no topo. Mostra quantos passos cada serviço registrou, a linha do tempo unificada e uma tabela por serviço.
+- **Saga — falhas e recuperação**: todas as O.S. Mostra pagamentos recusados ou expirados, reenvios e esgotamentos da DLQ no services-ms, erros de O.S. na aplicação e as O.S. que passaram pelos três serviços.
+
+A mesma linha do tempo direto no NRQL:
+
+```sql
+SELECT timestamp, eventType(), journey.source, step, event, context.event, status, new_status, message
+FROM Log, PaymentSaga, ServiceOrderCreated, ServiceOrderStatusDuration
+WHERE service_order_id = '<id da O.S.>' OR context.service_order_id = '<id da O.S.>'
+SINCE 7 days ago LIMIT MAX
+```
+
 ## Stack
 - PHP 8.4
 - Laravel 13

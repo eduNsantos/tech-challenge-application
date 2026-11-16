@@ -1,0 +1,420 @@
+{
+  "name": "Jornada da O.S.",
+  "description": "Rastreamento de uma O.S. pelos três microsserviços (application, payment, services-ms) pelo atributo service_order_id",
+  "permissions": "PUBLIC_READ_WRITE",
+  "pages": [
+    {
+      "name": "Jornada de uma O.S.",
+      "description": "Filtre pelo id da O.S.",
+      "widgets": [
+        {
+          "title": "Como usar",
+          "layout": {
+            "column": 1,
+            "row": 1,
+            "width": 4,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.markdown"
+          },
+          "rawConfiguration": {
+            "text": "**Jornada da O.S.** — cole o id da O.S. no filtro *Id da O.S.* no topo.\n\nAtributo comum: `service_order_id`.\n\n- **application**: eventos `ServiceOrderCreated`, `ServiceOrderStatusDuration` e logs (`context.service_order_id`)\n- **payment**: evento `PaymentSaga`\n- **services-ms**: logs `journey.source = 'services-ms'`\n\nStatus alterados pelas Lambdas da aplicação (consumer da execução) não aparecem do lado da aplicação: veja os passos do services-ms."
+          }
+        },
+        {
+          "title": "application",
+          "layout": {
+            "column": 5,
+            "row": 1,
+            "width": 2,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.billboard"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT count(*) AS 'Passos' FROM Log, ServiceOrderCreated, ServiceOrderStatusDuration WHERE (service_order_id = {{service_order_id}} OR context.service_order_id = {{service_order_id}}) AND (eventType() != 'Log' OR context.service_order_id IS NOT NULL) SINCE 30 days ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "payment",
+          "layout": {
+            "column": 7,
+            "row": 1,
+            "width": 2,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.billboard"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT count(*) AS 'Passos' FROM PaymentSaga WHERE service_order_id = {{service_order_id}} SINCE 30 days ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "services-ms",
+          "layout": {
+            "column": 9,
+            "row": 1,
+            "width": 2,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.billboard"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT count(*) AS 'Passos' FROM Log WHERE journey.source = 'services-ms' AND service_order_id = {{service_order_id}} SINCE 30 days ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Falhas e recuperações",
+          "layout": {
+            "column": 11,
+            "row": 1,
+            "width": 2,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.billboard"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT count(*) AS 'Avisos' FROM Log, PaymentSaga WHERE (service_order_id = {{service_order_id}} OR context.service_order_id = {{service_order_id}}) AND (level = 'WARN' OR status IN ('REJECTED', 'EXPIRED', 'LINK_ERROR', 'DUPLICATE')) SINCE 30 days ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Linha do tempo nos três serviços",
+          "layout": {
+            "column": 1,
+            "row": 4,
+            "width": 12,
+            "height": 6
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT timestamp, eventType() AS 'Tipo', journey.source AS 'MS', step AS 'Passo (payment)', event AS 'Passo (MS)', context.event AS 'Passo (app)', status, new_status AS 'Novo status (app)', previous_status, event_type, reason, mpStatus, message FROM Log, PaymentSaga, ServiceOrderCreated, ServiceOrderStatusDuration WHERE (service_order_id = {{service_order_id}} OR context.service_order_id = {{service_order_id}}) SINCE 30 days ago LIMIT MAX"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "application — O.S. e status",
+          "layout": {
+            "column": 1,
+            "row": 10,
+            "width": 4,
+            "height": 5
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT timestamp, eventType() AS 'Tipo', context.event AS 'Passo', status, previous_status, new_status, status_duration_seconds, message FROM Log, ServiceOrderCreated, ServiceOrderStatusDuration WHERE (service_order_id = {{service_order_id}} OR context.service_order_id = {{service_order_id}}) AND (eventType() != 'Log' OR context.service_order_id IS NOT NULL) SINCE 30 days ago LIMIT MAX"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "payment — saga de pagamento",
+          "layout": {
+            "column": 5,
+            "row": 10,
+            "width": 4,
+            "height": 5
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT timestamp, step, status, attempt, mpStatus, mpStatusDetail, durationSeconds, orderId FROM PaymentSaga WHERE service_order_id = {{service_order_id}} SINCE 30 days ago LIMIT MAX"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "services-ms — execução",
+          "layout": {
+            "column": 9,
+            "row": 10,
+            "width": 4,
+            "height": 5
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT timestamp, event, level, status, event_type, service_order_service_id, duration_seconds, redrive_attempt, reason FROM Log WHERE journey.source = 'services-ms' AND service_order_id = {{service_order_id}} SINCE 30 days ago LIMIT MAX"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Saga — falhas e recuperação",
+      "description": "Falhas e compensações de todas as O.S.",
+      "widgets": [
+        {
+          "title": "Pagamentos com falha (payment)",
+          "layout": {
+            "column": 1,
+            "row": 1,
+            "width": 4,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.line"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT count(*) FROM PaymentSaga WHERE status IN ('REJECTED', 'EXPIRED', 'LINK_ERROR') FACET status TIMESERIES SINCE 1 day ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Falhas e recuperações da execução (services-ms)",
+          "layout": {
+            "column": 5,
+            "row": 1,
+            "width": 4,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.line"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT count(*) FROM Log WHERE journey.source = 'services-ms' AND level = 'WARN' FACET event TIMESERIES SINCE 1 day ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "Erros de O.S. (application)",
+          "layout": {
+            "column": 9,
+            "row": 1,
+            "width": 4,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.line"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT count(*) FROM ServiceOrderError FACET error_type TIMESERIES SINCE 1 day ago"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "O.S. com falha recente — payment",
+          "layout": {
+            "column": 1,
+            "row": 4,
+            "width": 6,
+            "height": 4
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT latest(timestamp) AS 'Último', latest(status) AS 'Status', count(*) AS 'Eventos' FROM PaymentSaga WHERE status IN ('REJECTED', 'EXPIRED', 'LINK_ERROR') AND service_order_id IS NOT NULL FACET service_order_id SINCE 7 days ago LIMIT 50"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "O.S. com falha recente — services-ms",
+          "layout": {
+            "column": 7,
+            "row": 4,
+            "width": 6,
+            "height": 4
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT latest(timestamp) AS 'Último', latest(event) AS 'Passo', count(*) AS 'Avisos' FROM Log WHERE journey.source = 'services-ms' AND level = 'WARN' FACET service_order_id SINCE 7 days ago LIMIT 50"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        },
+        {
+          "title": "O.S. que passaram pelos três serviços",
+          "layout": {
+            "column": 1,
+            "row": 8,
+            "width": 12,
+            "height": 4
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [
+                  8497993
+                ],
+                "query": "SELECT filter(count(*), WHERE eventType() = 'PaymentSaga') AS 'payment', filter(count(*), WHERE journey.source = 'services-ms') AS 'services-ms', filter(count(*), WHERE eventType() IN ('ServiceOrderCreated', 'ServiceOrderStatusDuration')) AS 'application' FROM PaymentSaga, Log, ServiceOrderCreated, ServiceOrderStatusDuration WHERE service_order_id IS NOT NULL FACET service_order_id SINCE 7 days ago LIMIT 50"
+              }
+            ],
+            "platformOptions": {
+              "ignoreTimeRange": false
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "name": "service_order_id",
+      "items": null,
+      "defaultValues": [
+        {
+          "value": {
+            "string": "cole-o-id-da-os"
+          }
+        }
+      ],
+      "nrqlQuery": null,
+      "options": {
+        "ignoreTimeRange": true
+      },
+      "title": "Id da O.S.",
+      "type": "STRING",
+      "isMultiSelection": false,
+      "replacementStrategy": "STRING"
+    }
+  ]
+}
