@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Arquitetura geral — Fase 4</title>
+<!-- Fonte do docs/Fase4/arquitetura-geral.png. Regerar:
+     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --hide-scrollbars \
+       --force-device-scale-factor=2 --window-size=1820,1060 --screenshot=arquitetura-geral.png arquitetura-geral.html -->
+<style>
+  html, body { margin: 0; background: #ffffff; }
+  svg { display: block; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  .t  { font-size: 17px; font-weight: 700; fill: #1f2330; }
+  .s  { font-size: 13px; fill: #4a5060; }
+  .m  { font-size: 13px; fill: #1f2330; font-family: Menlo, Consolas, monospace; }
+  .lb { font-size: 12px; fill: #4a5060; }
+  .h  { font-size: 13px; font-weight: 700; letter-spacing: .08em; fill: #6b7280; }
+  .svc { fill: #eef0ff; stroke: #5b5fc7; stroke-width: 2; }
+  .q   { fill: #e6f6f8; stroke: #1595a8; stroke-width: 2; }
+  .db  { fill: #fff6e5; stroke: #d08a00; stroke-width: 2; }
+  .ext { fill: #f4f4f5; stroke: #71717a; stroke-width: 2; }
+  .obs { fill: #f6efff; stroke: #8b5cf6; stroke-width: 2; stroke-dasharray: 6 4; }
+  .grp { fill: #fafafa; stroke: #a1a1aa; stroke-width: 1.5; stroke-dasharray: 7 5; }
+  .ln  { stroke: #3f3f46; stroke-width: 2; fill: none; marker-end: url(#a); }
+  .lq  { stroke: #1595a8; stroke-width: 2; fill: none; marker-end: url(#aq); }
+  .ld  { stroke: #d08a00; stroke-width: 2; fill: none; stroke-dasharray: 6 4; marker-end: url(#ad); }
+  .red { fill: #c2410c; }
+  .halo { paint-order: stroke; stroke: #ffffff; stroke-width: 7px; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<svg width="1820" height="1060" viewBox="0 0 1820 1060" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="a"  viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3f3f46"/></marker>
+    <marker id="aq" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1595a8"/></marker>
+    <marker id="ad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d08a00"/></marker>
+  </defs>
+
+  <text x="40" y="44" class="h">TECH CHALLENGE · FASE 4</text>
+  <text x="40" y="80" style="font-size:28px;font-weight:700;fill:#1f2330">Arquitetura geral — oficina mecânica em microsserviços</text>
+
+  <!-- Atores e autenticação -->
+  <rect x="40" y="130" width="180" height="64" rx="10" class="ext"/>
+  <text x="130" y="158" text-anchor="middle" class="t">Atendente</text>
+  <text x="130" y="178" text-anchor="middle" class="s">e cliente</text>
+
+  <rect x="40" y="240" width="180" height="96" rx="10" class="ext"/>
+  <text x="130" y="266" text-anchor="middle" class="t">λ Auth</text>
+  <text x="130" y="286" text-anchor="middle" class="s">API Gateway + Lambda</text>
+  <text x="130" y="304" text-anchor="middle" class="s">CPF/e-mail → JWT</text>
+  <text x="130" y="322" text-anchor="middle" class="s">(lambda-functions)</text>
+  <path d="M130,194 L130,238" class="ln"/>
+  <path d="M220,288 L278,250" class="ln"/>
+  <text x="226" y="252" class="lb">JWT</text>
+
+  <rect x="40" y="420" width="180" height="76" rx="10" class="db"/>
+  <text x="130" y="448" text-anchor="middle" class="t">RDS MySQL</text>
+  <text x="130" y="468" text-anchor="middle" class="s">techchallenge-rds</text>
+  <text x="130" y="486" text-anchor="middle" class="s">(tech-challenge-database)</text>
+  <path d="M300,310 L300,458 L222,458" class="ld"/>
+  <text x="232" y="446" class="lb">SQL</text>
+
+  <rect x="40" y="625" width="180" height="64" rx="10" class="ext"/>
+  <text x="130" y="653" text-anchor="middle" class="t">Mecânico</text>
+  <text x="130" y="673" text-anchor="middle" class="s">token JWT</text>
+  <path d="M220,657 L278,657" class="ln"/>
+
+  <!-- OS Service -->
+  <rect x="280" y="130" width="840" height="180" rx="12" class="svc"/>
+  <text x="300" y="162" class="t">OS Service — tech-challenge-application</text>
+  <text x="1100" y="162" text-anchor="end" class="lb">Laravel 13 · EKS</text>
+  <text x="300" y="190" class="s">Clientes, veículos, serviços, peças e estoque · abertura da O.S. · orçamento</text>
+  <text x="300" y="210" class="s">status e histórico · notificações · dono do ciclo de vida da O.S.</text>
+  <text x="300" y="240" class="s">Saga: pede a cobrança ao payment-service; aprovado → em_execucao + baixa de estoque;</text>
+  <text x="300" y="260" class="s"><tspan class="red">compensação:</tspan> recusado/expirado → volta a em_diagnostico · falha na cobrança → rollback</text>
+  <text x="300" y="290" class="s">Outbox transacional → eventos para o services-ms</text>
+
+  <!-- Filas SQS FIFO -->
+  <rect x="340" y="400" width="260" height="70" rx="10" class="q"/>
+  <text x="470" y="430" text-anchor="middle" class="m">service-orders-created</text>
+  <text x="470" y="452" text-anchor="middle" class="s">ServiceOrderCreated</text>
+  <rect x="620" y="400" width="260" height="70" rx="10" class="q"/>
+  <text x="750" y="430" text-anchor="middle" class="m">service-order-status-changed</text>
+  <text x="750" y="452" text-anchor="middle" class="s">ServiceOrderStatusChanged</text>
+  <rect x="900" y="400" width="220" height="70" rx="10" class="q"/>
+  <text x="1010" y="430" text-anchor="middle" class="m">service-order-execution</text>
+  <text x="1010" y="452" text-anchor="middle" class="s">ExecutionStarted/Finished</text>
+
+  <path d="M470,310 L470,398" class="lq"/>
+  <path d="M750,310 L750,398" class="lq"/>
+  <path d="M470,470 L470,588" class="lq"/>
+  <path d="M750,470 L750,588" class="lq"/>
+  <path d="M960,590 L960,472" class="lq"/>
+  <path d="M1060,400 L1060,312" class="lq"/>
+  <text x="478" y="356" class="lb">λ outbox-publisher</text>
+  <text x="758" y="356" class="lb">λ outbox-publisher</text>
+  <text x="478" y="545" class="lb">λ consumers (Bref)</text>
+  <text x="758" y="545" class="lb">λ status-consumer</text>
+  <text x="968" y="545" class="lb">outbox do MS</text>
+  <text x="1068" y="356" class="lb">λ execution-</text>
+  <text x="1068" y="372" class="lb">consumer</text>
+
+  <text x="340" y="388" class="h halo">AMAZON SQS FIFO · ASSÍNCRONO · COREOGRAFIA (OUTBOX)</text>
+  <text x="340" y="496" class="lb halo">Cada fila com DLQ · λ dlq-redriver reenvia (retentativa) · consumidores idempotentes (processed_messages, sequence)</text>
+
+  <!-- Execução -->
+  <rect x="280" y="590" width="840" height="130" rx="12" class="svc"/>
+  <text x="300" y="622" class="t">Execução — tech-challenge-services-ms</text>
+  <text x="1100" y="622" text-anchor="end" class="lb">Laravel 12 · EKS + Lambdas (Bref)</text>
+  <text x="300" y="650" class="s">Fila de execução da O.S. · mecânico inicia e finaliza cada serviço (API web)</text>
+  <text x="300" y="670" class="s">Atualiza o status durante diagnóstico e reparo · comunica a finalização ao OS Service</text>
+  <text x="300" y="698" class="s">Nenhum serviço acessa o banco do outro: só filas e HTTP</text>
+
+  <rect x="420" y="790" width="300" height="76" rx="10" class="db"/>
+  <text x="570" y="818" text-anchor="middle" class="t">RDS MySQL · services_ms</text>
+  <text x="570" y="840" text-anchor="middle" class="s">banco próprio (SQL)</text>
+  <path d="M570,720 L570,788" class="ld"/>
+
+  <!-- payment-service -->
+  <rect x="1240" y="110" width="540" height="610" rx="14" class="grp"/>
+  <text x="1260" y="140" class="h">PAYMENT-SERVICE · SERVERLESS</text>
+  <text x="1260" y="160" class="lb">tech-challenge-payment · Node.js 24 · Terraform</text>
+
+  <rect x="1260" y="176" width="500" height="50" rx="10" class="svc"/>
+  <text x="1510" y="206" text-anchor="middle" class="s"><tspan class="t" style="font-size:15px">API Gateway</tspan>  POST /orders · POST /webhook</text>
+  <rect x="1260" y="246" width="500" height="50" rx="10" class="svc"/>
+  <text x="1510" y="276" text-anchor="middle" class="s">λ orders → <tspan class="m">SQS payment-orders</tspan> → λ trigger</text>
+  <path d="M1510,226 L1510,244" class="ln"/>
+  <path d="M1510,296 L1510,314" class="ln"/>
+
+  <rect x="1260" y="316" width="500" height="250" rx="10" class="svc"/>
+  <text x="1280" y="346" class="t">Saga orquestrada — AWS Step Functions</text>
+  <text x="1280" y="376" class="s">① Registrar → DynamoDB PENDING</text>
+  <text x="1280" y="400" class="s">② Gerar link no Mercado Pago (Retry 3× + nova tentativa diária)</text>
+  <text x="1280" y="424" class="s">③ Notificar o application e aguardar (WaitForTaskToken, até 48 h)</text>
+  <text x="1280" y="448" class="s">④ Aprovado → PAID · Recusado → REJECTED</text>
+  <text x="1280" y="472" class="s"><tspan class="red">⑤ Compensação:</tspan> Cancelar → EXPIRED → DLQ</text>
+  <text x="1280" y="504" class="lb">Idempotência: idempotency_key = nome da execução</text>
+  <text x="1280" y="524" class="lb">Resultado volta ao application por callback_url</text>
+  <text x="1280" y="544" class="lb">Definição: infra/state-machine/payment-saga.asl.json</text>
+
+  <rect x="1260" y="590" width="500" height="56" rx="10" class="svc"/>
+  <text x="1510" y="614" text-anchor="middle" class="s">λ callback — valida HMAC do webhook</text>
+  <text x="1510" y="634" text-anchor="middle" class="s">→ SendTaskSuccess / SendTaskFailure</text>
+  <path d="M1510,590 L1510,568" class="ln"/>
+  <text x="1260" y="690" class="lb">Secrets Manager: token e assinatura do Mercado Pago</text>
+
+  <path d="M1120,190 L1238,190" class="ln"/>
+  <text x="1128" y="182" class="lb">POST /orders</text>
+  <text x="1128" y="206" class="lb">REST síncrono</text>
+  <path d="M1238,260 L1122,260" class="ln"/>
+  <text x="1128" y="252" class="lb">link e resultado</text>
+  <text x="1128" y="278" class="lb">HTTP (callback)</text>
+
+  <rect x="1260" y="790" width="240" height="76" rx="10" class="db"/>
+  <text x="1380" y="818" text-anchor="middle" class="t">DynamoDB</text>
+  <text x="1380" y="840" text-anchor="middle" class="s">payment-saga-state (NoSQL)</text>
+  <path d="M1380,720 L1380,788" class="ld"/>
+
+  <rect x="1520" y="790" width="240" height="76" rx="10" class="ext"/>
+  <text x="1640" y="818" text-anchor="middle" class="t">Mercado Pago</text>
+  <text x="1640" y="840" text-anchor="middle" class="s">preferência · webhook</text>
+  <path d="M1620,722 L1620,788" class="ln" style="marker-start:url(#a)"/>
+
+  <!-- Transversais -->
+  <rect x="40" y="920" width="860" height="104" rx="12" class="obs"/>
+  <text x="60" y="952" class="t">Observabilidade — New Relic (mantido da Fase 3)</text>
+  <text x="60" y="978" class="s">OS Service: APM + infraestrutura do EKS · services-ms: OpenTelemetry (API e Lambdas)</text>
+  <text x="60" y="1000" class="s">payment-service: layer New Relic nas Lambdas + evento PaymentSaga por passo da saga</text>
+
+  <rect x="920" y="920" width="860" height="104" rx="12" class="ext"/>
+  <text x="940" y="952" class="t">CI/CD — GitHub Actions por repositório · main protegida (PR + checks)</text>
+  <text x="940" y="978" class="s">Build · testes unitários + BDD · deploy: imagens no GHCR → EKS (application, services-ms)</text>
+  <text x="940" y="1000" class="s">payment-service: Terraform apply automático no merge · infra como código em todos</text>
+</svg>
+</body>
+</html>
