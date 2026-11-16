@@ -245,6 +245,58 @@ export SONAR_TOKEN=sqa_xxxx
 make ci
 ```
 
+### Proteção da branch `main` (todos os repositórios)
+
+A `main` de todos os repositórios da fase 4 é protegida por um *ruleset* do GitHub. Toda mudança entra por pull request, e o merge só é liberado com os testes do CI passando.
+
+| Repositório | Ruleset | Check obrigatório (job do CI) |
+|---|---|---|
+| `tech-challenge-application` (este) | [#18738884](https://github.com/eduNsantos/tech-challenge-application/rules/18738884) | `laravel-tests` (PHPUnit + Behat) |
+| [`tech-challenge-services-ms`](https://github.com/eduNsantos/tech-challenge-services-ms) | [#27270471](https://github.com/eduNsantos/tech-challenge-services-ms/rules/27270471) | `PHPUnit` |
+| [`tech-challenge-payment`](https://github.com/eduNsantos/tech-challenge-payment) | [#27319961](https://github.com/eduNsantos/tech-challenge-payment/rules/27319961) | `Test` (Jest + Cucumber) |
+| [`tech-challenge-kubernetes`](https://github.com/eduNsantos/tech-challenge-kubernetes) | [#20911339](https://github.com/eduNsantos/tech-challenge-kubernetes/rules/20911339) | `Terraform Test` |
+
+Os quatro rulesets aplicam as mesmas regras:
+
+- **Pull request obrigatório:** não há push direto na `main`.
+- **Status check obrigatório:** a coluna acima. A branch precisa estar atualizada com a `main` antes do merge (*strict*).
+- **Bloqueio de force push** (`non_fast_forward`) e de exclusão da branch.
+
+Para conferir as regras em vigor, use a API pública do GitHub. Ela não exige autenticação, porque os repositórios são públicos:
+
+```bash
+for r in application services-ms payment kubernetes; do
+  echo "== tech-challenge-$r"
+  curl -s "https://api.github.com/repos/eduNsantos/tech-challenge-$r/rules/branches/main" \
+    | jq -r '.[] | .type + (if .type == "required_status_checks" then " → " + ([.parameters.required_status_checks[].context] | join(", ")) else "" end)'
+done
+```
+
+Saída em 15/11/2026:
+
+```
+== tech-challenge-application
+non_fast_forward
+pull_request
+deletion
+required_status_checks → laravel-tests
+== tech-challenge-services-ms
+deletion
+non_fast_forward
+pull_request
+required_status_checks → PHPUnit
+== tech-challenge-payment
+deletion
+non_fast_forward
+pull_request
+required_status_checks → Test
+== tech-challenge-kubernetes
+non_fast_forward
+pull_request
+deletion
+required_status_checks → Terraform Test
+```
+
 ## Observações
 
 - O container `app-php` publica a aplicação na porta `8080` usando `php artisan serve`.
