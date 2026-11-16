@@ -18,6 +18,15 @@ class ServiceOrderServiceModel extends Model
         'service_id',
         'quantity',
         'price',
+        'started_at',
+        'started_user_id',
+        'finished_at',
+        'finished_user_id',
+    ];
+
+    protected $casts = [
+        'started_at' => 'datetime',
+        'finished_at' => 'datetime',
     ];
 
     public function service()

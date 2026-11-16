@@ -1,29 +1,109 @@
 # TechChallenge API
-API de autenticação construída com Laravel 13, JWT e MySQL, com ambiente de desenvolvimento via Docker Compose e documentação OpenAPI.
+Serviço de Ordem de Serviço da oficina (fase 4 do POS Tech Challenge), construído com Laravel 13, JWT e MySQL, com ambiente local via Docker Compose, deploy no EKS e documentação OpenAPI.
 
-## Descrição da solução e objetivos da fase 2
+## Descrição da solução e papel na fase 4
 
-Esta entrega consolida uma API Laravel com autenticação JWT e duas estratégias de execução:
+Na fase 4 a oficina passou a operar como um conjunto de microsserviços, cada um com repositório, infraestrutura e banco próprios. Este repositório é o **serviço de Ordem de Serviço (OS Service)**: cadastro de clientes, veículos, peças e serviços, abertura da O.S., orçamento e **dono do status da O.S.** Ele conversa com os outros serviços só por API e mensageria, sem acessar o banco de nenhum deles.
 
-- Ambiente local com Docker Compose para desenvolvimento e testes rápidos.
-- Ambiente Kubernetes (Minikube) provisionado via Terraform para validar deploy, escalabilidade e operação em cluster.
+| Serviço | Repositório | Responsabilidade | Banco |
+|---|---|---|---|
+| OS Service (este) | `tech-challenge-application` | Autenticação JWT, cadastros, abertura da O.S., orçamento, status e notificações | RDS MySQL (`techchallenge-rds`) |
+| Billing / Pagamento | [`tech-challenge-payment`](https://github.com/eduNsantos/tech-challenge-payment) | Cobrança via Mercado Pago, orquestrada por Saga (Step Functions) | DynamoDB |
+| Execução | `tech-challenge-services-ms` | Fila de execução, início e fim de cada serviço da O.S. | RDS MySQL próprio (`services_ms`) |
 
-Objetivos principais desta fase:
+Como este serviço se comunica com os demais:
 
-- Padronizar build e publicação de imagem Docker para o GHCR.
-- Automatizar deploy e infraestrutura Kubernetes usando Terraform.
-- Garantir rastreabilidade de mudanças por tags de imagem e pipeline CI/CD.
-- Manter documentação executável para setup local e execução em cluster.
+- **Pagamento (síncrono + callback):** o envio do orçamento chama `POST /orders` no payment-service, que devolve o link de pagamento e o resultado por callback. Veja [Integração com o payment-service](#integração-com-o-payment-service).
+- **Execução (assíncrono, SQS FIFO + outbox):** criação e mudanças de status da O.S. vão para o Services MS por filas. Cada início e fim de serviço, e o fim da execução, voltam pela fila `service-order-execution.fifo`. Veja [Integração com o microsserviço de serviços](#integração-com-o-microsserviço-de-serviços).
 
-## Guia rápido desta documentação
+Execução e deploy:
 
-- Execução local: veja a seção `Início rápido (do zero)` e `Configuração do ambiente`.
-- Deploy em Kubernetes: veja a seção `Ambiente Kubernetes (Minikube + Terraform)`.
-- Provisionamento com Terraform: veja a seção `Passo a passo` dentro de `Ambiente Kubernetes (Minikube + Terraform)`.
+- Local: Docker Compose (veja `Início rápido (do zero)` e `Configuração do ambiente`).
+- Produção: EKS, com imagem publicada no GHCR por este repositório e deploy feito pelo workflow `deploy-eks.yml` do `tech-challenge-kubernetes`. As Lambdas de outbox e de consumo rodam via Bref (veja [Lambdas](#lambdas-publisher-e-consumer)).
+- Observabilidade: New Relic, mantido da fase 3.
+- Kubernetes local: o ambiente Minikube + Terraform da fase 2 continua disponível para validar manifestos (veja `Ambiente Kubernetes (Minikube + Terraform)`).
 
-## Desenho da arquitetura proposta
+## Desenho da arquitetura
 
-![Arquitetura proposta da solução](docs/Fase2/workflow.png)
+```
+                 Cliente / Atendente ──JWT──> OS Service (este repo, EKS) ──> RDS MySQL
+                                                │        ▲
+             POST /orders + callback/notification│        │ POST /api/payment/{notification,callback}
+                                                ▼        │
+                                   payment-service (API Gateway → Step Functions/Saga → Mercado Pago, DynamoDB)
+
+ OS Service ── outbox ──> λ postech-outbox-publisher ──> SQS service-orders-created.fifo ───────┐
+                                                     └─> SQS service-order-status-changed.fifo ─┤──> Services MS
+ OS Service <── λ postech-execution-consumer <── SQS service-order-execution.fifo <─────────────┘
+```
+
+Pipeline de build e deploy em Kubernetes herdado da fase 2 (GitHub Actions → GHCR → cluster):
+
+![Pipeline de build e deploy](docs/Fase2/workflow.png)
+
+## Saga da O.S.
+
+A O.S. passa por três serviços: abertura e orçamento (este), pagamento (payment-service) e execução (Services MS). A consistência entre eles segue o Saga Pattern em dois níveis:
+
+- **Entre os serviços, coreografia.** Cada serviço reage a eventos e callbacks dos outros, sem um coordenador central. A O.S. tem um único dono do status (este serviço), então não há decisão a centralizar. As filas FIFO por O.S. e a outbox garantem ordem e entrega sem acoplar os deploys.
+- **Dentro do pagamento, orquestração.** O payment-service coordena seus passos com Step Functions, porque o Mercado Pago não emite eventos de saga e alguém precisa controlar prazo, novas tentativas e cancelamento. Veja [`docs/saga-architecture.md`](https://github.com/eduNsantos/tech-challenge-payment/blob/main/docs/saga-architecture.md) no repositório do payment.
+
+### Passos e tratamento de falha
+
+| # | Passo | Serviço | Tipo | Se falhar |
+|---|---|---|---|---|
+| 1 | Abrir a O.S. | este | Compensável | Transação local: O.S., serviços e outbox são gravados juntos ou nada é gravado |
+| 2 | Enviar o orçamento e gerar a cobrança | este + payment | Compensável | Falha no payment-service ou estoque insuficiente desfaz a operação; nenhuma cobrança fica pendente |
+| 3 | Pagamento | payment | **Pivô** | `REJECTED` ou `EXPIRED`: a O.S. volta para `em_diagnostico`, sem baixa de estoque, e um novo orçamento abre outra cobrança. Dentro do payment, falta de pagamento no prazo cancela a cobrança e falha permanente vai para a DLQ |
+| 4 | Aprovar, baixar estoque e enviar para execução | este | Repetível | Mesma transação do status; o evento sai pela outbox até ser entregue |
+| 5 | Executar os serviços | Services MS | Repetível | Nova tentativa automática (abaixo) |
+| 6 | Finalizar a O.S. | este | Repetível | Mesma estratégia do passo 5 |
+
+### Por que a execução não é compensada
+
+O pagamento (passo 3) é o pivô da saga: antes dele, toda falha é desfeita; depois dele, o cliente já pagou e os passos seguintes precisam chegar ao fim. Compensar a execução significaria estornar o pagamento e devolver peças já baixadas por uma falha técnica. Por isso os passos 4 a 6 usam **recuperação para frente**: são repetidos até concluir.
+
+- As mensagens com falha voltam à fila e, após 3 recebimentos, vão para a DLQ.
+- A Lambda `services-ms-dlq-redriver` devolve a mensagem da DLQ para a fila a cada 15 minutos, até 4 vezes. Com os padrões, são 15 tentativas em cerca de 1 hora. Isso cobre falhas temporárias como banco indisponível ou deploy fora de ordem.
+- Reenviar é seguro: os consumidores são idempotentes (`processed_messages` e `sequence`), e eventos de status antigos são ignorados.
+- Esgotadas as tentativas, a mensagem fica na DLQ para análise manual e o Services MS registra a métrica `messaging.dead_letter.redrives{outcome=exhausted}`. A fila FIFO segura as mensagens seguintes da mesma O.S., então a ordem não se perde.
+
+Fora do escopo: uma falha de negócio na execução (por exemplo, o reparo não poder ser feito) não tem evento próprio. Hoje o atendente trata manualmente, alterando o status da O.S.
+
+### Cobertura por testes
+
+Os cenários `@compensacao`, `@rollback` e `@idempotencia` de `tests/Bdd/features/saga_ordem_de_servico.feature` exercitam os passos 1 a 3 e 6 deste serviço. Os cenários da saga do pagamento ficam em `src/features/saga_pagamento.feature` no payment-service. Veja [Testes BDD](#testes-bdd-fluxo-completo-da-os).
+
+## Rastreamento da O.S. entre os serviços
+
+Os três serviços enviam ao New Relic (conta `8497993`) eventos de cada passo com o mesmo atributo, **`service_order_id`**. Com ele, uma consulta segue uma O.S. da abertura à entrega, incluindo as falhas e recuperações da saga.
+
+| Serviço | Onde fica no New Relic | Atributo | O que registra |
+|---|---|---|---|
+| application (este) | eventos `ServiceOrderCreated` e `ServiceOrderStatusDuration` | `service_order_id` | abertura e cada mudança de status |
+| application (este) | `Log`, encaminhado pelo agente PHP | `context.service_order_id` | orçamento enviado, pagamento pedido e resultado, notificações (`context.event`) |
+| payment-service | evento `PaymentSaga` | `service_order_id` (de `metadata.service_order_id` do pedido) | cada passo da saga de pagamento: `QUEUED` → `PENDING` → `LINK_CREATED` → `WAITING_PAYMENT` → `PAID`/`REJECTED`/`EXPIRED` |
+| services-ms | `Log` com `journey.source = 'services-ms'` (OpenTelemetry) | `service_order_id` | O.S. recebida, status sincronizado, início/fim de serviço e da execução, eventos publicados, reenvios da DLQ |
+
+**Por que correlação por O.S. e não um trace W3C único.** Os serviços conversam por filas SQS e o pagamento passa pelo Step Functions. Nesses pontos o contexto de trace não atravessa sozinho; seria preciso levar o `traceparent` em cada mensagem e instrumentar as Lambdas Bref, que não têm agente New Relic. O id da O.S. já está em todas as mensagens e é o que o atendimento usa para investigar um caso. Por isso ele serve de chave de correlação. As chamadas HTTP entre a aplicação e o payment-service ainda aparecem em *Distributed tracing*, porque os dois agentes do New Relic propagam os headers W3C.
+
+**Limitação.** O consumer da fila de execução roda em Lambda, sem agente New Relic. Por isso, as mudanças de status que ele aplica (`em_execucao`, `finalizada`) não aparecem do lado da aplicação. Os passos equivalentes aparecem pelo services-ms (`execution_started`, `execution_finished`, `event_published`).
+
+### Dashboard "Jornada da O.S."
+
+[`docs/Fase4/observabilidade/newrelic-jornada-os.json`](docs/Fase4/observabilidade/newrelic-jornada-os.json). Para importar, abra o New Relic → **Dashboards** → **Import dashboard** e cole o JSON. Ele tem duas páginas:
+
+- **Jornada de uma O.S.**: preencha o filtro *Id da O.S.* no topo. Mostra quantos passos cada serviço registrou, a linha do tempo unificada e uma tabela por serviço.
+- **Saga — falhas e recuperação**: todas as O.S. Mostra pagamentos recusados ou expirados, reenvios e esgotamentos da DLQ no services-ms, erros de O.S. na aplicação e as O.S. que passaram pelos três serviços.
+
+A mesma linha do tempo direto no NRQL:
+
+```sql
+SELECT timestamp, eventType(), journey.source, step, event, context.event, status, new_status, message
+FROM Log, PaymentSaga, ServiceOrderCreated, ServiceOrderStatusDuration
+WHERE service_order_id = '<id da O.S.>' OR context.service_order_id = '<id da O.S.>'
+SINCE 7 days ago LIMIT MAX
+```
 
 ## Stack
 - PHP 8.4
@@ -196,6 +276,58 @@ export SONAR_TOKEN=sqa_xxxx
 make ci
 ```
 
+### Proteção da branch `main` (todos os repositórios)
+
+A `main` de todos os repositórios da fase 4 é protegida por um *ruleset* do GitHub. Toda mudança entra por pull request, e o merge só é liberado com os testes do CI passando.
+
+| Repositório | Ruleset | Check obrigatório (job do CI) |
+|---|---|---|
+| `tech-challenge-application` (este) | [#18738884](https://github.com/eduNsantos/tech-challenge-application/rules/18738884) | `laravel-tests` (PHPUnit + Behat) |
+| [`tech-challenge-services-ms`](https://github.com/eduNsantos/tech-challenge-services-ms) | [#27270471](https://github.com/eduNsantos/tech-challenge-services-ms/rules/27270471) | `PHPUnit` |
+| [`tech-challenge-payment`](https://github.com/eduNsantos/tech-challenge-payment) | [#27319961](https://github.com/eduNsantos/tech-challenge-payment/rules/27319961) | `Test` (Jest + Cucumber) |
+| [`tech-challenge-kubernetes`](https://github.com/eduNsantos/tech-challenge-kubernetes) | [#20911339](https://github.com/eduNsantos/tech-challenge-kubernetes/rules/20911339) | `Terraform Test` |
+
+Os quatro rulesets aplicam as mesmas regras:
+
+- **Pull request obrigatório:** não há push direto na `main`.
+- **Status check obrigatório:** a coluna acima. A branch precisa estar atualizada com a `main` antes do merge (*strict*).
+- **Bloqueio de force push** (`non_fast_forward`) e de exclusão da branch.
+
+Para conferir as regras em vigor, use a API pública do GitHub. Ela não exige autenticação, porque os repositórios são públicos:
+
+```bash
+for r in application services-ms payment kubernetes; do
+  echo "== tech-challenge-$r"
+  curl -s "https://api.github.com/repos/eduNsantos/tech-challenge-$r/rules/branches/main" \
+    | jq -r '.[] | .type + (if .type == "required_status_checks" then " → " + ([.parameters.required_status_checks[].context] | join(", ")) else "" end)'
+done
+```
+
+Saída em 15/11/2026:
+
+```
+== tech-challenge-application
+non_fast_forward
+pull_request
+deletion
+required_status_checks → laravel-tests
+== tech-challenge-services-ms
+deletion
+non_fast_forward
+pull_request
+required_status_checks → PHPUnit
+== tech-challenge-payment
+deletion
+non_fast_forward
+pull_request
+required_status_checks → Test
+== tech-challenge-kubernetes
+non_fast_forward
+pull_request
+deletion
+required_status_checks → Terraform Test
+```
+
 ## Observações
 
 - O container `app-php` publica a aplicação na porta `8080` usando `php artisan serve`.
@@ -204,7 +336,7 @@ make ci
 
 ## Integração com o payment-service
 
-O envio de orçamento chama o [tech-challenge-payment-service](../tech-challenge-payment-service):
+O envio de orçamento chama o [tech-challenge-payment](https://github.com/eduNsantos/tech-challenge-payment):
 
 1. `POST {PAYMENT_SERVICE_URL}/orders` com `callback_url` e `notification_url` (montados a partir do `APP_URL`)
 2. o link de pagamento volta em `POST /api/payment/notification` → e-mail do orçamento ao cliente
@@ -402,7 +534,17 @@ A aplicação é dona do status da O.S. Com `SERVICES_MS_ENABLED=true`:
 - A criação da O.S. grava `ServiceOrderCreated` na outbox, na mesma transação da O.S. e de seus serviços. O contrato transporta somente os serviços, sem peças/itens.
 - Toda mudança de status gravada pelo repositório grava `ServiceOrderStatusChanged` na outbox, na mesma transação. Isso inclui aprovação, rejeição e alteração manual. O campo `sequence` é o id da linha na outbox. O MS usa esse valor para descartar eventos antigos.
 - A Lambda `postech-outbox-publisher` (`App\Lambda\PublishOutboxHandler`, agendada pelo EventBridge a cada minuto) envia os eventos de criação para `service-orders-created.fifo` e os de status para `service-order-status-changed.fifo`.
-- A Lambda `postech-execution-consumer` (`App\Lambda\ServiceOrderExecutionHandler`, acionada pela fila) consome `service-order-execution.fifo`. Quando o MS conclui o último serviço, a aplicação muda a O.S. para `finalizada`, se ela ainda estiver em `em_execucao` e se o evento se referir ao último status publicado. Essa mudança dispara as notificações normais e volta ao MS como `ServiceOrderStatusChanged`. O início da execução não altera o status, pois a aprovação já leva a O.S. para `em_execucao`.
+- A Lambda `postech-execution-consumer` (`App\Lambda\ServiceOrderExecutionHandler`, acionada pela fila) consome `service-order-execution.fifo`. Essa fila recebe quatro tipos de evento, todos com o id da O.S. como grupo FIFO:
+
+  | Evento | Quando o MS envia | O que a aplicação faz |
+  |---|---|---|
+  | `ServiceOrderServiceStarted` | Todo início de serviço | Grava `started_at` e `started_user_id` em `service_order_services` |
+  | `ServiceOrderServiceFinished` | Todo fim de serviço | Grava `finished_at` e `finished_user_id` em `service_order_services` |
+  | `ServiceOrderExecutionStarted` | Primeiro início da O.S. | Nada (a O.S. já está em `em_execucao`) |
+  | `ServiceOrderExecutionFinished` | Fim do último serviço | Muda a O.S. para `finalizada` (regras abaixo) |
+
+  Os eventos de serviço não alteram o status. O serviço é localizado por `service_order_service_id`, que é o mesmo id de `service_order_services` enviado no `ServiceOrderCreated`. Se o serviço não existir mais na O.S., o evento é ignorado com um log de aviso, para não travar o grupo FIFO. Esses campos aparecem em `GET /api/service-order/{id}` (`service_order.services[].started_at` e `finished_at`) e são preservados quando a O.S. é atualizada. `started_user_id`/`finished_user_id` vêm do claim `sub` do JWT do mecânico e não têm FK para `users`.
+- Quando o MS conclui o último serviço, a aplicação muda a O.S. para `finalizada`, se ela ainda estiver em `em_execucao` e se o evento se referir ao último status publicado. Essa mudança dispara as notificações normais e volta ao MS como `ServiceOrderStatusChanged`. O início da execução não altera o status, pois a aprovação já leva a O.S. para `em_execucao`.
 
 Configure no ambiente do monólito:
 
@@ -419,7 +561,7 @@ SQS_SERVICE_ORDER_EXECUTION_URL=<URL-da-fila-services-ms-service-order-execution
 Os workers rodam em Lambda com PHP 8.4 via [Bref 3](https://bref.sh) (`bref/laravel-bridge` 3.x, compatível com Laravel 13). O código das Lambdas fica aqui (`app/Lambda`, `scripts/build-lambda.sh`). O Terraform e o deploy ficam no `tech-challenge-kubernetes` (`app-lambda/`): o workflow `deploy-eks.yml` monta o pacote dentro da mesma imagem GHCR implantada no EKS, depois das migrations.
 
 - Cada Lambda tem uma role própria: o publisher só faz `sqs:SendMessage` nas filas de criação e de status; o consumer só recebe e apaga mensagens da fila de execução. As filas pertencem ao Services MS e são lidas por data source.
-- Consumer: as falhas voltam por `batchItemFailures` e, após 3 recebimentos, vão para a DLQ. Em FIFO, o processamento para na primeira falha do lote e devolve também as mensagens seguintes.
+- Consumer: as falhas voltam por `batchItemFailures` e, após 3 recebimentos, vão para a DLQ. Em FIFO, o processamento para na primeira falha do lote e devolve também as mensagens seguintes. A DLQ `service-order-execution-dlq.fifo` não é o fim: a Lambda `services-ms-dlq-redriver` do Services MS devolve a mensagem para a fila a cada 15 minutos, até 4 vezes (padrões). Esgotadas as tentativas, ela fica na DLQ para análise manual. Veja "Falha na execução → nova tentativa" no README do Services MS.
 - Publisher: publica em ciclos até 10 s antes do timeout (60 s). Um `GET_LOCK` no MySQL garante um único publisher.
 - As Lambdas rodam fora da VPC e acessam o RDS público do laboratório (`techchallenge-rds`).
 - Pacote: `scripts/build-lambda.sh` monta `build/lambda` sem as dependências de dev. O `composer.json` mantém só o serviço SQS do `aws-sdk-php`.

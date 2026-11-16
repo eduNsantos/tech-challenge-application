@@ -18,7 +18,8 @@ env:
 
 jobs:
   docker:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    # Só publica imagem quando o Laravel CI rodou por push (não em PR) e passou
+    if: ${{ github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') }}
     runs-on: ubuntu-latest
 
     steps:

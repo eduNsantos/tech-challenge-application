@@ -62,6 +62,8 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
                 'service_order_services.service_id',
                 'service_order_services.quantity',
                 'service_order_services.price as price',
+                'service_order_services.started_at',
+                'service_order_services.finished_at',
                 'services.name as name',
             ])
             ->map(static fn ($service) => [
@@ -69,6 +71,8 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
                 'service_id' => $service->service_id,
                 'quantity' => (float) $service->quantity,
                 'unit_price' => (float) $service->price,
+                'started_at' => $service->started_at?->toDateTimeString(),
+                'finished_at' => $service->finished_at?->toDateTimeString(),
                 'service' => [
                     'id' => $service->service_id,
                     'name' => $service->name,
@@ -186,17 +190,30 @@ class ServiceOrderRepositoryEloquent implements ServiceOrderRepositoryInterface
 
     private function syncServices(ServiceOrder $serviceOrder): void
     {
+        // As linhas são recriadas; início/fim vêm do Services MS e não podem se perder num update da O.S.
+        $execution = ServiceOrderServiceModel::query()
+            ->where('service_order_id', $serviceOrder->id)
+            ->get(['id', 'started_at', 'started_user_id', 'finished_at', 'finished_user_id'])
+            ->keyBy('id');
+
         ServiceOrderServiceModel::query()
             ->where('service_order_id', $serviceOrder->id)
             ->delete();
 
         foreach ($serviceOrder->services as $service) {
+            $id = $service['id'] ?? Str::uuid()->toString();
+            $previous = $execution->get($id);
+
             ServiceOrderServiceModel::query()->create([
-                'id' => $service['id'] ?? Str::uuid()->toString(),
+                'id' => $id,
                 'service_order_id' => $serviceOrder->id,
                 'service_id' => $service['service_id'],
                 'quantity' => (int) ($service['quantity'] ?? 0),
                 'price' => (float) ($service['unit_price'] ?? 0),
+                'started_at' => $previous?->started_at,
+                'started_user_id' => $previous?->started_user_id,
+                'finished_at' => $previous?->finished_at,
+                'finished_user_id' => $previous?->finished_user_id,
             ]);
         }
     }
